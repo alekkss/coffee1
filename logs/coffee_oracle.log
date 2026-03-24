@@ -659,3 +659,32 @@ aiogram.exceptions.TelegramNetworkError: HTTP Client says - ClientConnectorError
 2026-03-24 14:42:22,709 - coffee_oracle.max_bot.bot - INFO - MAX-бот: остановлен
 2026-03-24 14:42:22,717 - __main__ - INFO - Ресурсы освобождены
 2026-03-24 14:42:22,717 - __main__ - INFO - Приложение Coffee Oracle остановлено
+2026-03-24 15:05:21,260 - coffee_oracle.bot.bot - INFO - BOT_TOKEN не задан — Telegram-бот не будет запущен
+2026-03-24 15:05:21,291 - coffee_oracle.services.openai_client - INFO - Initialized OpenAI client with model: techno/gpt-5.1
+2026-03-24 15:05:21,291 - coffee_oracle.max_bot.bot - INFO - MAX-бот: компоненты инициализированы
+2026-03-24 15:05:21,291 - __main__ - INFO - MAX-бот инициализирован
+2026-03-24 15:05:21,291 - __main__ - INFO - Запуск сервисов Coffee Oracle...
+2026-03-24 15:05:21,291 - __main__ - INFO - Настройка базы данных...
+2026-03-24 15:05:21,295 - __main__ - INFO - База данных настроена
+2026-03-24 15:05:21,295 - __main__ - INFO - MAX-бот добавлен в список сервисов
+2026-03-24 15:05:21,295 - __main__ - INFO - Запуск Telegram-бота
+2026-03-24 15:05:21,295 - coffee_oracle.bot.bot - INFO - Telegram-бот отключён — пропускаю запуск
+2026-03-24 15:05:21,295 - __main__ - INFO - Запуск админ-сервера на порту 8000
+2026-03-24 15:05:21,299 - __main__ - INFO - Запуск MAX-бота
+2026-03-24 15:05:21,355 - coffee_oracle.max_bot.bot - INFO - MAX-бот запущен: id=217701363, имя='Оракул', username='id9728167964_bot'
+2026-03-24 15:05:21,355 - coffee_oracle.max_bot.bot - INFO - MAX-бот: начинаю long polling (timeout=30)
+2026-03-24 15:06:10,081 - coffee_oracle.max_bot.bot - INFO - MAX-бот: сырое обновление (тип=message_created): {"message": {"recipient": {"chat_id": 103394287, "chat_type": "dialog", "user_id": 217701363}, "timestamp": 1774354042125, "body": {"mid": "mid.000000000629abef019d1fbe0d0d6a52", "seq": 116284066504731218, "text": "/start"}, "sender": {"user_id": 181432348, "first_name": "Александр", "last_name": "", "is_bot": false, "last_activity_time": 1774354028000, "name": "Александр"}}, "timestamp": 1774354042125, "user_locale": "ru", "update_type": "message_created"}
+2026-03-24 15:06:12,430 - coffee_oracle.max_bot.bot - INFO - MAX-бот: сырое обновление (тип=message_callback): {"callback": {"timestamp": 1774353972079, "callback_id": "f9LHodD0cOI74C4D5UbLLzG7tQCEfZoLrsp8RPuhfW0CaM0qlKaOx3JL6-hFW_-NcC0Z0MIpTIimSA4fmfiqhbZGhEo8Atf1uvCqVMGAwc_P9O94CQ_w", "user": {"user_id": 181432348, "first_name": "Александр", "last_name": "", "is_bot": false, "last_activity_time": 1774354028000, "name": "Александр"}, "payload": "action_predict"}, "message": {"recipient": {"chat_id": 103394287, "chat_type": "dialog", "user_id": 181432348}, "timestamp": 1774354042439, "body": {"mid": "mid.000000000629abef019d1fbe0e4766d0", "seq": 116284066525308624, "text": "🔮 Добро пожаловать в мир Кофейного Оракула, Александр!\n\nЯ помогу вам узнать, что говорят узоры кофейной гущи о вашем будущем. Просто сфотографируйте дно выпитой чашки кофе, и я открою вам тайны, которые скрывают эти магические узоры.\n\n✨ Все предсказания несут только позитивную энергию и вдохновение!\n\nВыберите действие в меню ниже:", "attachments": [{"callback_id": "f9LHodD0cOLVEM_kqc4DZX_ohmkHOcH_W0Ok4woG3mAGSXKM3VlHuioZxXx2QbEYdnJd8KHTgLRDfV0zQVbGdzGz-hkx3QkwBqeRZWbwSs769OVS2ZMu", "payload": {"buttons": [[{"payload": "action_predict", "text": "🔮 Получить предсказание", "intent": "default", "type": "callback"}], [{"payload": "action_history", "text": "📜 Моя история", "intent": "default", "type": "callback"}, {"payload": "action_random", "text": "🎯 Случайное", "intent": "default", "type": "callback"}], [{"payload": "action_help", "text": "📚 Как гадать", "intent": "default", "type": "callback"}, {"payload": "action_about", "text": "ℹ️ О боте", "intent": "default", "type": "callback"}], [{"payload": "action_clear", "text": "🗑️ Очистить историю", "intent": "default", "type": "callback"}, {"payload": "action_support", "text": "📞 Поддержка", "intent": "default", "type": "callback"}]]}, "type": "inline_keyboard"}]}, "sender": {"user_id": 217701363, "first_name": "Оракул", "username": "id9728167964_bot", "is_bot": true, "last_activity_time": 1774354044501, "name": "Оракул"}}, "timestamp": 1774353972079, "us
+2026-03-24 15:06:12,464 - coffee_oracle.max_bot.handlers - INFO - MAX callback: payload=action_predict, user=181432348, chat_id=103394287
+2026-03-24 15:06:20,853 - coffee_oracle.max_bot.bot - INFO - MAX-бот: сырое обновление (тип=message_created): {"message": {"recipient": {"chat_id": 103394287, "chat_type": "dialog", "user_id": 217701363}, "timestamp": 1774354052972, "body": {"mid": "mid.000000000629abef019d1fbe376c7f48", "seq": 116284067215605576, "text": "", "attachments": [{"payload": {"photo_id": 9732918812, "token": "/Z/7x6ePdMXZUFImEiwTsFVlWCj3ktuyxITYyJejWkIQsd74xYtXcSzmU3m/IA/EYbKNss/oqCosVrh2o1I2yUB8uGYQ7aEx79+3YnNq4Ts=", "url": "https://i.oneme.ru/i?r=BTGBPUwtwgYUeoFhO7rESmr8r_DykNBufoUHehgtevYsnrItgMG9_FEjka0xwm9Lh-s"}, "type": "image"}]}, "sender": {"user_id": 181432348, "first_name": "Александр", "last_name": "", "is_bot": false, "last_activity_time": 1774354049000, "name": "Александр"}}, "timestamp": 1774354052972, "user_locale": "ru", "update_type": "message_created"}
+2026-03-24 15:06:21,121 - coffee_oracle.max_bot.photo_processor - INFO - Изображение уменьшено: 1280x960 -> 800x600, 52592 -> 46381 байт (quality=85)
+2026-03-24 15:06:21,121 - coffee_oracle.max_bot.photo_processor - ERROR - Ошибка сохранения изображения на диск: [Errno 30] Read-only file system: '/app'
+2026-03-24 15:07:42,463 - __main__ - INFO - Получен сигнал 2, начинаю завершение...
+2026-03-24 15:07:42,466 - coffee_oracle.max_bot.bot - INFO - MAX-бот: polling отменён
+2026-03-24 15:07:42,466 - coffee_oracle.max_bot.bot - INFO - MAX-бот: цикл polling завершён
+2026-03-24 15:07:42,467 - __main__ - INFO - Освобождение ресурсов...
+2026-03-24 15:07:42,467 - coffee_oracle.max_bot.bot - INFO - MAX-бот: остановка...
+2026-03-24 15:07:42,468 - coffee_oracle.max_bot.api_client - INFO - MAX API клиент: HTTP-сессия закрыта
+2026-03-24 15:07:42,468 - coffee_oracle.max_bot.bot - INFO - MAX-бот: остановлен
+2026-03-24 15:07:42,477 - __main__ - INFO - Ресурсы освобождены
+2026-03-24 15:07:42,478 - __main__ - INFO - Приложение Coffee Oracle остановлено
