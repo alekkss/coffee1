@@ -1,6 +1,7 @@
 """FastAPI admin panel application."""
 
 import logging
+import os
 from datetime import datetime, timedelta
 from typing import Annotated, Any, Dict, List
 
@@ -20,8 +21,12 @@ app = FastAPI(title="Coffee Oracle Admin v1.0", version="1.0.0")
 
 logger = logging.getLogger(__name__)
 
+# Папка для медиафайлов — создаётся автоматически
+MEDIA_DIR = os.getenv("MEDIA_DIR", "media")
+os.makedirs(MEDIA_DIR, exist_ok=True)
+
 # Mount media files
-app.mount("/media", StaticFiles(directory="/app/media"), name="media")
+app.mount("/media", StaticFiles(directory=MEDIA_DIR), name="media")
 
 # Setup templates
 templates = Jinja2Templates(directory="coffee_oracle/admin/templates")

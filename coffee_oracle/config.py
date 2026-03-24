@@ -2,7 +2,8 @@
 
 Загружает настройки из переменных окружения через python-dotenv.
 Обязательные переменные проверяются при старте приложения.
-MAX_BOT_TOKEN — опциональная переменная для запуска MAX-бота.
+BOT_TOKEN и MAX_BOT_TOKEN — опциональны по отдельности,
+но хотя бы один из них должен быть задан.
 """
 
 import os
@@ -18,16 +19,16 @@ load_dotenv()
 class Config:
     """Конфигурация приложения."""
 
-    # Telegram-бот (обязательно)
-    bot_token: str
+    # Telegram-бот (опционально — если не задан, Telegram-бот не запускается)
+    bot_token: Optional[str] = None
 
     # Админ-панель (обязательно)
-    admin_username: str
-    admin_password: str
-    secret_key: str
+    admin_username: str = ""
+    admin_password: str = ""
+    secret_key: str = "default-secret-key"
 
     # База данных
-    database_url: str
+    database_url: str = ""
     admin_port: int = 8000
 
     # MAX-бот (опционально — если не задан, MAX-бот не запускается)
@@ -46,24 +47,31 @@ class Config:
     def from_env(cls) -> "Config":
         """Загрузка конфигурации из переменных окружения.
 
-        Обязательные переменные: BOT_TOKEN, ADMIN_USERNAME,
-        ADMIN_PASSWORD, LITELLM_API_KEY (или OPENAI_API_KEY).
-
-        Опциональные: MAX_BOT_TOKEN, SECRET_KEY, DB_NAME,
-        ADMIN_PORT и все LITELLM_* настройки.
+        Обязательные: ADMIN_USERNAME, ADMIN_PASSWORD,
+        LITELLM_API_KEY (или OPENAI_API_KEY).
+        Хотя бы один из: BOT_TOKEN, MAX_BOT_TOKEN.
 
         Raises:
-            ValueError: Если обязательная переменная не задана.
+            ValueError: Если обязательная переменная не задана
+                       или не задан ни один токен бота.
         """
-        # Обязательные переменные Telegram
-        bot_token = os.getenv("BOT_TOKEN")
+        # Токены ботов (оба опциональны по отдельности)
+        bot_token = os.getenv("BOT_TOKEN", "").strip() or None
+        max_bot_token = os.getenv("MAX_BOT_TOKEN", "").strip() or None
+
+        # Хотя бы один бот должен быть настроен
+        if not bot_token and not max_bot_token:
+            raise ValueError(
+                "Необходимо задать хотя бы одну переменную: "
+                "BOT_TOKEN (Telegram) или MAX_BOT_TOKEN (MAX)"
+            )
+
+        # Админ-панель (обязательно)
         admin_username = os.getenv("ADMIN_USERNAME")
         admin_password = os.getenv("ADMIN_PASSWORD")
         secret_key = os.getenv("SECRET_KEY", "default-secret-key")
         db_name = os.getenv("DB_NAME", "coffee_oracle.db")
 
-        if not bot_token:
-            raise ValueError("BOT_TOKEN — обязательная переменная окружения")
         if not admin_username:
             raise ValueError("ADMIN_USERNAME — обязательная переменная окружения")
         if not admin_password:
@@ -73,9 +81,6 @@ class Config:
 
         # Опциональный порт админки
         admin_port = int(os.getenv("ADMIN_PORT", "8000"))
-
-        # MAX-бот (опционально)
-        max_bot_token = os.getenv("MAX_BOT_TOKEN")
 
         # LiteLLM / OpenAI конфигурация
         litellm_model = os.getenv("LITELLM_MODEL", "gpt-4o-mini")

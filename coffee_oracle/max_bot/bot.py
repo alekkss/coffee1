@@ -5,8 +5,9 @@
 """
 
 import asyncio
+import json
 import logging
-from typing import Optional
+from typing import Any, Dict, List, Optional
 
 from coffee_oracle.max_bot.api_client import MaxApiClient, MaxApiError
 from coffee_oracle.max_bot.handlers import MaxBotHandlers
@@ -118,33 +119,44 @@ class MaxOracleBot:
     async def _poll_once(self) -> None:
         """Один цикл опроса обновлений.
 
-        Запрашивает обновления от MAX API, обрабатывает каждое
-        через маршрутизатор, обновляет маркер.
+        Запрашивает сырые данные от MAX API, логирует их
+        для диагностики и передаёт в обработчик.
         """
-        updates, new_marker = await self._api_client.get_updates(
+        # Получаем сырой JSON для диагностики
+        raw_data = await self._api_client.get_updates_raw(
             marker=self._marker,
             limit=POLL_LIMIT,
             timeout=POLL_TIMEOUT,
             types=POLL_UPDATE_TYPES,
         )
 
-        # Обновляем маркер для следующего запроса
+        # Обновляем маркер
+        new_marker = raw_data.get("marker")
         if new_marker is not None:
             self._marker = new_marker
 
-        if not updates:
+        raw_updates = raw_data.get("updates", [])
+        if not raw_updates:
             return
 
-        logger.debug("MAX-бот: получено %d обновлений", len(updates))
+        # Логируем сырые данные каждого обновления
+        for raw_update in raw_updates:
+            update_type = raw_update.get("update_type", "unknown")
+            logger.info(
+                "MAX-бот: сырое обновление (тип=%s): %s",
+                update_type,
+                json.dumps(raw_update, ensure_ascii=False, default=str)[:2000],
+            )
 
-        # Обрабатываем каждое обновление
-        for update in updates:
+        # Парсим и обрабатываем
+        for raw_update in raw_updates:
             try:
+                update = self._api_client._parse_update(raw_update)
                 await self._handlers.handle_update(update)
             except Exception as e:
                 logger.error(
-                    "MAX-бот: ошибка обработки обновления (тип=%s): %s",
-                    update.update_type, e,
+                    "MAX-бот: ошибка обработки обновления: %s",
+                    e,
                     exc_info=True,
                 )
 

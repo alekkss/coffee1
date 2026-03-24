@@ -606,61 +606,79 @@ class MaxBotHandlers:
 
         payload = callback.payload or ""
         user = callback.user
-        message = callback.message
+        message = update.message  # Сообщение на верхнем уровне update
+        
+        # Если message не в update, берём из callback
+        if not message and callback.message:
+            message = callback.message
+
         chat_id = message.chat_id if message else None
 
+        # Подтверждаем callback СРАЗУ — MAX API требует message или notification
+        try:
+            await self._api.answer_callback(
+                callback.callback_id,
+                notification="✨",
+            )
+        except Exception as e:
+            logger.debug("MAX: ошибка подтверждения callback: %s", e)
+
         if not chat_id or not user:
-            # Пытаемся ответить на callback без действий
-            await self._api.answer_callback(callback.callback_id)
+            logger.warning(
+                "MAX callback без chat_id или user: payload=%s, chat_id=%s, user=%s",
+                payload, chat_id, user,
+            )
             return
 
-        logger.debug("MAX callback: payload=%s, user=%d", payload, user.user_id)
+        logger.info("MAX callback: payload=%s, user=%d, chat_id=%d", payload, user.user_id, chat_id)
 
         # Маршрутизация по payload
-        if payload == "action_predict":
-            await self._handle_predict_command(chat_id)
-
-        elif payload == "action_history" or payload == "action_show_history":
-            await self._callback_show_history(callback, chat_id)
-
-        elif payload == "action_random":
-            await self._handle_random_command(chat_id)
-
-        elif payload == "action_help":
-            await self._handle_help_command(chat_id)
-
-        elif payload == "action_about":
-            await self._handle_about_command(chat_id)
-
-        elif payload == "action_clear":
-            await self._handle_clear_command(chat_id)
-
-        elif payload == "action_support":
-            await self._handle_support_command(chat_id)
-
-        elif payload == "action_new_prediction":
-            await self._handle_predict_command(chat_id)
-
-        elif payload == "action_back_to_menu":
-            await self._callback_back_to_menu(callback, chat_id)
-
-        elif payload == "action_cancel":
-            await self._callback_cancel(callback, chat_id)
-
-        elif payload.startswith("confirm_"):
-            await self._callback_confirm(callback, payload, chat_id)
-
-        elif payload.startswith("help_"):
-            await self._callback_help_section(callback, payload, chat_id)
-
-        else:
-            logger.warning("MAX: неизвестный callback payload: %s", payload)
-
-        # Подтверждение callback
         try:
-            await self._api.answer_callback(callback.callback_id)
+            if payload == "action_predict":
+                await self._handle_predict_command(chat_id)
+
+            elif payload in ("action_history", "action_show_history"):
+                await self._callback_show_history(callback, chat_id)
+
+            elif payload == "action_random":
+                await self._handle_random_command(chat_id)
+
+            elif payload == "action_help":
+                await self._handle_help_command(chat_id)
+
+            elif payload == "action_about":
+                await self._handle_about_command(chat_id)
+
+            elif payload == "action_clear":
+                await self._handle_clear_command(chat_id)
+
+            elif payload == "action_support":
+                await self._handle_support_command(chat_id)
+
+            elif payload == "action_new_prediction":
+                await self._handle_predict_command(chat_id)
+
+            elif payload == "action_back_to_menu":
+                await self._callback_back_to_menu(callback, chat_id)
+
+            elif payload == "action_cancel":
+                await self._callback_cancel(callback, chat_id)
+
+            elif payload.startswith("confirm_"):
+                await self._callback_confirm(callback, payload, chat_id)
+
+            elif payload.startswith("help_"):
+                await self._callback_help_section(callback, payload, chat_id)
+
+            else:
+                logger.warning("MAX: неизвестный callback payload: %s", payload)
+
         except Exception as e:
-            logger.warning("MAX: ошибка подтверждения callback: %s", e)
+            logger.error(
+                "MAX: ошибка обработки callback payload=%s: %s",
+                payload, e,
+                exc_info=True,
+            )
 
     async def _callback_show_history(self, callback: MaxCallback, chat_id: int) -> None:
         """Callback: показать историю предсказаний."""

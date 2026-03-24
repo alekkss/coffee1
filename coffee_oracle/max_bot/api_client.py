@@ -529,6 +529,37 @@ class MaxApiClient:
         new_marker = data.get("marker")
         return updates, new_marker
 
+    async def get_updates_raw(
+        self,
+        marker: Optional[int] = None,
+        limit: int = 100,
+        timeout: int = 30,
+        types: Optional[List[str]] = None,
+    ) -> Dict[str, Any]:
+        """Получение сырого JSON обновлений без парсинга.
+
+        Используется для диагностики структуры данных от API.
+
+        Args:
+            marker: Маркер для получения новых обновлений.
+            limit: Максимальное количество обновлений (1-1000).
+            timeout: Таймаут в секундах (0-90).
+            types: Фильтр типов обновлений.
+
+        Returns:
+            Сырой словарь из JSON-ответа API.
+        """
+        params: Dict[str, Any] = {
+            "limit": limit,
+            "timeout": timeout,
+        }
+        if marker is not None:
+            params["marker"] = marker
+        if types:
+            params["types"] = ",".join(types)
+
+        return await self._request("GET", "/updates", params=params)
+
     # ────────────────────────────────────────────
     #  Парсинг данных из ответов API
     # ────────────────────────────────────────────

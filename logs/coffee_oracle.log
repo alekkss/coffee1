@@ -1,0 +1,661 @@
+2026-03-24 13:56:39,054 - coffee_oracle.services.openai_client - INFO - Initialized OpenAI client with model: gpt-4o-mini
+2026-03-24 13:56:39,054 - coffee_oracle.max_bot.bot - INFO - MAX-бот: компоненты инициализированы
+2026-03-24 13:56:39,054 - __main__ - INFO - MAX-бот инициализирован
+2026-03-24 13:56:39,054 - __main__ - INFO - Запуск сервисов Coffee Oracle...
+2026-03-24 13:56:39,054 - __main__ - INFO - Настройка базы данных...
+2026-03-24 13:56:39,054 - __main__ - ERROR - Ошибка настройки базы данных: the greenlet library is required to use this function. No module named 'greenlet'
+2026-03-24 13:56:39,055 - __main__ - ERROR - Ошибка приложения: the greenlet library is required to use this function. No module named 'greenlet'
+2026-03-24 13:57:32,950 - coffee_oracle.services.openai_client - INFO - Initialized OpenAI client with model: gpt-4o-mini
+2026-03-24 13:57:32,950 - coffee_oracle.max_bot.bot - INFO - MAX-бот: компоненты инициализированы
+2026-03-24 13:57:32,950 - __main__ - INFO - MAX-бот инициализирован
+2026-03-24 13:57:32,950 - __main__ - INFO - Запуск сервисов Coffee Oracle...
+2026-03-24 13:57:32,950 - __main__ - INFO - Настройка базы данных...
+2026-03-24 13:57:32,956 - __main__ - INFO - База данных настроена
+2026-03-24 13:57:32,956 - __main__ - INFO - MAX-бот добавлен в список сервисов
+2026-03-24 13:57:32,956 - __main__ - INFO - Запуск Telegram-бота
+2026-03-24 13:57:32,956 - coffee_oracle.bot.bot - INFO - Starting Coffee Oracle Bot...
+2026-03-24 13:57:32,957 - __main__ - INFO - Запуск админ-сервера на порту 8000
+2026-03-24 13:57:32,961 - __main__ - INFO - Запуск MAX-бота
+2026-03-24 13:57:33,009 - coffee_oracle.max_bot.api_client - ERROR - MAX API сетевая ошибка: GET /me -> Cannot connect to host platform-api.max.ru:443 ssl:True [SSLCertVerificationError: (1, '[SSL: CERTIFICATE_VERIFY_FAILED] certificate verify failed: self-signed certificate in certificate chain (_ssl.c:1032)')]
+2026-03-24 13:57:33,009 - coffee_oracle.max_bot.bot - ERROR - MAX-бот: не удалось получить информацию о боте: Сетевая ошибка при обращении к MAX API
+2026-03-24 13:57:33,009 - __main__ - ERROR - Ошибка MAX-бота: MAX-бот не может подключиться к API: Сетевая ошибка при обращении к MAX API
+2026-03-24 13:57:33,261 - __main__ - INFO - Освобождение ресурсов...
+2026-03-24 13:57:33,262 - coffee_oracle.bot.bot - INFO - Stopping Coffee Oracle Bot...
+2026-03-24 13:57:33,262 - coffee_oracle.max_bot.bot - INFO - MAX-бот: остановка...
+2026-03-24 13:57:33,262 - coffee_oracle.max_bot.api_client - INFO - MAX API клиент: HTTP-сессия закрыта
+2026-03-24 13:57:33,263 - coffee_oracle.max_bot.bot - INFO - MAX-бот: остановлен
+2026-03-24 13:57:33,266 - __main__ - INFO - Ресурсы освобождены
+2026-03-24 13:57:33,266 - asyncio - ERROR - Task exception was never retrieved
+future: <Task finished name='max_bot' coro=<ApplicationOrchestrator.start_max_bot() done, defined at /Users/aleksander/Documents/Коды/my-poisk/coffee/main.py:91> exception=RuntimeError('MAX-бот не может подключиться к API: Сетевая ошибка при обращении к MAX API')>
+Traceback (most recent call last):
+  File "/Users/aleksander/Documents/Коды/my-poisk/coffee/venv/lib/python3.13/site-packages/aiohttp/connector.py", line 1313, in _wrap_create_connection
+    return await self._loop.create_connection(*args, **kwargs, sock=sock)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/asyncio/base_events.py", line 1201, in create_connection
+    transport, protocol = await self._create_connection_transport(
+                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    ...<2 lines>...
+        ssl_shutdown_timeout=ssl_shutdown_timeout)
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/asyncio/base_events.py", line 1234, in _create_connection_transport
+    await waiter
+  File "/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/asyncio/sslproto.py", line 581, in _on_handshake_complete
+    raise handshake_exc
+  File "/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/asyncio/sslproto.py", line 563, in _do_handshake
+    self._sslobj.do_handshake()
+    ~~~~~~~~~~~~~~~~~~~~~~~~~^^
+  File "/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/ssl.py", line 951, in do_handshake
+    self._sslobj.do_handshake()
+    ~~~~~~~~~~~~~~~~~~~~~~~~~^^
+ssl.SSLCertVerificationError: [SSL: CERTIFICATE_VERIFY_FAILED] certificate verify failed: self-signed certificate in certificate chain (_ssl.c:1032)
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/Users/aleksander/Documents/Коды/my-poisk/coffee/coffee_oracle/max_bot/api_client.py", line 207, in _request
+    async with session.request(
+               ~~~~~~~~~~~~~~~^
+        method=method,
+        ^^^^^^^^^^^^^^
+    ...<2 lines>...
+        json=json_data,
+        ^^^^^^^^^^^^^^^
+    ) as response:
+    ^
+  File "/Users/aleksander/Documents/Коды/my-poisk/coffee/venv/lib/python3.13/site-packages/aiohttp/client.py", line 1510, in __aenter__
+    self._resp: _RetType = await self._coro
+                           ^^^^^^^^^^^^^^^^
+  File "/Users/aleksander/Documents/Коды/my-poisk/coffee/venv/lib/python3.13/site-packages/aiohttp/client.py", line 779, in _request
+    resp = await handler(req)
+           ^^^^^^^^^^^^^^^^^^
+  File "/Users/aleksander/Documents/Коды/my-poisk/coffee/venv/lib/python3.13/site-packages/aiohttp/client.py", line 734, in _connect_and_send_request
+    conn = await self._connector.connect(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+        req, traces=traces, timeout=real_timeout
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "/Users/aleksander/Documents/Коды/my-poisk/coffee/venv/lib/python3.13/site-packages/aiohttp/connector.py", line 672, in connect
+    proto = await self._create_connection(req, traces, timeout)
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/aleksander/Documents/Коды/my-poisk/coffee/venv/lib/python3.13/site-packages/aiohttp/connector.py", line 1239, in _create_connection
+    _, proto = await self._create_direct_connection(req, traces, timeout)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/aleksander/Documents/Коды/my-poisk/coffee/venv/lib/python3.13/site-packages/aiohttp/connector.py", line 1611, in _create_direct_connection
+    raise last_exc
+  File "/Users/aleksander/Documents/Коды/my-poisk/coffee/venv/lib/python3.13/site-packages/aiohttp/connector.py", line 1580, in _create_direct_connection
+    transp, proto = await self._wrap_create_connection(
+                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    ...<7 lines>...
+    )
+    ^
+  File "/Users/aleksander/Documents/Коды/my-poisk/coffee/venv/lib/python3.13/site-packages/aiohttp/connector.py", line 1315, in _wrap_create_connection
+    raise ClientConnectorCertificateError(req.connection_key, exc) from exc
+aiohttp.client_exceptions.ClientConnectorCertificateError: Cannot connect to host platform-api.max.ru:443 ssl:True [SSLCertVerificationError: (1, '[SSL: CERTIFICATE_VERIFY_FAILED] certificate verify failed: self-signed certificate in certificate chain (_ssl.c:1032)')]
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/Users/aleksander/Documents/Коды/my-poisk/coffee/coffee_oracle/max_bot/bot.py", line 70, in start_polling
+    bot_info = await self._api_client.get_me()
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/aleksander/Documents/Коды/my-poisk/coffee/coffee_oracle/max_bot/api_client.py", line 247, in get_me
+    data = await self._request("GET", "/me")
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/aleksander/Documents/Коды/my-poisk/coffee/coffee_oracle/max_bot/api_client.py", line 232, in _request
+    raise MaxApiError(
+    ...<2 lines>...
+    ) from e
+coffee_oracle.max_bot.api_client.MaxApiError: Сетевая ошибка при обращении к MAX API
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/Users/aleksander/Documents/Коды/my-poisk/coffee/main.py", line 99, in start_max_bot
+    await self.max_bot.start_polling()
+  File "/Users/aleksander/Documents/Коды/my-poisk/coffee/coffee_oracle/max_bot/bot.py", line 79, in start_polling
+    raise RuntimeError(
+        f"MAX-бот не может подключиться к API: {e.message}"
+    ) from e
+RuntimeError: MAX-бот не может подключиться к API: Сетевая ошибка при обращении к MAX API
+2026-03-24 13:57:33,281 - __main__ - INFO - Приложение Coffee Oracle остановлено
+2026-03-24 14:02:38,248 - coffee_oracle.services.openai_client - INFO - Initialized OpenAI client with model: gpt-4o-mini
+2026-03-24 14:02:38,248 - coffee_oracle.max_bot.bot - INFO - MAX-бот: компоненты инициализированы
+2026-03-24 14:02:38,248 - __main__ - INFO - MAX-бот инициализирован
+2026-03-24 14:02:38,248 - __main__ - INFO - Запуск сервисов Coffee Oracle...
+2026-03-24 14:02:38,248 - __main__ - INFO - Настройка базы данных...
+2026-03-24 14:02:38,253 - __main__ - INFO - База данных настроена
+2026-03-24 14:02:38,253 - __main__ - INFO - MAX-бот добавлен в список сервисов
+2026-03-24 14:02:38,253 - __main__ - INFO - Запуск Telegram-бота
+2026-03-24 14:02:38,253 - coffee_oracle.bot.bot - INFO - Starting Coffee Oracle Bot...
+2026-03-24 14:02:38,254 - __main__ - INFO - Запуск админ-сервера на порту 8000
+2026-03-24 14:02:38,257 - __main__ - INFO - Запуск MAX-бота
+2026-03-24 14:02:38,305 - coffee_oracle.max_bot.bot - INFO - MAX-бот запущен: id=217701363, имя='Оракул', username='id9728167964_bot'
+2026-03-24 14:02:38,305 - coffee_oracle.max_bot.bot - INFO - MAX-бот: начинаю long polling (timeout=30)
+2026-03-24 14:02:38,432 - coffee_oracle.max_bot.handlers - INFO - MAX: пользователь 181432348 запустил бота
+2026-03-24 14:03:38,317 - coffee_oracle.bot.bot - ERROR - Failed to set bot commands: HTTP Client says - Request timeout error
+2026-03-24 14:04:38,673 - coffee_oracle.bot.bot - ERROR - Error in bot polling: HTTP Client says - ClientConnectorError: Cannot connect to host api.telegram.org:443 ssl:default [None]
+2026-03-24 14:04:38,674 - __main__ - ERROR - Ошибка Telegram-бота: HTTP Client says - ClientConnectorError: Cannot connect to host api.telegram.org:443 ssl:default [None]
+2026-03-24 14:04:38,694 - coffee_oracle.max_bot.bot - INFO - MAX-бот: polling отменён
+2026-03-24 14:04:38,694 - coffee_oracle.max_bot.bot - INFO - MAX-бот: цикл polling завершён
+2026-03-24 14:04:38,701 - __main__ - INFO - Освобождение ресурсов...
+2026-03-24 14:04:38,702 - coffee_oracle.bot.bot - INFO - Stopping Coffee Oracle Bot...
+2026-03-24 14:04:38,703 - coffee_oracle.max_bot.bot - INFO - MAX-бот: остановка...
+2026-03-24 14:04:38,703 - coffee_oracle.max_bot.api_client - INFO - MAX API клиент: HTTP-сессия закрыта
+2026-03-24 14:04:38,703 - coffee_oracle.max_bot.bot - INFO - MAX-бот: остановлен
+2026-03-24 14:04:38,762 - __main__ - INFO - Ресурсы освобождены
+2026-03-24 14:04:38,764 - asyncio - ERROR - Task exception was never retrieved
+future: <Task finished name='telegram_bot' coro=<ApplicationOrchestrator.start_bot() done, defined at /Users/aleksander/Documents/Коды/my-poisk/coffee/main.py:81> exception=TelegramNetworkError('HTTP Client says - ClientConnectorError: Cannot connect to host api.telegram.org:443 ssl:default [None]')>
+Traceback (most recent call last):
+  File "/Users/aleksander/Documents/Коды/my-poisk/coffee/venv/lib/python3.13/site-packages/aiohttp/connector.py", line 1313, in _wrap_create_connection
+    return await self._loop.create_connection(*args, **kwargs, sock=sock)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/asyncio/base_events.py", line 1201, in create_connection
+    transport, protocol = await self._create_connection_transport(
+                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    ...<2 lines>...
+        ssl_shutdown_timeout=ssl_shutdown_timeout)
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/asyncio/base_events.py", line 1234, in _create_connection_transport
+    await waiter
+ConnectionAbortedError: SSL handshake is taking longer than 60.0 seconds: aborting the connection
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/Users/aleksander/Documents/Коды/my-poisk/coffee/venv/lib/python3.13/site-packages/aiogram/client/session/aiohttp.py", line 167, in make_request
+    async with session.post(
+               ~~~~~~~~~~~~^
+        url,
+        ^^^^
+        data=form,
+        ^^^^^^^^^^
+        timeout=self.timeout if timeout is None else timeout,
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    ) as resp:
+    ^
+  File "/Users/aleksander/Documents/Коды/my-poisk/coffee/venv/lib/python3.13/site-packages/aiohttp/client.py", line 1510, in __aenter__
+    self._resp: _RetType = await self._coro
+                           ^^^^^^^^^^^^^^^^
+  File "/Users/aleksander/Documents/Коды/my-poisk/coffee/venv/lib/python3.13/site-packages/aiohttp/client.py", line 779, in _request
+    resp = await handler(req)
+           ^^^^^^^^^^^^^^^^^^
+  File "/Users/aleksander/Documents/Коды/my-poisk/coffee/venv/lib/python3.13/site-packages/aiohttp/client.py", line 734, in _connect_and_send_request
+    conn = await self._connector.connect(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+        req, traces=traces, timeout=real_timeout
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "/Users/aleksander/Documents/Коды/my-poisk/coffee/venv/lib/python3.13/site-packages/aiohttp/connector.py", line 672, in connect
+    proto = await self._create_connection(req, traces, timeout)
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/aleksander/Documents/Коды/my-poisk/coffee/venv/lib/python3.13/site-packages/aiohttp/connector.py", line 1239, in _create_connection
+    _, proto = await self._create_direct_connection(req, traces, timeout)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/aleksander/Documents/Коды/my-poisk/coffee/venv/lib/python3.13/site-packages/aiohttp/connector.py", line 1611, in _create_direct_connection
+    raise last_exc
+  File "/Users/aleksander/Documents/Коды/my-poisk/coffee/venv/lib/python3.13/site-packages/aiohttp/connector.py", line 1580, in _create_direct_connection
+    transp, proto = await self._wrap_create_connection(
+                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    ...<7 lines>...
+    )
+    ^
+  File "/Users/aleksander/Documents/Коды/my-poisk/coffee/venv/lib/python3.13/site-packages/aiohttp/connector.py", line 1321, in _wrap_create_connection
+    raise client_error(req.connection_key, exc) from exc
+aiohttp.client_exceptions.ClientConnectorError: Cannot connect to host api.telegram.org:443 ssl:default [None]
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/Users/aleksander/Documents/Коды/my-poisk/coffee/main.py", line 86, in start_bot
+    await self.bot.start_polling()
+  File "/Users/aleksander/Documents/Коды/my-poisk/coffee/coffee_oracle/bot/bot.py", line 67, in start_polling
+    await self.dp.start_polling(self.bot)
+  File "/Users/aleksander/Documents/Коды/my-poisk/coffee/venv/lib/python3.13/site-packages/aiogram/dispatcher/dispatcher.py", line 621, in start_polling
+    await asyncio.gather(*done)
+  File "/Users/aleksander/Documents/Коды/my-poisk/coffee/venv/lib/python3.13/site-packages/aiogram/dispatcher/dispatcher.py", line 377, in _polling
+    user: User = await bot.me()
+                 ^^^^^^^^^^^^^^
+  File "/Users/aleksander/Documents/Коды/my-poisk/coffee/venv/lib/python3.13/site-packages/aiogram/client/bot.py", line 362, in me
+    self._me = await self.get_me()
+               ^^^^^^^^^^^^^^^^^^^
+  File "/Users/aleksander/Documents/Коды/my-poisk/coffee/venv/lib/python3.13/site-packages/aiogram/client/bot.py", line 1798, in get_me
+    return await self(call, request_timeout=request_timeout)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/aleksander/Documents/Коды/my-poisk/coffee/venv/lib/python3.13/site-packages/aiogram/client/bot.py", line 488, in __call__
+    return await self.session(self, method, timeout=request_timeout)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/aleksander/Documents/Коды/my-poisk/coffee/venv/lib/python3.13/site-packages/aiogram/client/session/base.py", line 259, in __call__
+    return cast(TelegramType, await middleware(bot, method))
+                              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/aleksander/Documents/Коды/my-poisk/coffee/venv/lib/python3.13/site-packages/aiogram/client/session/aiohttp.py", line 176, in make_request
+    raise TelegramNetworkError(method=method, message=f"{type(e).__name__}: {e}") from e
+aiogram.exceptions.TelegramNetworkError: HTTP Client says - ClientConnectorError: Cannot connect to host api.telegram.org:443 ssl:default [None]
+2026-03-24 14:04:38,798 - __main__ - INFO - Приложение Coffee Oracle остановлено
+2026-03-24 14:19:17,369 - coffee_oracle.services.openai_client - INFO - Initialized OpenAI client with model: gpt-4o-mini
+2026-03-24 14:19:17,370 - coffee_oracle.max_bot.bot - INFO - MAX-бот: компоненты инициализированы
+2026-03-24 14:19:17,370 - __main__ - INFO - MAX-бот инициализирован
+2026-03-24 14:19:17,370 - __main__ - INFO - Запуск сервисов Coffee Oracle...
+2026-03-24 14:19:17,370 - __main__ - INFO - Настройка базы данных...
+2026-03-24 14:19:17,374 - __main__ - INFO - База данных настроена
+2026-03-24 14:19:17,374 - __main__ - INFO - MAX-бот добавлен в список сервисов
+2026-03-24 14:19:17,374 - __main__ - INFO - Запуск Telegram-бота
+2026-03-24 14:19:17,374 - coffee_oracle.bot.bot - INFO - Starting Coffee Oracle Bot...
+2026-03-24 14:19:17,375 - __main__ - INFO - Запуск админ-сервера на порту 8000
+2026-03-24 14:19:17,378 - __main__ - INFO - Запуск MAX-бота
+2026-03-24 14:19:17,436 - coffee_oracle.max_bot.bot - INFO - MAX-бот запущен: id=217701363, имя='Оракул', username='id9728167964_bot'
+2026-03-24 14:19:17,436 - coffee_oracle.max_bot.bot - INFO - MAX-бот: начинаю long polling (timeout=30)
+2026-03-24 14:19:18,467 - coffee_oracle.max_bot.api_client - ERROR - MAX API ошибка: POST /answers -> 400: {"code":"proto.payload","message":"Invalid request. `message` or `notification` required"}
+2026-03-24 14:19:18,467 - coffee_oracle.max_bot.handlers - ERROR - Ошибка обработки обновления MAX (тип=message_callback): Ошибка MAX API: HTTP 400
+Traceback (most recent call last):
+  File "/Users/aleksander/Documents/Коды/my-poisk/coffee/coffee_oracle/max_bot/handlers.py", line 116, in handle_update
+    await self._handle_callback(update)
+  File "/Users/aleksander/Documents/Коды/my-poisk/coffee/coffee_oracle/max_bot/handlers.py", line 614, in _handle_callback
+    await self._api.answer_callback(callback.callback_id)
+  File "/Users/aleksander/Documents/Коды/my-poisk/coffee/coffee_oracle/max_bot/api_client.py", line 375, in answer_callback
+    data = await self._request("POST", "/answers", params=params, json_data=body)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/aleksander/Documents/Коды/my-poisk/coffee/coffee_oracle/max_bot/api_client.py", line 224, in _request
+    raise MaxApiError(
+    ...<3 lines>...
+    )
+coffee_oracle.max_bot.api_client.MaxApiError: Ошибка MAX API: HTTP 400
+2026-03-24 14:19:18,506 - coffee_oracle.max_bot.api_client - ERROR - MAX API ошибка: POST /answers -> 400: {"code":"proto.payload","message":"Invalid request. `message` or `notification` required"}
+2026-03-24 14:19:18,506 - coffee_oracle.max_bot.handlers - ERROR - Ошибка обработки обновления MAX (тип=message_callback): Ошибка MAX API: HTTP 400
+Traceback (most recent call last):
+  File "/Users/aleksander/Documents/Коды/my-poisk/coffee/coffee_oracle/max_bot/handlers.py", line 116, in handle_update
+    await self._handle_callback(update)
+  File "/Users/aleksander/Documents/Коды/my-poisk/coffee/coffee_oracle/max_bot/handlers.py", line 614, in _handle_callback
+    await self._api.answer_callback(callback.callback_id)
+  File "/Users/aleksander/Documents/Коды/my-poisk/coffee/coffee_oracle/max_bot/api_client.py", line 375, in answer_callback
+    data = await self._request("POST", "/answers", params=params, json_data=body)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/aleksander/Documents/Коды/my-poisk/coffee/coffee_oracle/max_bot/api_client.py", line 224, in _request
+    raise MaxApiError(
+    ...<3 lines>...
+    )
+coffee_oracle.max_bot.api_client.MaxApiError: Ошибка MAX API: HTTP 400
+2026-03-24 14:19:18,542 - coffee_oracle.max_bot.api_client - ERROR - MAX API ошибка: POST /answers -> 400: {"code":"proto.payload","message":"Invalid request. `message` or `notification` required"}
+2026-03-24 14:19:18,542 - coffee_oracle.max_bot.handlers - ERROR - Ошибка обработки обновления MAX (тип=message_callback): Ошибка MAX API: HTTP 400
+Traceback (most recent call last):
+  File "/Users/aleksander/Documents/Коды/my-poisk/coffee/coffee_oracle/max_bot/handlers.py", line 116, in handle_update
+    await self._handle_callback(update)
+  File "/Users/aleksander/Documents/Коды/my-poisk/coffee/coffee_oracle/max_bot/handlers.py", line 614, in _handle_callback
+    await self._api.answer_callback(callback.callback_id)
+  File "/Users/aleksander/Documents/Коды/my-poisk/coffee/coffee_oracle/max_bot/api_client.py", line 375, in answer_callback
+    data = await self._request("POST", "/answers", params=params, json_data=body)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/aleksander/Documents/Коды/my-poisk/coffee/coffee_oracle/max_bot/api_client.py", line 224, in _request
+    raise MaxApiError(
+    ...<3 lines>...
+    )
+coffee_oracle.max_bot.api_client.MaxApiError: Ошибка MAX API: HTTP 400
+2026-03-24 14:19:18,576 - coffee_oracle.max_bot.api_client - ERROR - MAX API ошибка: POST /answers -> 400: {"code":"proto.payload","message":"Invalid request. `message` or `notification` required"}
+2026-03-24 14:19:18,577 - coffee_oracle.max_bot.handlers - ERROR - Ошибка обработки обновления MAX (тип=message_callback): Ошибка MAX API: HTTP 400
+Traceback (most recent call last):
+  File "/Users/aleksander/Documents/Коды/my-poisk/coffee/coffee_oracle/max_bot/handlers.py", line 116, in handle_update
+    await self._handle_callback(update)
+  File "/Users/aleksander/Documents/Коды/my-poisk/coffee/coffee_oracle/max_bot/handlers.py", line 614, in _handle_callback
+    await self._api.answer_callback(callback.callback_id)
+  File "/Users/aleksander/Documents/Коды/my-poisk/coffee/coffee_oracle/max_bot/api_client.py", line 375, in answer_callback
+    data = await self._request("POST", "/answers", params=params, json_data=body)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/aleksander/Documents/Коды/my-poisk/coffee/coffee_oracle/max_bot/api_client.py", line 224, in _request
+    raise MaxApiError(
+    ...<3 lines>...
+    )
+coffee_oracle.max_bot.api_client.MaxApiError: Ошибка MAX API: HTTP 400
+2026-03-24 14:19:18,613 - coffee_oracle.max_bot.api_client - ERROR - MAX API ошибка: POST /answers -> 400: {"code":"proto.payload","message":"Invalid request. `message` or `notification` required"}
+2026-03-24 14:19:18,613 - coffee_oracle.max_bot.handlers - ERROR - Ошибка обработки обновления MAX (тип=message_callback): Ошибка MAX API: HTTP 400
+Traceback (most recent call last):
+  File "/Users/aleksander/Documents/Коды/my-poisk/coffee/coffee_oracle/max_bot/handlers.py", line 116, in handle_update
+    await self._handle_callback(update)
+  File "/Users/aleksander/Documents/Коды/my-poisk/coffee/coffee_oracle/max_bot/handlers.py", line 614, in _handle_callback
+    await self._api.answer_callback(callback.callback_id)
+  File "/Users/aleksander/Documents/Коды/my-poisk/coffee/coffee_oracle/max_bot/api_client.py", line 375, in answer_callback
+    data = await self._request("POST", "/answers", params=params, json_data=body)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/aleksander/Documents/Коды/my-poisk/coffee/coffee_oracle/max_bot/api_client.py", line 224, in _request
+    raise MaxApiError(
+    ...<3 lines>...
+    )
+coffee_oracle.max_bot.api_client.MaxApiError: Ошибка MAX API: HTTP 400
+2026-03-24 14:20:17,450 - coffee_oracle.bot.bot - ERROR - Failed to set bot commands: HTTP Client says - ClientConnectorError: Cannot connect to host api.telegram.org:443 ssl:default [None]
+2026-03-24 14:21:17,758 - coffee_oracle.bot.bot - ERROR - Error in bot polling: HTTP Client says - ClientConnectorError: Cannot connect to host api.telegram.org:443 ssl:default [None]
+2026-03-24 14:21:17,759 - __main__ - ERROR - Ошибка Telegram-бота: HTTP Client says - ClientConnectorError: Cannot connect to host api.telegram.org:443 ssl:default [None]
+2026-03-24 14:21:17,762 - coffee_oracle.max_bot.bot - INFO - MAX-бот: polling отменён
+2026-03-24 14:21:17,762 - coffee_oracle.max_bot.bot - INFO - MAX-бот: цикл polling завершён
+2026-03-24 14:21:17,762 - __main__ - INFO - Освобождение ресурсов...
+2026-03-24 14:21:17,762 - coffee_oracle.bot.bot - INFO - Stopping Coffee Oracle Bot...
+2026-03-24 14:21:17,762 - coffee_oracle.max_bot.bot - INFO - MAX-бот: остановка...
+2026-03-24 14:21:17,762 - coffee_oracle.max_bot.api_client - INFO - MAX API клиент: HTTP-сессия закрыта
+2026-03-24 14:21:17,762 - coffee_oracle.max_bot.bot - INFO - MAX-бот: остановлен
+2026-03-24 14:21:17,767 - __main__ - INFO - Ресурсы освобождены
+2026-03-24 14:21:17,768 - asyncio - ERROR - Task exception was never retrieved
+future: <Task finished name='telegram_bot' coro=<ApplicationOrchestrator.start_bot() done, defined at /Users/aleksander/Documents/Коды/my-poisk/coffee/main.py:81> exception=TelegramNetworkError('HTTP Client says - ClientConnectorError: Cannot connect to host api.telegram.org:443 ssl:default [None]')>
+Traceback (most recent call last):
+  File "/Users/aleksander/Documents/Коды/my-poisk/coffee/venv/lib/python3.13/site-packages/aiohttp/connector.py", line 1313, in _wrap_create_connection
+    return await self._loop.create_connection(*args, **kwargs, sock=sock)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/asyncio/base_events.py", line 1201, in create_connection
+    transport, protocol = await self._create_connection_transport(
+                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    ...<2 lines>...
+        ssl_shutdown_timeout=ssl_shutdown_timeout)
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/asyncio/base_events.py", line 1234, in _create_connection_transport
+    await waiter
+ConnectionAbortedError: SSL handshake is taking longer than 60.0 seconds: aborting the connection
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/Users/aleksander/Documents/Коды/my-poisk/coffee/venv/lib/python3.13/site-packages/aiogram/client/session/aiohttp.py", line 167, in make_request
+    async with session.post(
+               ~~~~~~~~~~~~^
+        url,
+        ^^^^
+        data=form,
+        ^^^^^^^^^^
+        timeout=self.timeout if timeout is None else timeout,
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    ) as resp:
+    ^
+  File "/Users/aleksander/Documents/Коды/my-poisk/coffee/venv/lib/python3.13/site-packages/aiohttp/client.py", line 1510, in __aenter__
+    self._resp: _RetType = await self._coro
+                           ^^^^^^^^^^^^^^^^
+  File "/Users/aleksander/Documents/Коды/my-poisk/coffee/venv/lib/python3.13/site-packages/aiohttp/client.py", line 779, in _request
+    resp = await handler(req)
+           ^^^^^^^^^^^^^^^^^^
+  File "/Users/aleksander/Documents/Коды/my-poisk/coffee/venv/lib/python3.13/site-packages/aiohttp/client.py", line 734, in _connect_and_send_request
+    conn = await self._connector.connect(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+        req, traces=traces, timeout=real_timeout
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "/Users/aleksander/Documents/Коды/my-poisk/coffee/venv/lib/python3.13/site-packages/aiohttp/connector.py", line 672, in connect
+    proto = await self._create_connection(req, traces, timeout)
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/aleksander/Documents/Коды/my-poisk/coffee/venv/lib/python3.13/site-packages/aiohttp/connector.py", line 1239, in _create_connection
+    _, proto = await self._create_direct_connection(req, traces, timeout)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/aleksander/Documents/Коды/my-poisk/coffee/venv/lib/python3.13/site-packages/aiohttp/connector.py", line 1611, in _create_direct_connection
+    raise last_exc
+  File "/Users/aleksander/Documents/Коды/my-poisk/coffee/venv/lib/python3.13/site-packages/aiohttp/connector.py", line 1580, in _create_direct_connection
+    transp, proto = await self._wrap_create_connection(
+                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    ...<7 lines>...
+    )
+    ^
+  File "/Users/aleksander/Documents/Коды/my-poisk/coffee/venv/lib/python3.13/site-packages/aiohttp/connector.py", line 1321, in _wrap_create_connection
+    raise client_error(req.connection_key, exc) from exc
+aiohttp.client_exceptions.ClientConnectorError: Cannot connect to host api.telegram.org:443 ssl:default [None]
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/Users/aleksander/Documents/Коды/my-poisk/coffee/main.py", line 86, in start_bot
+    await self.bot.start_polling()
+  File "/Users/aleksander/Documents/Коды/my-poisk/coffee/coffee_oracle/bot/bot.py", line 67, in start_polling
+    await self.dp.start_polling(self.bot)
+  File "/Users/aleksander/Documents/Коды/my-poisk/coffee/venv/lib/python3.13/site-packages/aiogram/dispatcher/dispatcher.py", line 621, in start_polling
+    await asyncio.gather(*done)
+  File "/Users/aleksander/Documents/Коды/my-poisk/coffee/venv/lib/python3.13/site-packages/aiogram/dispatcher/dispatcher.py", line 377, in _polling
+    user: User = await bot.me()
+                 ^^^^^^^^^^^^^^
+  File "/Users/aleksander/Documents/Коды/my-poisk/coffee/venv/lib/python3.13/site-packages/aiogram/client/bot.py", line 362, in me
+    self._me = await self.get_me()
+               ^^^^^^^^^^^^^^^^^^^
+  File "/Users/aleksander/Documents/Коды/my-poisk/coffee/venv/lib/python3.13/site-packages/aiogram/client/bot.py", line 1798, in get_me
+    return await self(call, request_timeout=request_timeout)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/aleksander/Documents/Коды/my-poisk/coffee/venv/lib/python3.13/site-packages/aiogram/client/bot.py", line 488, in __call__
+    return await self.session(self, method, timeout=request_timeout)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/aleksander/Documents/Коды/my-poisk/coffee/venv/lib/python3.13/site-packages/aiogram/client/session/base.py", line 259, in __call__
+    return cast(TelegramType, await middleware(bot, method))
+                              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/aleksander/Documents/Коды/my-poisk/coffee/venv/lib/python3.13/site-packages/aiogram/client/session/aiohttp.py", line 176, in make_request
+    raise TelegramNetworkError(method=method, message=f"{type(e).__name__}: {e}") from e
+aiogram.exceptions.TelegramNetworkError: HTTP Client says - ClientConnectorError: Cannot connect to host api.telegram.org:443 ssl:default [None]
+2026-03-24 14:21:17,782 - __main__ - INFO - Приложение Coffee Oracle остановлено
+2026-03-24 14:24:15,041 - coffee_oracle.services.openai_client - INFO - Initialized OpenAI client with model: gpt-4o-mini
+2026-03-24 14:24:15,042 - coffee_oracle.max_bot.bot - INFO - MAX-бот: компоненты инициализированы
+2026-03-24 14:24:15,042 - __main__ - INFO - MAX-бот инициализирован
+2026-03-24 14:24:15,042 - __main__ - INFO - Запуск сервисов Coffee Oracle...
+2026-03-24 14:24:15,043 - __main__ - INFO - Настройка базы данных...
+2026-03-24 14:24:15,066 - __main__ - INFO - База данных настроена
+2026-03-24 14:24:15,067 - __main__ - INFO - MAX-бот добавлен в список сервисов
+2026-03-24 14:24:15,067 - __main__ - INFO - Запуск Telegram-бота
+2026-03-24 14:24:15,067 - coffee_oracle.bot.bot - INFO - Starting Coffee Oracle Bot...
+2026-03-24 14:24:15,073 - __main__ - INFO - Запуск админ-сервера на порту 8000
+2026-03-24 14:24:15,088 - __main__ - INFO - Запуск MAX-бота
+2026-03-24 14:24:15,207 - coffee_oracle.max_bot.bot - INFO - MAX-бот запущен: id=217701363, имя='Оракул', username='id9728167964_bot'
+2026-03-24 14:24:15,207 - coffee_oracle.max_bot.bot - INFO - MAX-бот: начинаю long polling (timeout=30)
+2026-03-24 14:25:15,163 - coffee_oracle.bot.bot - ERROR - Failed to set bot commands: HTTP Client says - ClientConnectorError: Cannot connect to host api.telegram.org:443 ssl:default [None]
+2026-03-24 14:26:15,474 - coffee_oracle.bot.bot - ERROR - Error in bot polling: HTTP Client says - ClientConnectorError: Cannot connect to host api.telegram.org:443 ssl:default [None]
+2026-03-24 14:26:15,476 - __main__ - ERROR - Ошибка Telegram-бота: HTTP Client says - ClientConnectorError: Cannot connect to host api.telegram.org:443 ssl:default [None]
+2026-03-24 14:26:15,480 - coffee_oracle.max_bot.bot - INFO - MAX-бот: polling отменён
+2026-03-24 14:26:15,480 - coffee_oracle.max_bot.bot - INFO - MAX-бот: цикл polling завершён
+2026-03-24 14:26:15,480 - __main__ - INFO - Освобождение ресурсов...
+2026-03-24 14:26:15,480 - coffee_oracle.bot.bot - INFO - Stopping Coffee Oracle Bot...
+2026-03-24 14:26:15,481 - coffee_oracle.max_bot.bot - INFO - MAX-бот: остановка...
+2026-03-24 14:26:15,482 - coffee_oracle.max_bot.api_client - INFO - MAX API клиент: HTTP-сессия закрыта
+2026-03-24 14:26:15,482 - coffee_oracle.max_bot.bot - INFO - MAX-бот: остановлен
+2026-03-24 14:26:15,490 - __main__ - INFO - Ресурсы освобождены
+2026-03-24 14:26:15,490 - asyncio - ERROR - Task exception was never retrieved
+future: <Task finished name='telegram_bot' coro=<ApplicationOrchestrator.start_bot() done, defined at /Users/aleksander/Documents/Коды/my-poisk/coffee/main.py:81> exception=TelegramNetworkError('HTTP Client says - ClientConnectorError: Cannot connect to host api.telegram.org:443 ssl:default [None]')>
+Traceback (most recent call last):
+  File "/Users/aleksander/Documents/Коды/my-poisk/coffee/venv/lib/python3.13/site-packages/aiohttp/connector.py", line 1313, in _wrap_create_connection
+    return await self._loop.create_connection(*args, **kwargs, sock=sock)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/asyncio/base_events.py", line 1201, in create_connection
+    transport, protocol = await self._create_connection_transport(
+                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    ...<2 lines>...
+        ssl_shutdown_timeout=ssl_shutdown_timeout)
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/asyncio/base_events.py", line 1234, in _create_connection_transport
+    await waiter
+ConnectionAbortedError: SSL handshake is taking longer than 60.0 seconds: aborting the connection
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/Users/aleksander/Documents/Коды/my-poisk/coffee/venv/lib/python3.13/site-packages/aiogram/client/session/aiohttp.py", line 167, in make_request
+    async with session.post(
+               ~~~~~~~~~~~~^
+        url,
+        ^^^^
+        data=form,
+        ^^^^^^^^^^
+        timeout=self.timeout if timeout is None else timeout,
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    ) as resp:
+    ^
+  File "/Users/aleksander/Documents/Коды/my-poisk/coffee/venv/lib/python3.13/site-packages/aiohttp/client.py", line 1510, in __aenter__
+    self._resp: _RetType = await self._coro
+                           ^^^^^^^^^^^^^^^^
+  File "/Users/aleksander/Documents/Коды/my-poisk/coffee/venv/lib/python3.13/site-packages/aiohttp/client.py", line 779, in _request
+    resp = await handler(req)
+           ^^^^^^^^^^^^^^^^^^
+  File "/Users/aleksander/Documents/Коды/my-poisk/coffee/venv/lib/python3.13/site-packages/aiohttp/client.py", line 734, in _connect_and_send_request
+    conn = await self._connector.connect(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+        req, traces=traces, timeout=real_timeout
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "/Users/aleksander/Documents/Коды/my-poisk/coffee/venv/lib/python3.13/site-packages/aiohttp/connector.py", line 672, in connect
+    proto = await self._create_connection(req, traces, timeout)
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/aleksander/Documents/Коды/my-poisk/coffee/venv/lib/python3.13/site-packages/aiohttp/connector.py", line 1239, in _create_connection
+    _, proto = await self._create_direct_connection(req, traces, timeout)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/aleksander/Documents/Коды/my-poisk/coffee/venv/lib/python3.13/site-packages/aiohttp/connector.py", line 1611, in _create_direct_connection
+    raise last_exc
+  File "/Users/aleksander/Documents/Коды/my-poisk/coffee/venv/lib/python3.13/site-packages/aiohttp/connector.py", line 1580, in _create_direct_connection
+    transp, proto = await self._wrap_create_connection(
+                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    ...<7 lines>...
+    )
+    ^
+  File "/Users/aleksander/Documents/Коды/my-poisk/coffee/venv/lib/python3.13/site-packages/aiohttp/connector.py", line 1321, in _wrap_create_connection
+    raise client_error(req.connection_key, exc) from exc
+aiohttp.client_exceptions.ClientConnectorError: Cannot connect to host api.telegram.org:443 ssl:default [None]
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/Users/aleksander/Documents/Коды/my-poisk/coffee/main.py", line 86, in start_bot
+    await self.bot.start_polling()
+  File "/Users/aleksander/Documents/Коды/my-poisk/coffee/coffee_oracle/bot/bot.py", line 67, in start_polling
+    await self.dp.start_polling(self.bot)
+  File "/Users/aleksander/Documents/Коды/my-poisk/coffee/venv/lib/python3.13/site-packages/aiogram/dispatcher/dispatcher.py", line 621, in start_polling
+    await asyncio.gather(*done)
+  File "/Users/aleksander/Documents/Коды/my-poisk/coffee/venv/lib/python3.13/site-packages/aiogram/dispatcher/dispatcher.py", line 377, in _polling
+    user: User = await bot.me()
+                 ^^^^^^^^^^^^^^
+  File "/Users/aleksander/Documents/Коды/my-poisk/coffee/venv/lib/python3.13/site-packages/aiogram/client/bot.py", line 362, in me
+    self._me = await self.get_me()
+               ^^^^^^^^^^^^^^^^^^^
+  File "/Users/aleksander/Documents/Коды/my-poisk/coffee/venv/lib/python3.13/site-packages/aiogram/client/bot.py", line 1798, in get_me
+    return await self(call, request_timeout=request_timeout)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/aleksander/Documents/Коды/my-poisk/coffee/venv/lib/python3.13/site-packages/aiogram/client/bot.py", line 488, in __call__
+    return await self.session(self, method, timeout=request_timeout)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/aleksander/Documents/Коды/my-poisk/coffee/venv/lib/python3.13/site-packages/aiogram/client/session/base.py", line 259, in __call__
+    return cast(TelegramType, await middleware(bot, method))
+                              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/aleksander/Documents/Коды/my-poisk/coffee/venv/lib/python3.13/site-packages/aiogram/client/session/aiohttp.py", line 176, in make_request
+    raise TelegramNetworkError(method=method, message=f"{type(e).__name__}: {e}") from e
+aiogram.exceptions.TelegramNetworkError: HTTP Client says - ClientConnectorError: Cannot connect to host api.telegram.org:443 ssl:default [None]
+2026-03-24 14:26:15,509 - __main__ - INFO - Приложение Coffee Oracle остановлено
+2026-03-24 14:28:23,683 - coffee_oracle.services.openai_client - INFO - Initialized OpenAI client with model: gpt-4o-mini
+2026-03-24 14:28:23,683 - coffee_oracle.max_bot.bot - INFO - MAX-бот: компоненты инициализированы
+2026-03-24 14:28:23,683 - __main__ - INFO - MAX-бот инициализирован
+2026-03-24 14:28:23,683 - __main__ - INFO - Запуск сервисов Coffee Oracle...
+2026-03-24 14:28:23,683 - __main__ - INFO - Настройка базы данных...
+2026-03-24 14:28:23,687 - __main__ - INFO - База данных настроена
+2026-03-24 14:28:23,687 - __main__ - INFO - MAX-бот добавлен в список сервисов
+2026-03-24 14:28:23,687 - __main__ - INFO - Запуск Telegram-бота
+2026-03-24 14:28:23,687 - coffee_oracle.bot.bot - INFO - Запуск Telegram-бота...
+2026-03-24 14:28:23,689 - __main__ - INFO - Запуск админ-сервера на порту 8000
+2026-03-24 14:28:23,692 - __main__ - INFO - Запуск MAX-бота
+2026-03-24 14:28:23,751 - coffee_oracle.max_bot.bot - INFO - MAX-бот запущен: id=217701363, имя='Оракул', username='id9728167964_bot'
+2026-03-24 14:28:23,751 - coffee_oracle.max_bot.bot - INFO - MAX-бот: начинаю long polling (timeout=30)
+2026-03-24 14:29:23,755 - coffee_oracle.bot.bot - WARNING - Не удалось настроить команды Telegram-бота: HTTP Client says - ClientConnectorError: Cannot connect to host api.telegram.org:443 ssl:default [None]
+2026-03-24 14:29:51,186 - aiogram.dispatcher - WARNING - Received SIGINT signal
+2026-03-24 14:29:51,443 - coffee_oracle.max_bot.bot - INFO - MAX-бот: polling отменён
+2026-03-24 14:29:51,444 - coffee_oracle.max_bot.bot - INFO - MAX-бот: цикл polling завершён
+2026-03-24 14:29:51,445 - __main__ - INFO - Освобождение ресурсов...
+2026-03-24 14:29:51,446 - coffee_oracle.bot.bot - INFO - Остановка Telegram-бота...
+2026-03-24 14:29:51,446 - coffee_oracle.max_bot.bot - INFO - MAX-бот: остановка...
+2026-03-24 14:29:51,448 - coffee_oracle.max_bot.api_client - INFO - MAX API клиент: HTTP-сессия закрыта
+2026-03-24 14:29:51,448 - coffee_oracle.max_bot.bot - INFO - MAX-бот: остановлен
+2026-03-24 14:29:51,458 - __main__ - INFO - Ресурсы освобождены
+2026-03-24 14:29:51,458 - __main__ - INFO - Приложение Coffee Oracle остановлено
+2026-03-24 14:31:58,042 - coffee_oracle.bot.bot - INFO - BOT_TOKEN не задан — Telegram-бот не будет запущен
+2026-03-24 14:31:58,073 - coffee_oracle.services.openai_client - INFO - Initialized OpenAI client with model: gpt-4o-mini
+2026-03-24 14:31:58,073 - coffee_oracle.max_bot.bot - INFO - MAX-бот: компоненты инициализированы
+2026-03-24 14:31:58,073 - __main__ - INFO - MAX-бот инициализирован
+2026-03-24 14:31:58,073 - __main__ - INFO - Запуск сервисов Coffee Oracle...
+2026-03-24 14:31:58,073 - __main__ - INFO - Настройка базы данных...
+2026-03-24 14:31:58,078 - __main__ - INFO - База данных настроена
+2026-03-24 14:31:58,078 - __main__ - INFO - MAX-бот добавлен в список сервисов
+2026-03-24 14:31:58,078 - __main__ - INFO - Запуск Telegram-бота
+2026-03-24 14:31:58,078 - coffee_oracle.bot.bot - INFO - Telegram-бот отключён — пропускаю запуск
+2026-03-24 14:31:58,079 - __main__ - INFO - Запуск админ-сервера на порту 8000
+2026-03-24 14:31:58,082 - __main__ - INFO - Запуск MAX-бота
+2026-03-24 14:31:58,137 - coffee_oracle.max_bot.bot - INFO - MAX-бот запущен: id=217701363, имя='Оракул', username='id9728167964_bot'
+2026-03-24 14:31:58,137 - coffee_oracle.max_bot.bot - INFO - MAX-бот: начинаю long polling (timeout=30)
+2026-03-24 14:36:02,579 - __main__ - INFO - Получен сигнал 2, начинаю завершение...
+2026-03-24 14:36:02,582 - coffee_oracle.max_bot.bot - INFO - MAX-бот: polling отменён
+2026-03-24 14:36:02,582 - coffee_oracle.max_bot.bot - INFO - MAX-бот: цикл polling завершён
+2026-03-24 14:36:02,583 - __main__ - INFO - Освобождение ресурсов...
+2026-03-24 14:36:02,583 - coffee_oracle.max_bot.bot - INFO - MAX-бот: остановка...
+2026-03-24 14:36:02,584 - coffee_oracle.max_bot.api_client - INFO - MAX API клиент: HTTP-сессия закрыта
+2026-03-24 14:36:02,584 - coffee_oracle.max_bot.bot - INFO - MAX-бот: остановлен
+2026-03-24 14:36:02,592 - __main__ - INFO - Ресурсы освобождены
+2026-03-24 14:36:02,593 - __main__ - INFO - Приложение Coffee Oracle остановлено
+2026-03-24 14:36:05,266 - coffee_oracle.bot.bot - INFO - BOT_TOKEN не задан — Telegram-бот не будет запущен
+2026-03-24 14:36:05,299 - coffee_oracle.services.openai_client - INFO - Initialized OpenAI client with model: gpt-4o-mini
+2026-03-24 14:36:05,300 - coffee_oracle.max_bot.bot - INFO - MAX-бот: компоненты инициализированы
+2026-03-24 14:36:05,300 - __main__ - INFO - MAX-бот инициализирован
+2026-03-24 14:36:05,300 - __main__ - INFO - Запуск сервисов Coffee Oracle...
+2026-03-24 14:36:05,300 - __main__ - INFO - Настройка базы данных...
+2026-03-24 14:36:05,304 - __main__ - INFO - База данных настроена
+2026-03-24 14:36:05,304 - __main__ - INFO - MAX-бот добавлен в список сервисов
+2026-03-24 14:36:05,304 - __main__ - INFO - Запуск Telegram-бота
+2026-03-24 14:36:05,304 - coffee_oracle.bot.bot - INFO - Telegram-бот отключён — пропускаю запуск
+2026-03-24 14:36:05,305 - __main__ - INFO - Запуск админ-сервера на порту 8000
+2026-03-24 14:36:05,307 - __main__ - INFO - Запуск MAX-бота
+2026-03-24 14:36:05,359 - coffee_oracle.max_bot.bot - INFO - MAX-бот запущен: id=217701363, имя='Оракул', username='id9728167964_bot'
+2026-03-24 14:36:05,359 - coffee_oracle.max_bot.bot - INFO - MAX-бот: начинаю long polling (timeout=30)
+2026-03-24 14:36:12,371 - coffee_oracle.max_bot.bot - INFO - MAX-бот: сырое обновление (тип=message_created): {"message": {"recipient": {"chat_id": 103394287, "chat_type": "dialog", "user_id": 217701363}, "timestamp": 1774352244533, "body": {"mid": "mid.000000000629abef019d1fa29f356a52", "seq": 116283948697741906, "text": "/start"}, "sender": {"user_id": 181432348, "first_name": "Александр", "last_name": "", "is_bot": false, "last_activity_time": 1774352239000, "name": "Александр"}}, "timestamp": 1774352244533, "user_locale": "ru", "update_type": "message_created"}
+2026-03-24 14:36:15,364 - coffee_oracle.max_bot.bot - INFO - MAX-бот: сырое обновление (тип=message_callback): {"callback": {"timestamp": 1774352175246, "callback_id": "f9LHodD0cOKtq1yXFVWxfXrn35Mo3amm9U5NlG2BNi580i-91NQQtcFdrWaeRqgfjwxocB0lTlFhAuSgxLO0LAVb-w8lIzX223iyD4AmH__6hGcFKgj9", "user": {"user_id": 181432348, "first_name": "Александр", "last_name": "", "is_bot": false, "last_activity_time": 1774352245000, "name": "Александр"}, "payload": "action_history"}, "message": {"recipient": {"chat_id": 103394287, "chat_type": "dialog", "user_id": 181432348}, "timestamp": 1774352244707, "body": {"mid": "mid.000000000629abef019d1fa29fe31e50", "seq": 116283948709125712, "text": "🔮 Добро пожаловать в мир Кофейного Оракула, Александр!\n\nЯ помогу вам узнать, что говорят узоры кофейной гущи о вашем будущем. Просто сфотографируйте дно выпитой чашки кофе, и я открою вам тайны, которые скрывают эти магические узоры.\n\n✨ Все предсказания несут только позитивную энергию и вдохновение!\n\nВыберите действие в меню ниже:", "attachments": [{"callback_id": "f9LHodD0cOLEL5RYw31aT5VUNlzT-t39BH6qRk-Hhflb82Mp53FaUMvISozJBHGYC3Ie16JrBQChLwNousb9QNr_ocXjbMwGhqUXhJhcm1ns-s908DYO", "payload": {"buttons": [[{"payload": "action_predict", "text": "🔮 Получить предсказание", "intent": "default", "type": "callback"}], [{"payload": "action_history", "text": "📜 Моя история", "intent": "default", "type": "callback"}, {"payload": "action_random", "text": "🎯 Случайное", "intent": "default", "type": "callback"}], [{"payload": "action_help", "text": "📚 Как гадать", "intent": "default", "type": "callback"}, {"payload": "action_about", "text": "ℹ️ О боте", "intent": "default", "type": "callback"}], [{"payload": "action_clear", "text": "🗑️ Очистить историю", "intent": "default", "type": "callback"}, {"payload": "action_support", "text": "📞 Поддержка", "intent": "default", "type": "callback"}]]}, "type": "inline_keyboard"}]}, "sender": {"user_id": 217701363, "first_name": "Оракул", "username": "id9728167964_bot", "is_bot": true, "last_activity_time": 1774352247576, "name": "Оракул"}}, "timestamp": 1774352175246, "us
+2026-03-24 14:37:38,978 - __main__ - INFO - Получен сигнал 2, начинаю завершение...
+2026-03-24 14:37:38,981 - coffee_oracle.max_bot.bot - INFO - MAX-бот: polling отменён
+2026-03-24 14:37:38,981 - coffee_oracle.max_bot.bot - INFO - MAX-бот: цикл polling завершён
+2026-03-24 14:37:38,982 - __main__ - INFO - Освобождение ресурсов...
+2026-03-24 14:37:38,982 - coffee_oracle.max_bot.bot - INFO - MAX-бот: остановка...
+2026-03-24 14:37:38,982 - coffee_oracle.max_bot.api_client - INFO - MAX API клиент: HTTP-сессия закрыта
+2026-03-24 14:37:38,982 - coffee_oracle.max_bot.bot - INFO - MAX-бот: остановлен
+2026-03-24 14:37:38,986 - __main__ - INFO - Ресурсы освобождены
+2026-03-24 14:37:38,986 - __main__ - INFO - Приложение Coffee Oracle остановлено
+2026-03-24 14:37:41,666 - coffee_oracle.bot.bot - INFO - BOT_TOKEN не задан — Telegram-бот не будет запущен
+2026-03-24 14:37:41,697 - coffee_oracle.services.openai_client - INFO - Initialized OpenAI client with model: gpt-4o-mini
+2026-03-24 14:37:41,697 - coffee_oracle.max_bot.bot - INFO - MAX-бот: компоненты инициализированы
+2026-03-24 14:37:41,697 - __main__ - INFO - MAX-бот инициализирован
+2026-03-24 14:37:41,697 - __main__ - INFO - Запуск сервисов Coffee Oracle...
+2026-03-24 14:37:41,697 - __main__ - INFO - Настройка базы данных...
+2026-03-24 14:37:41,701 - __main__ - INFO - База данных настроена
+2026-03-24 14:37:41,701 - __main__ - INFO - MAX-бот добавлен в список сервисов
+2026-03-24 14:37:41,701 - __main__ - INFO - Запуск Telegram-бота
+2026-03-24 14:37:41,701 - coffee_oracle.bot.bot - INFO - Telegram-бот отключён — пропускаю запуск
+2026-03-24 14:37:41,701 - __main__ - INFO - Запуск админ-сервера на порту 8000
+2026-03-24 14:37:41,704 - __main__ - INFO - Запуск MAX-бота
+2026-03-24 14:37:41,747 - coffee_oracle.max_bot.bot - INFO - MAX-бот запущен: id=217701363, имя='Оракул', username='id9728167964_bot'
+2026-03-24 14:37:41,747 - coffee_oracle.max_bot.bot - INFO - MAX-бот: начинаю long polling (timeout=30)
+2026-03-24 14:37:48,729 - coffee_oracle.max_bot.bot - INFO - MAX-бот: сырое обновление (тип=message_created): {"message": {"recipient": {"chat_id": 103394287, "chat_type": "dialog", "user_id": 217701363}, "timestamp": 1774352340839, "body": {"mid": "mid.000000000629abef019d1fa417676a52", "seq": 116283955009251922, "text": "/start"}, "sender": {"user_id": 181432348, "first_name": "Александр", "last_name": "", "is_bot": false, "last_activity_time": 1774352336000, "name": "Александр"}}, "timestamp": 1774352340839, "user_locale": "ru", "update_type": "message_created"}
+2026-03-24 14:37:50,505 - coffee_oracle.max_bot.bot - INFO - MAX-бот: сырое обновление (тип=message_callback): {"callback": {"timestamp": 1774352270408, "callback_id": "f9LHodD0cOKqDOW3-QINxhAYGmcrUJnEiAW19jehE2TuhVyAMnf_rO65IcoM0_ZXPcvL-nQfMX243xmBVCldMDT8VVZ0y3emL2o1i0ldHuPnSNa4abbo", "user": {"user_id": 181432348, "first_name": "Александр", "last_name": "", "is_bot": false, "last_activity_time": 1774352336000, "name": "Александр"}, "payload": "action_history"}, "message": {"recipient": {"chat_id": 103394287, "chat_type": "dialog", "user_id": 181432348}, "timestamp": 1774352341071, "body": {"mid": "mid.000000000629abef019d1fa4184f2c60", "seq": 116283955024440416, "text": "🔮 Добро пожаловать в мир Кофейного Оракула, Александр!\n\nЯ помогу вам узнать, что говорят узоры кофейной гущи о вашем будущем. Просто сфотографируйте дно выпитой чашки кофе, и я открою вам тайны, которые скрывают эти магические узоры.\n\n✨ Все предсказания несут только позитивную энергию и вдохновение!\n\nВыберите действие в меню ниже:", "attachments": [{"callback_id": "f9LHodD0cOImZrAwG2DWjyyN2GvsnAdSwt94Q7mmKCeVaI_PeqLKJDw2pfnRBV61VA7FnKW-JbnsmFjcXruDzUKcXcIT1Uby-uc1tznoaMyHJmrAl3NK", "payload": {"buttons": [[{"payload": "action_predict", "text": "🔮 Получить предсказание", "intent": "default", "type": "callback"}], [{"payload": "action_history", "text": "📜 Моя история", "intent": "default", "type": "callback"}, {"payload": "action_random", "text": "🎯 Случайное", "intent": "default", "type": "callback"}], [{"payload": "action_help", "text": "📚 Как гадать", "intent": "default", "type": "callback"}, {"payload": "action_about", "text": "ℹ️ О боте", "intent": "default", "type": "callback"}], [{"payload": "action_clear", "text": "🗑️ Очистить историю", "intent": "default", "type": "callback"}, {"payload": "action_support", "text": "📞 Поддержка", "intent": "default", "type": "callback"}]]}, "type": "inline_keyboard"}]}, "sender": {"user_id": 217701363, "first_name": "Оракул", "username": "id9728167964_bot", "is_bot": true, "last_activity_time": 1774352342686, "name": "Оракул"}}, "timestamp": 1774352270408, "us
+2026-03-24 14:37:50,537 - coffee_oracle.max_bot.handlers - INFO - MAX callback: payload=action_history, user=181432348, chat_id=103394287
+2026-03-24 14:37:53,290 - coffee_oracle.max_bot.bot - INFO - MAX-бот: сырое обновление (тип=message_callback): {"callback": {"timestamp": 1774352273188, "callback_id": "f9LHodD0cOJi2FYOdrm0-H9zcdcoPbxkO3GW40xIAppQMMeimbRk3mqHe98MuYoA0vP4L9HP3Jcw7bCrZXIznH7yKHP4iPcvPQfDlcrZO3PMFJS9Xq_V", "user": {"user_id": 181432348, "first_name": "Александр", "last_name": "", "is_bot": false, "last_activity_time": 1774352336000, "name": "Александр"}, "payload": "action_help"}, "message": {"recipient": {"chat_id": 103394287, "chat_type": "dialog", "user_id": 181432348}, "timestamp": 1774352341071, "body": {"mid": "mid.000000000629abef019d1fa4184f2c60", "seq": 116283955024440416, "text": "🔮 Добро пожаловать в мир Кофейного Оракула, Александр!\n\nЯ помогу вам узнать, что говорят узоры кофейной гущи о вашем будущем. Просто сфотографируйте дно выпитой чашки кофе, и я открою вам тайны, которые скрывают эти магические узоры.\n\n✨ Все предсказания несут только позитивную энергию и вдохновение!\n\nВыберите действие в меню ниже:", "attachments": [{"callback_id": "f9LHodD0cOJWGhkqE5ChGy4wHs3Em1m8xFw82kfecVY4YAMcA5tLIgyCX49D9IYTm8TYU6eqMHLtDmvhK_iXVxUporYxIZ8B74ivG6VdfKjxR9kvm3YB", "payload": {"buttons": [[{"payload": "action_predict", "text": "🔮 Получить предсказание", "intent": "default", "type": "callback"}], [{"payload": "action_history", "text": "📜 Моя история", "intent": "default", "type": "callback"}, {"payload": "action_random", "text": "🎯 Случайное", "intent": "default", "type": "callback"}], [{"payload": "action_help", "text": "📚 Как гадать", "intent": "default", "type": "callback"}, {"payload": "action_about", "text": "ℹ️ О боте", "intent": "default", "type": "callback"}], [{"payload": "action_clear", "text": "🗑️ Очистить историю", "intent": "default", "type": "callback"}, {"payload": "action_support", "text": "📞 Поддержка", "intent": "default", "type": "callback"}]]}, "type": "inline_keyboard"}]}, "sender": {"user_id": 217701363, "first_name": "Оракул", "username": "id9728167964_bot", "is_bot": true, "last_activity_time": 1774352345518, "name": "Оракул"}}, "timestamp": 1774352273188, "user_
+2026-03-24 14:37:53,325 - coffee_oracle.max_bot.handlers - INFO - MAX callback: payload=action_help, user=181432348, chat_id=103394287
+2026-03-24 14:37:59,436 - coffee_oracle.max_bot.bot - INFO - MAX-бот: сырое обновление (тип=message_callback): {"callback": {"timestamp": 1774352279289, "callback_id": "f9LHodD0cOKBQIi9qQEppjpaiHnPg2EiTnnxPpuQ9nN2-e-_RGstFEe4MfPVP3FzJmCgljMw0PSoXZTVlkqvBO5KyMpMfKW-lA22-G-RCIgdCWmQ6unq", "user": {"user_id": 181432348, "first_name": "Александр", "last_name": "", "is_bot": false, "last_activity_time": 1774352336000, "name": "Александр"}, "payload": "help_photo"}, "message": {"recipient": {"chat_id": 103394287, "chat_type": "dialog", "user_id": 181432348}, "timestamp": 1774352345651, "body": {"mid": "mid.000000000629abef019d1fa42a333d5a", "seq": 116283955324599642, "text": "📚 Искусство гадания на кофейной гуще", "attachments": [{"callback_id": "f9LHodD0cOI1qh6s9OmbQMozjgA4SKjur5HLO2MlM-iR13ifx8wO9O4HPeJOuFVUZEkQSCSO7ty8MYtEu81OjiCdFHgC7GXzKw0MD6eyrUFbbLAT7CO8", "payload": {"buttons": [[{"payload": "help_photo", "text": "📸 Как фотографировать", "intent": "default", "type": "callback"}], [{"payload": "help_coffee", "text": "☕ Приготовление кофе", "intent": "default", "type": "callback"}], [{"payload": "help_divination", "text": "🔮 О гадании", "intent": "default", "type": "callback"}], [{"payload": "help_faq", "text": "❓ Частые вопросы", "intent": "default", "type": "callback"}], [{"payload": "action_back_to_menu", "text": "◀️ Назад в меню", "intent": "default", "type": "callback"}]]}, "type": "inline_keyboard"}]}, "sender": {"user_id": 217701363, "first_name": "Оракул", "username": "id9728167964_bot", "is_bot": true, "last_activity_time": 1774352351576, "name": "Оракул"}}, "timestamp": 1774352279289, "user_locale": "ru", "update_type": "message_callback"}
+2026-03-24 14:37:59,471 - coffee_oracle.max_bot.handlers - INFO - MAX callback: payload=help_photo, user=181432348, chat_id=103394287
+2026-03-24 14:38:04,257 - coffee_oracle.max_bot.bot - INFO - MAX-бот: сырое обновление (тип=message_callback): {"callback": {"timestamp": 1774352284072, "callback_id": "f9LHodD0cOLJPqnAgkN9YK3rkY7-Nf-CYyFCzPAE5O8U1dLsWMyQL9433jRuf1AuZrvQESXgpXv1bzXOgI7vmCfeSzhYu87wQ79u7jCj5LxmlWhiFi_3", "user": {"user_id": 181432348, "first_name": "Александр", "last_name": "", "is_bot": false, "last_activity_time": 1774352336000, "name": "Александр"}, "payload": "help_coffee"}, "message": {"recipient": {"chat_id": 103394287, "chat_type": "dialog", "user_id": 181432348}, "timestamp": 1774352351772, "body": {"mid": "mid.000000000629abef019d1fa4421c04e8", "seq": 116283955725731048, "text": "📸 Как правильно сфотографировать чашку:\n\n1. ☕ Выпейте кофе, оставив немного гущи на дне\n2. 🔄 Слегка покрутите чашку\n3. 📱 Сделайте фото сверху при хорошем освещении\n4. 🔍 Убедитесь, что узоры четко видны\n5. 📤 Отправьте фото\n\n💡 Совет: лучше всего фотографировать при дневном свете!", "attachments": [{"callback_id": "f9LHodD0cOIz5OpEKxTgnfRlzjIDgl-ekQI9gU5i2YSK3RctwJxpOsxo0O1aOOw2xn14XP2-4w08agSs-lk5enHSH6G-cJP8ItOgHv-UNqbu1uC6wadL", "payload": {"buttons": [[{"payload": "help_photo", "text": "📸 Как фотографировать", "intent": "default", "type": "callback"}], [{"payload": "help_coffee", "text": "☕ Приготовление кофе", "intent": "default", "type": "callback"}], [{"payload": "help_divination", "text": "🔮 О гадании", "intent": "default", "type": "callback"}], [{"payload": "help_faq", "text": "❓ Частые вопросы", "intent": "default", "type": "callback"}], [{"payload": "action_back_to_menu", "text": "◀️ Назад в меню", "intent": "default", "type": "callback"}]]}, "type": "inline_keyboard"}]}, "sender": {"user_id": 217701363, "first_name": "Оракул", "username": "id9728167964_bot", "is_bot": true, "last_activity_time": 1774352356433, "name": "Оракул"}}, "timestamp": 1774352284072, "user_locale": "ru", "update_type": "message_callback"}
+2026-03-24 14:38:04,296 - coffee_oracle.max_bot.handlers - INFO - MAX callback: payload=help_coffee, user=181432348, chat_id=103394287
+2026-03-24 14:38:10,277 - coffee_oracle.max_bot.bot - INFO - MAX-бот: сырое обновление (тип=message_callback): {"callback": {"timestamp": 1774352290104, "callback_id": "f9LHodD0cOKcxemZUNZQLABbfMK-zS0cN3jAdNna1RpmIrnpp5auiYLlA7T2mE5nS-d7DnvlvDrlh6ELuB8r93XSXcTnT5Yq0fanCmRwjdChs1zNjc1K", "user": {"user_id": 181432348, "first_name": "Александр", "last_name": "", "is_bot": false, "last_activity_time": 1774352336000, "name": "Александр"}, "payload": "help_divination"}, "message": {"recipient": {"chat_id": 103394287, "chat_type": "dialog", "user_id": 181432348}, "timestamp": 1774352356619, "body": {"mid": "mid.000000000629abef019d1fa4550b772b", "seq": 116283956043413291, "text": "☕ Приготовление кофе для гадания:\n\n1. ☕ Используйте молотый кофе среднего помола\n2. 🔥 Заварите крепкий кофе (турка или френч-пресс)\n3. 🥄 Не добавляйте сахар и молоко\n4. 🍵 Выпейте, оставив 1-2 глотка с гущей\n5. 🔄 Покрутите чашку 3 раза по часовой стрелке\n6. ⏰ Подождите 2-3 минуты\n\n✨ Чем крепче кофе, тем четче узоры!", "attachments": [{"callback_id": "f9LHodD0cOIV9s-ajpXIr7EJivgA6EV5zxEvaO_VqCdIizrYCQ03RshmIHTyl-Fp-FYKZZS2QsqPHhlv7R9XgKjPx36QMAoTN6PqSLynjRYDTyJwm0y4", "payload": {"buttons": [[{"payload": "help_photo", "text": "📸 Как фотографировать", "intent": "default", "type": "callback"}], [{"payload": "help_coffee", "text": "☕ Приготовление кофе", "intent": "default", "type": "callback"}], [{"payload": "help_divination", "text": "🔮 О гадании", "intent": "default", "type": "callback"}], [{"payload": "help_faq", "text": "❓ Частые вопросы", "intent": "default", "type": "callback"}], [{"payload": "action_back_to_menu", "text": "◀️ Назад в меню", "intent": "default", "type": "callback"}]]}, "type": "inline_keyboard"}]}, "sender": {"user_id": 217701363, "first_name": "Оракул", "username": "id9728167964_bot", "is_bot": true, "last_activity_time": 1774352362479, "name": "Оракул"}}, "timestamp": 1774352290104, "user_locale": "ru", "update_type": "message_callback"}
+2026-03-24 14:38:10,313 - coffee_oracle.max_bot.handlers - INFO - MAX callback: payload=help_divination, user=181432348, chat_id=103394287
+2026-03-24 14:38:14,104 - coffee_oracle.max_bot.bot - INFO - MAX-бот: сырое обновление (тип=message_callback): {"callback": {"timestamp": 1774352294005, "callback_id": "f9LHodD0cOKnSlR8fXAdWsbIAUF3nDn-HTZ1pzUhjsxZiPY3pg_uA4sYbzBdtTUMhmQjrgPwkgm2w-mCDy5_pYNP1GjZpmXuE5tcqdu2YrWmS-fZpFZl", "user": {"user_id": 181432348, "first_name": "Александр", "last_name": "", "is_bot": false, "last_activity_time": 1774352365000, "name": "Александр"}, "payload": "help_faq"}, "message": {"recipient": {"chat_id": 103394287, "chat_type": "dialog", "user_id": 181432348}, "timestamp": 1774352362627, "body": {"mid": "mid.000000000629abef019d1fa46c83634d", "seq": 116283956437148493, "text": "🔮 О гадании на кофейной гуще:\n\n📜 Древнее искусство, пришедшее с Востока\n🎨 Узоры гущи — это язык подсознания\n\n🔍 Основные символы:\n• Круги — гармония, завершение дел\n• Линии — путешествия, перемены\n• Звезды — исполнение желаний\n• Цветы — любовь и радость\n• Птицы — хорошие новости\n\n💫 Помните: будущее в ваших руках!", "attachments": [{"callback_id": "f9LHodD0cOJf7oQwO96jXWK3nAdSMUW0-eszDVOYJZJsKnz2IQCjJFx8GGfzOhuV-hMVvzFYxsT5bhMK1Vwr-P-WyMWt7iYe8NKgJMOgfcraA4qoUrUb", "payload": {"buttons": [[{"payload": "help_photo", "text": "📸 Как фотографировать", "intent": "default", "type": "callback"}], [{"payload": "help_coffee", "text": "☕ Приготовление кофе", "intent": "default", "type": "callback"}], [{"payload": "help_divination", "text": "🔮 О гадании", "intent": "default", "type": "callback"}], [{"payload": "help_faq", "text": "❓ Частые вопросы", "intent": "default", "type": "callback"}], [{"payload": "action_back_to_menu", "text": "◀️ Назад в меню", "intent": "default", "type": "callback"}]]}, "type": "inline_keyboard"}]}, "sender": {"user_id": 217701363, "first_name": "Оракул", "username": "id9728167964_bot", "is_bot": true, "last_activity_time": 1774352366289, "name": "Оракул"}}, "timestamp": 1774352294005, "user_locale": "ru", "update_type": "message_callback"}
+2026-03-24 14:38:14,137 - coffee_oracle.max_bot.handlers - INFO - MAX callback: payload=help_faq, user=181432348, chat_id=103394287
+2026-03-24 14:38:17,189 - coffee_oracle.max_bot.bot - INFO - MAX-бот: сырое обновление (тип=message_callback): {"callback": {"timestamp": 1774352296871, "callback_id": "f9LHodD0cOLzl3-zQ5Us88ctoZWtabdhUK6ZQtDOccQSUxs2yk6q5pBVJLEa6HCImbTc5wLjHY3vNX5cd8Xn05EThXUFFXFXXa1tbJqSyDkYtoQV0JNC", "user": {"user_id": 181432348, "first_name": "Александр", "last_name": "", "is_bot": false, "last_activity_time": 1774352365000, "name": "Александр"}, "payload": "action_back_to_menu"}, "message": {"recipient": {"chat_id": 103394287, "chat_type": "dialog", "user_id": 181432348}, "timestamp": 1774352366456, "body": {"mid": "mid.000000000629abef019d1fa47b7876fa", "seq": 116283956688090874, "text": "❓ Частые вопросы:\n\nQ: Почему бот не отвечает на фото?\nA: Проверьте качество фото и освещение\n\nQ: Можно ли гадать на растворимом кофе?\nA: Лучше использовать молотый кофе\n\nQ: Сколько раз в день можно гадать?\nA: Рекомендуется не чаще 2-3 раз\n\nQ: Бот не работает, что делать?\nA: Попробуйте команду /start", "attachments": [{"callback_id": "f9LHodD0cOJNnJJrTel2F6XcXLzSQDMwVzXiw_cMVHsOYArS7mQvnZaynUupFR5KNDy8yJ_z1iTnNKgMJoXJ513AuBnl2hC3ZHgRYKzbFYSBCt0KTAXh", "payload": {"buttons": [[{"payload": "help_photo", "text": "📸 Как фотографировать", "intent": "default", "type": "callback"}], [{"payload": "help_coffee", "text": "☕ Приготовление кофе", "intent": "default", "type": "callback"}], [{"payload": "help_divination", "text": "🔮 О гадании", "intent": "default", "type": "callback"}], [{"payload": "help_faq", "text": "❓ Частые вопросы", "intent": "default", "type": "callback"}], [{"payload": "action_back_to_menu", "text": "◀️ Назад в меню", "intent": "default", "type": "callback"}]]}, "type": "inline_keyboard"}]}, "sender": {"user_id": 217701363, "first_name": "Оракул", "username": "id9728167964_bot", "is_bot": true, "last_activity_time": 1774352369396, "name": "Оракул"}}, "timestamp": 1774352296871, "user_locale": "ru", "update_type": "message_callback"}
+2026-03-24 14:38:17,225 - coffee_oracle.max_bot.handlers - INFO - MAX callback: payload=action_back_to_menu, user=181432348, chat_id=103394287
+2026-03-24 14:38:20,356 - coffee_oracle.max_bot.bot - INFO - MAX-бот: сырое обновление (тип=message_callback): {"callback": {"timestamp": 1774352300188, "callback_id": "f9LHodD0cOKRwPTZVF-cu2ff4jOm8vCOUPCQeP_tt--aaDrmVhZhuMrEza7l6QTyGPMVAcAawbL6LmXhX6kjpjDkPB-BuV5QnPByopHOBONahhkfV_JG", "user": {"user_id": 181432348, "first_name": "Александр", "last_name": "", "is_bot": false, "last_activity_time": 1774352365000, "name": "Александр"}, "payload": "action_support"}, "message": {"recipient": {"chat_id": 103394287, "chat_type": "dialog", "user_id": 181432348}, "timestamp": 1774352369550, "body": {"mid": "mid.000000000629abef019d1fa4878e39a6", "seq": 116283956890843558, "text": "📋 Главное меню Кофейного Оракула\n\nВыберите действие:", "attachments": [{"callback_id": "f9LHodD0cOIIXv64kAnQQuqaO3k-Sx9gwnfE4OGNXNBtszmu1PisJCYgLfeWgIE74LVfayhcZWbGTmYBEbOifZOBWloScUqWGK8vN4S4E3XY80JKUjWA", "payload": {"buttons": [[{"payload": "action_predict", "text": "🔮 Получить предсказание", "intent": "default", "type": "callback"}], [{"payload": "action_history", "text": "📜 Моя история", "intent": "default", "type": "callback"}, {"payload": "action_random", "text": "🎯 Случайное", "intent": "default", "type": "callback"}], [{"payload": "action_help", "text": "📚 Как гадать", "intent": "default", "type": "callback"}, {"payload": "action_about", "text": "ℹ️ О боте", "intent": "default", "type": "callback"}], [{"payload": "action_clear", "text": "🗑️ Очистить историю", "intent": "default", "type": "callback"}, {"payload": "action_support", "text": "📞 Поддержка", "intent": "default", "type": "callback"}]]}, "type": "inline_keyboard"}]}, "sender": {"user_id": 217701363, "first_name": "Оракул", "username": "id9728167964_bot", "is_bot": true, "last_activity_time": 1774352372527, "name": "Оракул"}}, "timestamp": 1774352300188, "user_locale": "ru", "update_type": "message_callback"}
+2026-03-24 14:38:20,386 - coffee_oracle.max_bot.handlers - INFO - MAX callback: payload=action_support, user=181432348, chat_id=103394287
+2026-03-24 14:38:37,053 - coffee_oracle.max_bot.bot - INFO - MAX-бот: сырое обновление (тип=message_created): {"message": {"recipient": {"chat_id": 103394287, "chat_type": "dialog", "user_id": 217701363}, "timestamp": 1774352389196, "body": {"mid": "mid.000000000629abef019d1fa4d44c6a52", "seq": 116283958178376274, "text": "/start"}, "sender": {"user_id": 181432348, "first_name": "Александр", "last_name": "", "is_bot": false, "last_activity_time": 1774352365000, "name": "Александр"}}, "timestamp": 1774352389196, "user_locale": "ru", "update_type": "message_created"}
+2026-03-24 14:38:41,753 - coffee_oracle.max_bot.bot - INFO - MAX-бот: сырое обновление (тип=message_callback): {"callback": {"timestamp": 1774352321572, "callback_id": "f9LHodD0cOL4rxr6wjGIMDAe5xKLw-qLWVcAiQdbD9yJxFWgX0_xWz7EDybrMfQRph4mzO8zTKTB04RBSUIWUrQSZE0m2z-_CNnGARLg8_6UMDHfMZgD", "user": {"user_id": 181432348, "first_name": "Александр", "last_name": "", "is_bot": false, "last_activity_time": 1774352365000, "name": "Александр"}, "payload": "action_about"}, "message": {"recipient": {"chat_id": 103394287, "chat_type": "dialog", "user_id": 181432348}, "timestamp": 1774352389402, "body": {"mid": "mid.000000000629abef019d1fa4d51a720d", "seq": 116283958191878669, "text": "🔮 Добро пожаловать в мир Кофейного Оракула, Александр!\n\nЯ помогу вам узнать, что говорят узоры кофейной гущи о вашем будущем. Просто сфотографируйте дно выпитой чашки кофе, и я открою вам тайны, которые скрывают эти магические узоры.\n\n✨ Все предсказания несут только позитивную энергию и вдохновение!\n\nВыберите действие в меню ниже:", "attachments": [{"callback_id": "f9LHodD0cOKokq2vL5qsihc5vvHOM6by4pHQFn0gX8q2XHP6P01sQ18vTagfBqBDO5E84pCRAEZDmyEiuvCTZ7RYRk3CMkPG9OC6yz6S_0E8DeBa05nx", "payload": {"buttons": [[{"payload": "action_predict", "text": "🔮 Получить предсказание", "intent": "default", "type": "callback"}], [{"payload": "action_history", "text": "📜 Моя история", "intent": "default", "type": "callback"}, {"payload": "action_random", "text": "🎯 Случайное", "intent": "default", "type": "callback"}], [{"payload": "action_help", "text": "📚 Как гадать", "intent": "default", "type": "callback"}, {"payload": "action_about", "text": "ℹ️ О боте", "intent": "default", "type": "callback"}], [{"payload": "action_clear", "text": "🗑️ Очистить историю", "intent": "default", "type": "callback"}, {"payload": "action_support", "text": "📞 Поддержка", "intent": "default", "type": "callback"}]]}, "type": "inline_keyboard"}]}, "sender": {"user_id": 217701363, "first_name": "Оракул", "username": "id9728167964_bot", "is_bot": true, "last_activity_time": 1774352393923, "name": "Оракул"}}, "timestamp": 1774352321572, "user
+2026-03-24 14:38:41,788 - coffee_oracle.max_bot.handlers - INFO - MAX callback: payload=action_about, user=181432348, chat_id=103394287
+2026-03-24 14:40:08,672 - coffee_oracle.max_bot.bot - INFO - MAX-бот: сырое обновление (тип=message_callback): {"callback": {"timestamp": 1774352408224, "callback_id": "f9LHodD0cOJWhcwJe_HNRObDFwm7rgbCnzPByBxNCBZ8QLTC6HxXNPd7cWwFdyHWC-6vKKyQhwF_z6imRK1u342SEki4BFuf2Xlk0_nCmQr4NJj6fvAd", "user": {"user_id": 181432348, "first_name": "Александр", "last_name": "", "is_bot": false, "last_activity_time": 1774352473000, "name": "Александр"}, "payload": "action_random"}, "message": {"recipient": {"chat_id": 103394287, "chat_type": "dialog", "user_id": 181432348}, "timestamp": 1774352389402, "body": {"mid": "mid.000000000629abef019d1fa4d51a720d", "seq": 116283958191878669, "text": "🔮 Добро пожаловать в мир Кофейного Оракула, Александр!\n\nЯ помогу вам узнать, что говорят узоры кофейной гущи о вашем будущем. Просто сфотографируйте дно выпитой чашки кофе, и я открою вам тайны, которые скрывают эти магические узоры.\n\n✨ Все предсказания несут только позитивную энергию и вдохновение!\n\nВыберите действие в меню ниже:", "attachments": [{"callback_id": "f9LHodD0cOKzz80wq-F5oJZ3JmuAmyDBkw18orelPaT1UgV2zlPzqU5AAUHVyB1BnqULTY8lY8OrDIo_S7MAgtDTC0Tmmzd3tw7fdW5nKCS3PdQtbwav", "payload": {"buttons": [[{"payload": "action_predict", "text": "🔮 Получить предсказание", "intent": "default", "type": "callback"}], [{"payload": "action_history", "text": "📜 Моя история", "intent": "default", "type": "callback"}, {"payload": "action_random", "text": "🎯 Случайное", "intent": "default", "type": "callback"}], [{"payload": "action_help", "text": "📚 Как гадать", "intent": "default", "type": "callback"}, {"payload": "action_about", "text": "ℹ️ О боте", "intent": "default", "type": "callback"}], [{"payload": "action_clear", "text": "🗑️ Очистить историю", "intent": "default", "type": "callback"}, {"payload": "action_support", "text": "📞 Поддержка", "intent": "default", "type": "callback"}]]}, "type": "inline_keyboard"}]}, "sender": {"user_id": 217701363, "first_name": "Оракул", "username": "id9728167964_bot", "is_bot": true, "last_activity_time": 1774352480525, "name": "Оракул"}}, "timestamp": 1774352408224, "use
+2026-03-24 14:40:08,712 - coffee_oracle.max_bot.handlers - INFO - MAX callback: payload=action_random, user=181432348, chat_id=103394287
+2026-03-24 14:40:34,041 - coffee_oracle.max_bot.bot - INFO - MAX-бот: сырое обновление (тип=message_callback): {"callback": {"timestamp": 1774352433955, "callback_id": "f9LHodD0cOJJpOX2gZ226XTPA-KsT2M6x-VwEl3hQXgg_dmTXThsW58sh6SwHC46y5XOM5onACpeTKfe5xaS1Ft-1vfnxr3USmsdpLPN14Iy9nL-4RJk", "user": {"user_id": 181432348, "first_name": "Александр", "last_name": "", "is_bot": false, "last_activity_time": 1774352486000, "name": "Александр"}, "payload": "action_predict"}, "message": {"recipient": {"chat_id": 103394287, "chat_type": "dialog", "user_id": 181432348}, "timestamp": 1774352389402, "body": {"mid": "mid.000000000629abef019d1fa4d51a720d", "seq": 116283958191878669, "text": "🔮 Добро пожаловать в мир Кофейного Оракула, Александр!\n\nЯ помогу вам узнать, что говорят узоры кофейной гущи о вашем будущем. Просто сфотографируйте дно выпитой чашки кофе, и я открою вам тайны, которые скрывают эти магические узоры.\n\n✨ Все предсказания несут только позитивную энергию и вдохновение!\n\nВыберите действие в меню ниже:", "attachments": [{"callback_id": "f9LHodD0cOLqR1n75Tu-uUUUbfsCKSVWpq-JG3yKJPIugiFkeZmEPZLd96uVcvWQY8AWGNQsKptyNVe2bL-pZevmYiVwiuWvAZtkxvhBpKX6Iajthwc2", "payload": {"buttons": [[{"payload": "action_predict", "text": "🔮 Получить предсказание", "intent": "default", "type": "callback"}], [{"payload": "action_history", "text": "📜 Моя история", "intent": "default", "type": "callback"}, {"payload": "action_random", "text": "🎯 Случайное", "intent": "default", "type": "callback"}], [{"payload": "action_help", "text": "📚 Как гадать", "intent": "default", "type": "callback"}, {"payload": "action_about", "text": "ℹ️ О боте", "intent": "default", "type": "callback"}], [{"payload": "action_clear", "text": "🗑️ Очистить историю", "intent": "default", "type": "callback"}, {"payload": "action_support", "text": "📞 Поддержка", "intent": "default", "type": "callback"}]]}, "type": "inline_keyboard"}]}, "sender": {"user_id": 217701363, "first_name": "Оракул", "username": "id9728167964_bot", "is_bot": true, "last_activity_time": 1774352506235, "name": "Оракул"}}, "timestamp": 1774352433955, "us
+2026-03-24 14:40:34,079 - coffee_oracle.max_bot.handlers - INFO - MAX callback: payload=action_predict, user=181432348, chat_id=103394287
+2026-03-24 14:40:44,238 - coffee_oracle.max_bot.bot - INFO - MAX-бот: сырое обновление (тип=message_created): {"message": {"recipient": {"chat_id": 103394287, "chat_type": "dialog", "user_id": 217701363}, "timestamp": 1774352516409, "body": {"mid": "mid.000000000629abef019d1fa6c5390a88", "seq": 116283966515382920, "text": "", "attachments": [{"payload": {"photo_id": 9728976412, "token": "Bry2FCbCF3wErTb3IyZ1L27nGlcuaRg7EkDGwrbdcD4rHZDQoHTnFVIhUR/QI3MqV2sm2aO1MTwtopn/ZU/YnzBDmQ8hoXiORdGUQbqqGd0=", "url": "https://i.oneme.ru/i?r=BTGBPUwtwgYUeoFhO7rESmr8j64eQzzxxvaPu-5K5n6JgbItgMG9_FEjka0xwm9Lh-s"}, "type": "image"}]}, "sender": {"user_id": 181432348, "first_name": "Александр", "last_name": "", "is_bot": false, "last_activity_time": 1774352516000, "name": "Александр"}}, "timestamp": 1774352516409, "user_locale": "ru", "update_type": "message_created"}
+2026-03-24 14:40:45,687 - coffee_oracle.max_bot.photo_processor - INFO - Изображение уменьшено: 1280x1280 -> 800x800, 56072 -> 56518 байт (quality=85)
+2026-03-24 14:40:45,687 - coffee_oracle.max_bot.photo_processor - ERROR - Ошибка сохранения изображения на диск: [Errno 30] Read-only file system: '/app'
+2026-03-24 14:41:04,010 - openai._base_client - INFO - Retrying request to /chat/completions in 0.433745 seconds
+2026-03-24 14:41:22,945 - openai._base_client - INFO - Retrying request to /chat/completions in 0.919712 seconds
+2026-03-24 14:41:41,890 - coffee_oracle.services.openai_client - ERROR - Unexpected error in OpenAI client: Connection error.
+2026-03-24 14:42:22,705 - __main__ - INFO - Получен сигнал 2, начинаю завершение...
+2026-03-24 14:42:22,707 - coffee_oracle.max_bot.bot - INFO - MAX-бот: polling отменён
+2026-03-24 14:42:22,708 - coffee_oracle.max_bot.bot - INFO - MAX-бот: цикл polling завершён
+2026-03-24 14:42:22,708 - __main__ - INFO - Освобождение ресурсов...
+2026-03-24 14:42:22,708 - coffee_oracle.max_bot.bot - INFO - MAX-бот: остановка...
+2026-03-24 14:42:22,709 - coffee_oracle.max_bot.api_client - INFO - MAX API клиент: HTTP-сессия закрыта
+2026-03-24 14:42:22,709 - coffee_oracle.max_bot.bot - INFO - MAX-бот: остановлен
+2026-03-24 14:42:22,717 - __main__ - INFO - Ресурсы освобождены
+2026-03-24 14:42:22,717 - __main__ - INFO - Приложение Coffee Oracle остановлено
