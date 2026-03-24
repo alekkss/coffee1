@@ -1,0 +1,891 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Coffee Oracle Admin Dashboard v1.0</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            color: #333;
+        }
+        
+        .header {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            padding: 1rem 2rem;
+            box-shadow: 0 2px 20px rgba(0,0,0,0.1);
+            margin-bottom: 2rem;
+            text-align: center;
+        }
+        
+        .header h1 {
+            color: #4a5568;
+            font-size: 2rem;
+            font-weight: 700;
+        }
+        
+        .header .subtitle {
+            color: #718096;
+            margin-top: 0.5rem;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 2rem;
+        }
+        
+        .kpi-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 3rem;
+        }
+        
+        .kpi-card {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 16px;
+            padding: 2rem;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+        
+        .kpi-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 12px 40px rgba(0,0,0,0.15);
+        }
+        
+        .kpi-card h3 {
+            color: #4a5568;
+            font-size: 0.9rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 1rem;
+        }
+        
+        .kpi-value {
+            font-size: 2.5rem;
+            font-weight: 700;
+            color: #2d3748;
+            margin-bottom: 0.5rem;
+        }
+        
+        .kpi-change {
+            font-size: 0.85rem;
+            color: #68d391;
+            font-weight: 500;
+        }
+        
+        .chart-section {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 16px;
+            padding: 2rem;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            margin-bottom: 3rem;
+        }
+        
+        .chart-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 2rem;
+        }
+        
+        .chart-title {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: #2d3748;
+        }
+        
+        .period-buttons {
+            display: flex;
+            gap: 0.5rem;
+        }
+        
+        .period-btn {
+            padding: 0.5rem 1rem;
+            border: 2px solid #e2e8f0;
+            background: white;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 500;
+            transition: all 0.3s ease;
+        }
+        
+        .period-btn.active {
+            background: #667eea;
+            color: white;
+            border-color: #667eea;
+        }
+        
+        .period-btn:hover {
+            border-color: #667eea;
+            color: #667eea;
+        }
+        
+        .chart-container {
+            position: relative;
+            height: 400px;
+            margin-bottom: 2rem;
+        }
+        
+        .retention-table {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 16px;
+            padding: 2rem;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            margin-bottom: 3rem;
+        }
+        
+        .retention-table h2 {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: #2d3748;
+            margin-bottom: 1.5rem;
+        }
+        
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        
+        th, td {
+            padding: 1rem;
+            text-align: left;
+            border-bottom: 1px solid #e2e8f0;
+        }
+        
+        th {
+            background: #f7fafc;
+            font-weight: 600;
+            color: #4a5568;
+            text-transform: uppercase;
+            font-size: 0.85rem;
+            letter-spacing: 0.5px;
+        }
+        
+        td {
+            color: #2d3748;
+            font-weight: 500;
+        }
+        
+        .loading {
+            text-align: center;
+            padding: 2rem;
+            color: #718096;
+        }
+        
+        .error {
+            background: #fed7d7;
+            color: #c53030;
+            padding: 1rem;
+            border-radius: 8px;
+            margin: 1rem 0;
+        }
+        
+        .nav-links {
+            margin-top: 1rem;
+            display: flex;
+            justify-content: center;
+            gap: 2rem;
+        }
+        
+        .nav-links a {
+            color: #667eea;
+            text-decoration: none;
+            font-weight: 500;
+        }
+        
+        .nav-links a:hover {
+            text-decoration: underline;
+        }
+        
+        .data-section {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 16px;
+            padding: 2rem;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            margin-bottom: 3rem;
+        }
+        
+        .data-section h2 {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: #2d3748;
+            margin-bottom: 1.5rem;
+        }
+        
+        .search-box {
+            margin-bottom: 1.5rem;
+        }
+        
+        .search-box input {
+            width: 100%;
+            max-width: 400px;
+            padding: 0.75rem 1rem;
+            border: 2px solid #e2e8f0;
+            border-radius: 8px;
+            font-size: 1rem;
+            transition: border-color 0.3s ease;
+        }
+        
+        .search-box input:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+        
+        .table-container {
+            overflow-x: auto;
+            border-radius: 8px;
+            border: 1px solid #e2e8f0;
+        }
+        
+        .data-section table {
+            width: 100%;
+            border-collapse: collapse;
+            background: white;
+        }
+        
+        .data-section th {
+            background: #f7fafc;
+            padding: 1rem;
+            text-align: left;
+            font-weight: 600;
+            color: #4a5568;
+            border-bottom: 2px solid #e2e8f0;
+        }
+        
+        .data-section td {
+            padding: 1rem;
+            border-bottom: 1px solid #e2e8f0;
+            color: #2d3748;
+        }
+        
+        .data-section tr:hover {
+            background: #f7fafc;
+        }
+        
+        .action-btn {
+            padding: 0.25rem 0.75rem;
+            border: 1px solid #e2e8f0;
+            background: white;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 0.875rem;
+            margin-right: 0.5rem;
+            transition: all 0.3s ease;
+        }
+        
+        .action-btn:hover {
+            background: #f7fafc;
+            border-color: #667eea;
+        }
+        
+        .action-btn.danger {
+            color: #e53e3e;
+            border-color: #fed7d7;
+        }
+        
+        .action-btn.danger:hover {
+            background: #fed7d7;
+        }
+        
+        .prediction-text {
+            max-width: 300px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+        
+        .telegram-link {
+            color: #667eea;
+            text-decoration: none;
+        }
+        
+        .telegram-link:hover {
+            text-decoration: underline;
+        }
+        
+        /* Modal styles */
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            backdrop-filter: blur(5px);
+        }
+        
+        .modal-content {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            margin: 5% auto;
+            padding: 2rem;
+            border-radius: 16px;
+            width: 80%;
+            max-width: 800px;
+            max-height: 80vh;
+            overflow-y: auto;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            position: relative;
+        }
+        
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1.5rem;
+            padding-bottom: 1rem;
+            border-bottom: 2px solid #e2e8f0;
+        }
+        
+        .modal-title {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: #2d3748;
+            margin: 0;
+        }
+        
+        .close {
+            color: #718096;
+            font-size: 2rem;
+            font-weight: bold;
+            cursor: pointer;
+            border: none;
+            background: none;
+            padding: 0;
+            line-height: 1;
+        }
+        
+        .close:hover {
+            color: #2d3748;
+        }
+        
+        .prediction-full-text {
+            font-size: 1.1rem;
+            line-height: 1.6;
+            color: #2d3748;
+            white-space: pre-wrap;
+            margin-bottom: 1.5rem;
+        }
+        
+        .prediction-meta {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+            padding: 1rem;
+            background: #f7fafc;
+            border-radius: 8px;
+            font-size: 0.9rem;
+        }
+        
+        .prediction-meta-item {
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .prediction-meta-label {
+            font-weight: 600;
+            color: #4a5568;
+            margin-bottom: 0.25rem;
+        }
+        
+        .prediction-meta-value {
+            color: #2d3748;
+        }
+        
+        /* Settings section styles */
+        .settings-section {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 16px;
+            padding: 2rem;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            margin-bottom: 3rem;
+        }
+        
+        .settings-section h2 {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: #2d3748;
+            margin-bottom: 1.5rem;
+        }
+        
+        .settings-grid {
+            display: grid;
+            gap: 1.5rem;
+        }
+        
+        .setting-item {
+            background: #f7fafc;
+            border-radius: 12px;
+            padding: 1.5rem;
+            border: 1px solid #e2e8f0;
+        }
+        
+        .setting-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 0.75rem;
+        }
+        
+        .setting-label {
+            font-weight: 600;
+            color: #2d3748;
+            font-size: 1rem;
+        }
+        
+        .setting-description {
+            font-size: 0.85rem;
+            color: #718096;
+            margin-bottom: 1rem;
+        }
+        
+        .setting-input {
+            width: 100%;
+            padding: 0.75rem 1rem;
+            border: 2px solid #e2e8f0;
+            border-radius: 8px;
+            font-size: 1rem;
+            font-family: inherit;
+            transition: border-color 0.3s ease;
+            background: white;
+        }
+        
+        .setting-input:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+        
+        .setting-textarea {
+            min-height: 150px;
+            resize: vertical;
+            font-family: 'Monaco', 'Menlo', monospace;
+            font-size: 0.9rem;
+            line-height: 1.5;
+        }
+        
+        .setting-textarea.large {
+            min-height: 300px;
+        }
+        
+        .settings-actions {
+            display: flex;
+            gap: 1rem;
+            margin-top: 2rem;
+            flex-wrap: wrap;
+        }
+        
+        .btn {
+            padding: 0.75rem 1.5rem;
+            border: none;
+            border-radius: 8px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        
+        .btn-primary {
+            background: #667eea;
+            color: white;
+        }
+        
+        .btn-primary:hover {
+            background: #5a67d8;
+        }
+        
+        .btn-secondary {
+            background: #e2e8f0;
+            color: #4a5568;
+        }
+        
+        .btn-secondary:hover {
+            background: #cbd5e0;
+        }
+        
+        .btn-danger {
+            background: #fc8181;
+            color: white;
+        }
+        
+        .btn-danger:hover {
+            background: #f56565;
+        }
+        
+        .settings-status {
+            padding: 1rem;
+            border-radius: 8px;
+            margin-top: 1rem;
+            display: none;
+        }
+        
+        .settings-status.success {
+            background: #c6f6d5;
+            color: #276749;
+            display: block;
+        }
+        
+        .settings-status.error {
+            background: #fed7d7;
+            color: #c53030;
+            display: block;
+        }
+        
+        .number-input-group {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+        
+        .number-input-group input {
+            max-width: 150px;
+        }
+        
+        .number-input-group .hint {
+            font-size: 0.85rem;
+            color: #718096;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>☕ Coffee Oracle Admin Dashboard</h1>
+        <p class="subtitle">Веб-административная панель v1.0 - Управление ботом и анализ активности</p>
+        <div class="nav-links">
+            <a href="#kpi-grid">📊 Метрики</a>
+            <a href="/users">👥 Пользователи</a>
+            <a href="/predictions">🔮 Предсказания</a>
+            <a href="/settings">⚙️ Настройки</a>
+            <a href="/health">🏥 Статус системы</a>
+        </div>
+    </div>
+
+    <div class="container">
+        <!-- KPI Metrics -->
+        <div class="kpi-grid" id="kpi-grid">
+            <div class="loading">Загрузка метрик...</div>
+        </div>
+
+        <!-- Analytics Chart -->
+        <div class="chart-section">
+            <div class="chart-header">
+                <h2 class="chart-title">📊 Общая активность</h2>
+                <div class="period-buttons">
+                    <button class="period-btn active" data-period="24h">По часам</button>
+                    <button class="period-btn" data-period="7d">По дням</button>
+                    <button class="period-btn" data-period="4w">По неделям</button>
+                    <button class="period-btn" data-period="12m">По месяцам</button>
+                </div>
+            </div>
+            <div class="chart-container">
+                <canvas id="activityChart"></canvas>
+            </div>
+        </div>
+
+        <!-- Retention Table -->
+        <div class="retention-table">
+            <h2>📈 Табличная статистика</h2>
+            <table id="retention-table">
+                <thead>
+                    <tr>
+                        <th>Период</th>
+                        <th>Новые пользователи</th>
+                        <th>Предсказания</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr><td colspan="3" class="loading">Загрузка данных...</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <script>
+        let activityChart = null;
+        let currentPeriod = '24h';
+
+        // Load dashboard data
+        async function loadDashboard() {
+            try {
+                const response = await fetch('/api/dashboard');
+                const data = await response.json();
+                
+                renderKPICards(data.kpi);
+            } catch (error) {
+                console.error('Error loading dashboard:', error);
+                document.getElementById('kpi-grid').innerHTML = '<div class="error">Ошибка загрузки данных</div>';
+            }
+        }
+
+        // Render KPI cards
+        function renderKPICards(kpi) {
+            const kpiGrid = document.getElementById('kpi-grid');
+            kpiGrid.innerHTML = `
+                <div class="kpi-card">
+                    <h3>👥 Всего пользователей</h3>
+                    <div class="kpi-value">${kpi.total_users}</div>
+                    <div class="kpi-change">Общая аудитория</div>
+                </div>
+                <div class="kpi-card">
+                    <h3>🆕 Новых сегодня</h3>
+                    <div class="kpi-value">${kpi.new_users_today}</div>
+                    <div class="kpi-change">За последние 24 часа</div>
+                </div>
+                <div class="kpi-card">
+                    <h3>🔮 Всего предсказаний</h3>
+                    <div class="kpi-value">${kpi.total_predictions}</div>
+                    <div class="kpi-change">Общая активность</div>
+                </div>
+                <div class="kpi-card">
+                    <h3>📅 Предсказаний сегодня</h3>
+                    <div class="kpi-value">${kpi.predictions_today}</div>
+                    <div class="kpi-change">За последние 24 часа</div>
+                </div>
+            `;
+        }
+
+        // Load analytics data
+        async function loadAnalytics(period = '7d') {
+            try {
+                const response = await fetch(`/api/analytics?period=${period}`);
+                const data = await response.json();
+                
+                renderChart(data);
+            } catch (error) {
+                console.error('Error loading analytics:', error);
+            }
+        }
+
+        // Render chart
+        function renderChart(data) {
+            const ctx = document.getElementById('activityChart').getContext('2d');
+            
+            if (activityChart) {
+                activityChart.destroy();
+            }
+
+            // Merge data from users and predictions to ensure all periods are covered
+            const allPeriods = new Set([
+                ...data.users.map(item => item.period),
+                ...data.predictions.map(item => item.period)
+            ]);
+            
+            const sortedPeriods = Array.from(allPeriods).sort();
+            
+            const usersData = sortedPeriods.map(period => {
+                const userItem = data.users.find(item => item.period === period);
+                return userItem ? userItem.count : 0;
+            });
+            
+            const predictionsData = sortedPeriods.map(period => {
+                const predItem = data.predictions.find(item => item.period === period);
+                return predItem ? predItem.count : 0;
+            });
+
+            // Format labels based on period type
+            const labels = sortedPeriods.map(period => {
+                if (data.period === '24h') {
+                    // Format: "2025-12-18 14:00" -> "14:00"
+                    return period.split(' ')[1] || period;
+                } else if (data.period === '4w') {
+                    // Format: "2025-W50" -> "Неделя 50"
+                    const week = period.split('-W')[1];
+                    return `Неделя ${week}`;
+                } else if (data.period === '12m') {
+                    // Format: "2025-12" -> "Дек 2025"
+                    const [year, month] = period.split('-');
+                    const monthNames = ['Янв', 'Фев', 'Мар', 'Апр', 'Май', 'Июн', 
+                                       'Июл', 'Авг', 'Сен', 'Окт', 'Ноя', 'Дек'];
+                    return `${monthNames[parseInt(month) - 1]} ${year}`;
+                } else {
+                    // Format: "2025-12-18" -> "18 дек"
+                    const [year, month, day] = period.split('-');
+                    const monthNames = ['янв', 'фев', 'мар', 'апр', 'май', 'июн', 
+                                       'июл', 'авг', 'сен', 'окт', 'ноя', 'дек'];
+                    return `${day} ${monthNames[parseInt(month) - 1]}`;
+                }
+            });
+
+            activityChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [
+                        {
+                            label: 'Новые пользователи',
+                            data: usersData,
+                            borderColor: '#f56565',
+                            backgroundColor: 'rgba(245, 101, 101, 0.1)',
+                            borderWidth: 3,
+                            fill: true,
+                            tension: 0.4
+                        },
+                        {
+                            label: 'Предсказания',
+                            data: predictionsData,
+                            borderColor: '#4299e1',
+                            backgroundColor: 'rgba(66, 153, 225, 0.1)',
+                            borderWidth: 3,
+                            fill: true,
+                            tension: 0.4
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'top',
+                            labels: {
+                                usePointStyle: true,
+                                padding: 20,
+                                font: {
+                                    size: 14,
+                                    weight: '500'
+                                }
+                            }
+                        },
+                        title: {
+                            display: true,
+                            text: getPeriodTitle(data.period),
+                            font: {
+                                size: 16,
+                                weight: '600'
+                            },
+                            color: '#4a5568'
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            grid: {
+                                color: 'rgba(0,0,0,0.1)'
+                            },
+                            ticks: {
+                                font: {
+                                    size: 12
+                                },
+                                stepSize: 1
+                            }
+                        },
+                        x: {
+                            grid: {
+                                color: 'rgba(0,0,0,0.1)'
+                            },
+                            ticks: {
+                                font: {
+                                    size: 12
+                                },
+                                maxRotation: 45
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        // Get period title for chart
+        function getPeriodTitle(period) {
+            switch(period) {
+                case '24h': return 'Активность за последние 24 часа';
+                case '7d': return 'Активность за последние 7 дней';
+                case '4w': return 'Активность за последние 4 недели';
+                case '12m': return 'Активность за последние 12 месяцев';
+                default: return 'Активность';
+            }
+        }
+
+        // Load retention data
+        async function loadRetention() {
+            try {
+                const response = await fetch('/api/retention');
+                const data = await response.json();
+                
+                renderRetentionTable(data.retention);
+            } catch (error) {
+                console.error('Error loading retention:', error);
+            }
+        }
+
+        // Render retention table
+        function renderRetentionTable(retention) {
+            const tbody = document.querySelector('#retention-table tbody');
+            tbody.innerHTML = retention.map(row => `
+                <tr>
+                    <td><strong>${row.period}</strong></td>
+                    <td>${row.new_users}</td>
+                    <td>${row.predictions}</td>
+                </tr>
+            `).join('');
+        }
+
+        // Period button handlers
+        document.querySelectorAll('.period-btn').forEach(btn => {
+            btn.addEventListener('click', async (e) => {
+                // Update active button
+                document.querySelectorAll('.period-btn').forEach(b => b.classList.remove('active'));
+                e.target.classList.add('active');
+                
+                // Load new data
+                currentPeriod = e.target.dataset.period;
+                await loadAnalytics(currentPeriod);
+            });
+        });
+
+        // Smooth scrolling for navigation links
+        document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+            anchor.addEventListener('click', function (e) {
+                e.preventDefault();
+                const target = document.querySelector(this.getAttribute('href'));
+                if (target) {
+                    target.scrollIntoView({
+                        behavior: 'smooth',
+                        block: 'start'
+                    });
+                }
+            });
+        });
+
+        // Initialize dashboard
+        document.addEventListener('DOMContentLoaded', async () => {
+            await loadDashboard();
+            await loadAnalytics('24h');
+            await loadRetention();
+        });
+
+        // Auto-refresh every 5 minutes
+        setInterval(async () => {
+            await loadDashboard();
+            await loadAnalytics(currentPeriod);
+            await loadRetention();
+        }, 5 * 60 * 1000);
+    </script>
+</body>
+</html>

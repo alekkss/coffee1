@@ -1,0 +1,491 @@
+<!DOCTYPE html>
+<html lang="ru">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🔮 Предсказания - Coffee Oracle Admin</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            color: #333;
+        }
+
+        .header {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            padding: 1rem 2rem;
+            box-shadow: 0 2px 20px rgba(0, 0, 0, 0.1);
+            margin-bottom: 2rem;
+        }
+
+        .header h1 {
+            color: #4a5568;
+            font-size: 1.5rem;
+        }
+
+        .header .nav-links {
+            margin-top: 0.5rem;
+            display: flex;
+            gap: 1.5rem;
+        }
+
+        .header .nav-links a {
+            color: #667eea;
+            text-decoration: none;
+            font-weight: 500;
+        }
+
+        .header .nav-links a:hover {
+            text-decoration: underline;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 0 2rem 2rem;
+        }
+
+        .data-section {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 16px;
+            padding: 2rem;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+        }
+
+        .controls {
+            display: flex;
+            gap: 1rem;
+            margin-bottom: 1.5rem;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+
+        .search-box input {
+            padding: 0.75rem 1rem;
+            border: 2px solid #e2e8f0;
+            border-radius: 8px;
+            font-size: 1rem;
+            min-width: 300px;
+        }
+
+        .search-box input:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .stats {
+            color: #718096;
+            font-size: 0.9rem;
+        }
+
+        .table-container {
+            overflow-x: auto;
+            border-radius: 8px;
+            border: 1px solid #e2e8f0;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            background: white;
+        }
+
+        th,
+        td {
+            padding: 1rem;
+            text-align: left;
+            border-bottom: 1px solid #e2e8f0;
+        }
+
+        th {
+            background: #f7fafc;
+            font-weight: 600;
+            color: #4a5568;
+            text-transform: uppercase;
+            font-size: 0.8rem;
+        }
+
+        tr:hover {
+            background: #f7fafc;
+        }
+
+        .prediction-text {
+            max-width: 400px;
+        }
+
+        .action-btn {
+            padding: 0.4rem 0.8rem;
+            border: 1px solid #667eea;
+            background: white;
+            color: #667eea;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.85rem;
+            font-weight: 500;
+        }
+
+        .action-btn:hover {
+            background: #667eea;
+            color: white;
+        }
+
+        .pagination {
+            display: flex;
+            gap: 0.5rem;
+            margin-top: 1.5rem;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .pagination button {
+            padding: 0.5rem 1rem;
+            border: 2px solid #e2e8f0;
+            background: white;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 500;
+        }
+
+        .pagination button:hover {
+            border-color: #667eea;
+        }
+
+        .pagination button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .pagination button.active {
+            background: #667eea;
+            color: white;
+            border-color: #667eea;
+        }
+
+        .pagination span {
+            color: #718096;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 2rem;
+            color: #718096;
+        }
+
+        .error {
+            background: #fed7d7;
+            color: #c53030;
+            padding: 1rem;
+            border-radius: 8px;
+        }
+
+        /* Modal */
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            backdrop-filter: blur(5px);
+        }
+
+        .modal-content {
+            background: white;
+            margin: 5% auto;
+            padding: 2rem;
+            border-radius: 16px;
+            width: 90%;
+            max-width: 800px;
+            max-height: 80vh;
+            overflow-y: auto;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1.5rem;
+            padding-bottom: 1rem;
+            border-bottom: 2px solid #e2e8f0;
+        }
+
+        .modal-title {
+            font-size: 1.25rem;
+            font-weight: 700;
+            color: #2d3748;
+        }
+
+        .close {
+            font-size: 2rem;
+            cursor: pointer;
+            color: #718096;
+            background: none;
+            border: none;
+        }
+
+        .close:hover {
+            color: #2d3748;
+        }
+
+        .prediction-full {
+            white-space: pre-wrap;
+            line-height: 1.6;
+            font-size: 1rem;
+        }
+
+        .meta {
+            margin-top: 1.5rem;
+            padding: 1rem;
+            background: #f7fafc;
+            border-radius: 8px;
+            font-size: 0.9rem;
+            color: #4a5568;
+        }
+
+        <style>
+        /* ... styles ... */
+    </style>
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+</head>
+
+<body>
+    <div class="header">
+        <h1>🔮 Предсказания</h1>
+        <div class="nav-links">
+            <a href="/">← Дашборд</a>
+            <a href="/users">👥 Пользователи</a>
+        </div>
+    </div>
+    <div class="container">
+        <div class="data-section">
+            <div class="controls">
+                <div class="search-box">
+                    <input type="text" id="search" placeholder="Поиск по тексту или имени пользователя..." />
+                </div>
+                <div class="stats" id="stats">Загрузка...</div>
+            </div>
+            <div class="table-container">
+                <table id="data-table">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Пользователь</th>
+                            <th>Фото</th>
+                            <th>Запрос</th>
+                            <th>Предсказание</th>
+                            <th>Дата</th>
+                            <th>Действия</th>
+                        </tr>
+                    </thead>
+                    <tbody id="table-body">
+                        <tr>
+                            <td colspan="5" class="loading">Загрузка...</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+            <div class="pagination" id="pagination"></div>
+        </div>
+    </div>
+
+    <div id="modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 class="modal-title">🔮 Предсказание</h2>
+                <button class="close" onclick="closeModal()">&times;</button>
+            </div>
+            <div id="modal-content-body">
+                <div id="modal-photo-container" style="text-align: center; margin-bottom: 1.5rem; display: none;">
+                    <img id="modal-photo" src=""
+                        style="max-width: 100%; max-height: 400px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
+                </div>
+                <div id="modal-request-container"
+                    style="margin-bottom: 1rem; padding: 1rem; background: #ebf8ff; border-radius: 8px; display: none;">
+                    <strong style="color: #2b6cb0;">Запрос пользователя:</strong>
+                    <div id="modal-request" style="margin-top: 0.5rem; color: #2c5282;"></div>
+                </div>
+                <div class="prediction-full" id="modal-text"></div>
+                <div class="meta" id="modal-meta"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let allData = [];
+        let filteredData = [];
+        let currentPage = 1;
+        const perPage = 50;
+
+        async function loadData() {
+            try {
+                const response = await fetch('/api/predictions');
+                allData = await response.json();
+                filteredData = [...allData];
+                renderTable();
+                updateStats();
+            } catch (error) {
+                document.getElementById('table-body').innerHTML =
+                    '<tr><td colspan="4" class="error">Ошибка загрузки</td></tr>';
+            }
+        }
+
+        function renderTable() {
+            const start = (currentPage - 1) * perPage;
+            const end = start + perPage;
+            const pageData = filteredData.slice(start, end);
+            const tbody = document.getElementById('table-body');
+
+            if (pageData.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="5">Предсказания не найдены</td></tr>';
+                return;
+            }
+
+            tbody.innerHTML = pageData.map(p => `
+                <tr>
+                    <td>${p.id}</td>
+                    <td>${p.user_name}</td>
+                    <td>
+                        ${p.photos && p.photos.length > 0 ?
+                    `<div style="position: relative; display: inline-block; cursor: pointer;" onclick="showPrediction(${p.id})">
+                                <img src="/media/${p.photos[0].file_path}" style="width: 50px; height: 50px; object-fit: cover; border-radius: 4px;">
+                                ${p.photos.length > 1 ?
+                        `<span style="position: absolute; bottom: -5px; right: -5px; background: #2b6cb0; color: white; font-size: 10px; padding: 2px 4px; border-radius: 4px;">+${p.photos.length - 1}</span>`
+                        : ''}
+                            </div>` :
+                    (p.photo_path ?
+                        `<img src="/media/${p.photo_path}" style="width: 50px; height: 50px; object-fit: cover; border-radius: 4px; cursor: pointer;" onclick="showPrediction(${p.id})">` :
+                        '<span style="color: #cbd5e0;">Нет фото</span>'
+                    )
+                }
+                    </td>
+                    <td>
+                        ${p.user_request ?
+                    (p.user_request.length > 30 ? p.user_request.substring(0, 30) + '...' : p.user_request) :
+                    '<span style="color: #cbd5e0;">-</span>'
+                }
+                    </td>
+                    <td class="prediction-text">
+                        ${p.prediction_text.length > 80 ? p.prediction_text.substring(0, 80) + '...' : p.prediction_text}
+                    </td>
+                    <td>${new Date(p.created_at).toLocaleString('ru-RU')}</td>
+                    <td><button class="action-btn" onclick="showPrediction(${p.id})">👁 Просмотр</button></td>
+                </tr>
+            `).join('');
+
+            renderPagination();
+        }
+
+        function renderPagination() {
+            const totalPages = Math.ceil(filteredData.length / perPage);
+            const pagination = document.getElementById('pagination');
+
+            if (totalPages <= 1) { pagination.innerHTML = ''; return; }
+
+            let html = `<button onclick="goToPage(1)" ${currentPage === 1 ? 'disabled' : ''}>«</button>`;
+            html += `<button onclick="goToPage(${currentPage - 1})" ${currentPage === 1 ? 'disabled' : ''}>‹</button>`;
+
+            const startPage = Math.max(1, currentPage - 2);
+            const endPage = Math.min(totalPages, currentPage + 2);
+
+            for (let i = startPage; i <= endPage; i++) {
+                html += `<button onclick="goToPage(${i})" class="${i === currentPage ? 'active' : ''}">${i}</button>`;
+            }
+
+            html += `<button onclick="goToPage(${currentPage + 1})" ${currentPage === totalPages ? 'disabled' : ''}>›</button>`;
+            html += `<button onclick="goToPage(${totalPages})" ${currentPage === totalPages ? 'disabled' : ''}>»</button>`;
+            html += `<span>Страница ${currentPage} из ${totalPages}</span>`;
+
+            pagination.innerHTML = html;
+        }
+
+        function goToPage(page) {
+            currentPage = page;
+            renderTable();
+        }
+
+        function updateStats() {
+            document.getElementById('stats').textContent =
+                `Всего: ${allData.length} | Показано: ${filteredData.length}`;
+        }
+
+        function showPrediction(id) {
+            const p = allData.find(x => x.id === id);
+            if (!p) return;
+
+            // Show/hide photo
+            const photoContainer = document.getElementById('modal-photo-container');
+
+            if (p.photos && p.photos.length > 0) {
+                // Gallery mode
+                let galleryHtml = '<div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px;">';
+                p.photos.forEach(photo => {
+                    galleryHtml += `<img src="/media/${photo.file_path}" style="width: 100%; height: 150px; object-fit: cover; border-radius: 4px; cursor: pointer;" onclick="window.open('/media/${photo.file_path}', '_blank')">`;
+                });
+                galleryHtml += '</div>';
+                photoContainer.innerHTML = galleryHtml;
+                photoContainer.style.display = 'block';
+            } else if (p.photo_path) {
+                // Single photo legacy mode
+                photoContainer.innerHTML = `<img src="/media/${p.photo_path}" style="max-width: 100%; max-height: 400px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">`;
+                photoContainer.style.display = 'block';
+            } else {
+                photoContainer.style.display = 'none';
+            }
+
+            // Show/hide request
+            const reqContainer = document.getElementById('modal-request-container');
+            const reqText = document.getElementById('modal-request');
+            if (p.user_request) {
+                reqText.textContent = p.user_request;
+                reqContainer.style.display = 'block';
+            } else {
+                reqContainer.style.display = 'none';
+            }
+
+            document.getElementById('modal-text').innerHTML = marked.parse(p.prediction_text);
+            document.getElementById('modal-meta').innerHTML = `
+                <strong>ID:</strong> ${p.id} | 
+                <strong>Пользователь:</strong> ${p.user_name} | 
+                <strong>Дата:</strong> ${new Date(p.created_at).toLocaleString('ru-RU')} |
+                <strong>Символов:</strong> ${p.prediction_text.length}
+            `;
+            document.getElementById('modal').style.display = 'block';
+        }
+
+        function closeModal() {
+            document.getElementById('modal').style.display = 'none';
+        }
+
+        window.onclick = (e) => {
+            if (e.target === document.getElementById('modal')) closeModal();
+        };
+
+        document.getElementById('search').addEventListener('input', (e) => {
+            const term = e.target.value.toLowerCase();
+            filteredData = allData.filter(p =>
+                p.prediction_text.toLowerCase().includes(term) ||
+                (p.user_name || '').toLowerCase().includes(term)
+            );
+            currentPage = 1;
+            renderTable();
+            updateStats();
+        });
+
+        loadData();
+    </script>
+</body>
+
+</html>

@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>👥 Пользователи - Coffee Oracle Admin</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            color: #333;
+        }
+        .header {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            padding: 1rem 2rem;
+            box-shadow: 0 2px 20px rgba(0,0,0,0.1);
+            margin-bottom: 2rem;
+        }
+        .header h1 { color: #4a5568; font-size: 1.5rem; }
+        .header .nav-links { margin-top: 0.5rem; display: flex; gap: 1.5rem; }
+        .header .nav-links a { color: #667eea; text-decoration: none; font-weight: 500; }
+        .header .nav-links a:hover { text-decoration: underline; }
+        .container { max-width: 1400px; margin: 0 auto; padding: 0 2rem 2rem; }
+        .data-section {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 16px;
+            padding: 2rem;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.1);
+        }
+        .controls { display: flex; gap: 1rem; margin-bottom: 1.5rem; flex-wrap: wrap; align-items: center; }
+        .search-box input {
+            padding: 0.75rem 1rem;
+            border: 2px solid #e2e8f0;
+            border-radius: 8px;
+            font-size: 1rem;
+            min-width: 300px;
+        }
+        .search-box input:focus { outline: none; border-color: #667eea; }
+        .stats { color: #718096; font-size: 0.9rem; }
+        .table-container { overflow-x: auto; border-radius: 8px; border: 1px solid #e2e8f0; }
+        table { width: 100%; border-collapse: collapse; background: white; }
+        th, td { padding: 1rem; text-align: left; border-bottom: 1px solid #e2e8f0; }
+        th { background: #f7fafc; font-weight: 600; color: #4a5568; text-transform: uppercase; font-size: 0.8rem; }
+        tr:hover { background: #f7fafc; }
+        .telegram-link { color: #667eea; text-decoration: none; }
+        .telegram-link:hover { text-decoration: underline; }
+        .pagination { display: flex; gap: 0.5rem; margin-top: 1.5rem; justify-content: center; align-items: center; }
+        .pagination button {
+            padding: 0.5rem 1rem;
+            border: 2px solid #e2e8f0;
+            background: white;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 500;
+        }
+        .pagination button:hover { border-color: #667eea; }
+        .pagination button:disabled { opacity: 0.5; cursor: not-allowed; }
+        .pagination button.active { background: #667eea; color: white; border-color: #667eea; }
+        .pagination span { color: #718096; }
+        .loading { text-align: center; padding: 2rem; color: #718096; }
+        .error { background: #fed7d7; color: #c53030; padding: 1rem; border-radius: 8px; }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>👥 Пользователи</h1>
+        <div class="nav-links">
+            <a href="/">← Дашборд</a>
+            <a href="/predictions">🔮 Предсказания</a>
+        </div>
+    </div>
+    <div class="container">
+        <div class="data-section">
+            <div class="controls">
+                <div class="search-box">
+                    <input type="text" id="search" placeholder="Поиск по имени или username..." />
+                </div>
+                <div class="stats" id="stats">Загрузка...</div>
+            </div>
+            <div class="table-container">
+                <table id="data-table">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Telegram ID</th>
+                            <th>Username</th>
+                            <th>Полное имя</th>
+                            <th>Предсказаний</th>
+                            <th>Дата регистрации</th>
+                        </tr>
+                    </thead>
+                    <tbody id="table-body">
+                        <tr><td colspan="6" class="loading">Загрузка...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+            <div class="pagination" id="pagination"></div>
+        </div>
+    </div>
+    <script>
+        let allData = [];
+        let filteredData = [];
+        let currentPage = 1;
+        const perPage = 50;
+
+        async function loadData() {
+            try {
+                const response = await fetch('/api/users');
+                allData = await response.json();
+                filteredData = [...allData];
+                renderTable();
+                updateStats();
+            } catch (error) {
+                document.getElementById('table-body').innerHTML = 
+                    '<tr><td colspan="5" class="error">Ошибка загрузки</td></tr>';
+            }
+        }
+
+        function renderTable() {
+            const start = (currentPage - 1) * perPage;
+            const end = start + perPage;
+            const pageData = filteredData.slice(start, end);
+            const tbody = document.getElementById('table-body');
+            
+            if (pageData.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="6">Пользователи не найдены</td></tr>';
+                return;
+            }
+            
+            tbody.innerHTML = pageData.map(user => `
+                <tr>
+                    <td>${user.id}</td>
+                    <td>${user.telegram_id}</td>
+                    <td>${user.username ? `<a href="https://t.me/${user.username}" target="_blank" class="telegram-link">@${user.username}</a>` : '—'}</td>
+                    <td>${user.full_name}</td>
+                    <td>${user.predictions_count || 0}</td>
+                    <td>${new Date(user.created_at).toLocaleString('ru-RU')}</td>
+                </tr>
+            `).join('');
+            
+            renderPagination();
+        }
+
+        function renderPagination() {
+            const totalPages = Math.ceil(filteredData.length / perPage);
+            const pagination = document.getElementById('pagination');
+            
+            if (totalPages <= 1) { pagination.innerHTML = ''; return; }
+            
+            let html = `<button onclick="goToPage(1)" ${currentPage === 1 ? 'disabled' : ''}>«</button>`;
+            html += `<button onclick="goToPage(${currentPage - 1})" ${currentPage === 1 ? 'disabled' : ''}>‹</button>`;
+            
+            const startPage = Math.max(1, currentPage - 2);
+            const endPage = Math.min(totalPages, currentPage + 2);
+            
+            for (let i = startPage; i <= endPage; i++) {
+                html += `<button onclick="goToPage(${i})" class="${i === currentPage ? 'active' : ''}">${i}</button>`;
+            }
+            
+            html += `<button onclick="goToPage(${currentPage + 1})" ${currentPage === totalPages ? 'disabled' : ''}>›</button>`;
+            html += `<button onclick="goToPage(${totalPages})" ${currentPage === totalPages ? 'disabled' : ''}>»</button>`;
+            html += `<span>Страница ${currentPage} из ${totalPages}</span>`;
+            
+            pagination.innerHTML = html;
+        }
+
+        function goToPage(page) {
+            currentPage = page;
+            renderTable();
+        }
+
+        function updateStats() {
+            document.getElementById('stats').textContent = 
+                `Всего: ${allData.length} | Показано: ${filteredData.length}`;
+        }
+
+        document.getElementById('search').addEventListener('input', (e) => {
+            const term = e.target.value.toLowerCase();
+            filteredData = allData.filter(u => 
+                (u.username || '').toLowerCase().includes(term) ||
+                (u.full_name || '').toLowerCase().includes(term) ||
+                String(u.telegram_id).includes(term)
+            );
+            currentPage = 1;
+            renderTable();
+            updateStats();
+        });
+
+        loadData();
+    </script>
+</body>
+</html>

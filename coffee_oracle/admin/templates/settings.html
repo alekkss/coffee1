@@ -1,0 +1,363 @@
+<!DOCTYPE html>
+<html lang="ru">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>⚙️ Настройки - Coffee Oracle Admin</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            color: #333;
+        }
+
+        .header {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            padding: 1rem 2rem;
+            box-shadow: 0 2px 20px rgba(0, 0, 0, 0.1);
+            margin-bottom: 2rem;
+        }
+
+        .header h1 {
+            color: #4a5568;
+            font-size: 1.5rem;
+        }
+
+        .header .nav-links {
+            margin-top: 0.5rem;
+            display: flex;
+            gap: 1.5rem;
+        }
+
+        .header .nav-links a {
+            color: #667eea;
+            text-decoration: none;
+            font-weight: 500;
+        }
+
+        .header .nav-links a:hover {
+            text-decoration: underline;
+        }
+
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+            padding: 0 2rem 2rem;
+        }
+
+        .settings-section {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 16px;
+            padding: 2rem;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+        }
+
+        .settings-grid {
+            display: grid;
+            gap: 1.5rem;
+        }
+
+        .setting-item {
+            background: #f7fafc;
+            border-radius: 12px;
+            padding: 1.5rem;
+            border: 1px solid #e2e8f0;
+        }
+
+        .setting-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 0.5rem;
+        }
+
+        .setting-label {
+            font-weight: 600;
+            color: #2d3748;
+            font-size: 1rem;
+        }
+
+        .setting-description {
+            font-size: 0.85rem;
+            color: #718096;
+            margin-bottom: 1rem;
+        }
+
+        .setting-input {
+            width: 100%;
+            padding: 0.75rem 1rem;
+            border: 2px solid #e2e8f0;
+            border-radius: 8px;
+            font-size: 1rem;
+            font-family: inherit;
+            background: white;
+        }
+
+        .setting-input:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .setting-textarea {
+            min-height: 150px;
+            resize: vertical;
+            font-family: 'Monaco', 'Menlo', monospace;
+            font-size: 0.9rem;
+            line-height: 1.5;
+        }
+
+        .setting-textarea.large {
+            min-height: 300px;
+        }
+
+        .number-input-group {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .number-input-group input {
+            max-width: 150px;
+        }
+
+        .hint {
+            font-size: 0.85rem;
+            color: #718096;
+        }
+
+        .settings-actions {
+            display: flex;
+            gap: 1rem;
+            margin-top: 2rem;
+            flex-wrap: wrap;
+        }
+
+        .btn {
+            padding: 0.75rem 1.5rem;
+            border: none;
+            border-radius: 8px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+        }
+
+        .btn-primary {
+            background: #667eea;
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: #5a67d8;
+        }
+
+        .btn-secondary {
+            background: #e2e8f0;
+            color: #4a5568;
+        }
+
+        .btn-secondary:hover {
+            background: #cbd5e0;
+        }
+
+        .btn-danger {
+            background: #fc8181;
+            color: white;
+        }
+
+        .btn-danger:hover {
+            background: #f56565;
+        }
+
+        .status {
+            padding: 1rem;
+            border-radius: 8px;
+            margin-bottom: 1.5rem;
+            display: none;
+        }
+
+        .status.success {
+            background: #c6f6d5;
+            color: #276749;
+            display: block;
+        }
+
+        .status.error {
+            background: #fed7d7;
+            color: #c53030;
+            display: block;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 2rem;
+            color: #718096;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="header">
+        <h1>⚙️ Настройки бота</h1>
+        <div class="nav-links">
+            <a href="/">← Дашборд</a>
+            <a href="/users">👥 Пользователи</a>
+            <a href="/predictions">🔮 Предсказания</a>
+        </div>
+    </div>
+    <div class="container">
+        <div class="settings-section">
+            <div id="status" class="status"></div>
+            <div class="settings-grid" id="settings-grid">
+                <div class="loading">Загрузка настроек...</div>
+            </div>
+            <div class="settings-actions">
+                <button class="btn btn-primary" onclick="saveSettings()">💾 Сохранить изменения</button>
+                <button class="btn btn-secondary" onclick="loadSettings()">🔄 Отменить изменения</button>
+                <button class="btn btn-danger" onclick="resetSettings()">⚠️ Сбросить к умолчаниям</button>
+            </div>
+        </div>
+    </div>
+    <script>
+        const settingsConfig = {
+            'system_prompt': { label: '🤖 Системный промпт', type: 'textarea', large: true },
+            'temperature': { label: '🌡️ Температура', type: 'number', min: 0, max: 2, step: 0.1 },
+            'analyze_all_photos': {
+                label: '🎞️ Анализ нескольких фото', type: 'select', options: [
+                    { value: 'true', label: 'Анализировать все фото вместе' },
+                    { value: 'false', label: 'Только первое фото' }
+                ]
+            },
+            'welcome_message': { label: '👋 Приветственное сообщение', type: 'textarea' },
+            'photo_instruction': { label: '📸 Инструкция для фото', type: 'textarea' },
+            'processing_message': { label: '⏳ Сообщение обработки', type: 'text' },
+            'about_text': { label: 'ℹ️ Текст "О боте"', type: 'textarea' },
+            'filter_bad_words': {
+                label: '🚫 Фильтр плохих слов', type: 'select', options: [
+                    { value: 'true', label: 'Включен (по умолчанию)' },
+                    { value: 'false', label: 'Отключен' }
+                ]
+            }
+        };
+
+        async function loadSettings() {
+            try {
+                const response = await fetch('/api/settings');
+                const data = await response.json();
+                renderSettings(data.settings);
+            } catch (error) {
+                document.getElementById('settings-grid').innerHTML =
+                    '<div class="error">Ошибка загрузки настроек</div>';
+            }
+        }
+
+        function renderSettings(settings) {
+            const grid = document.getElementById('settings-grid');
+            let html = '';
+
+            for (const [key, config] of Object.entries(settingsConfig)) {
+                const setting = settings[key] || { value: '', description: '' };
+                const updatedAt = setting.updated_at
+                    ? `Обновлено: ${new Date(setting.updated_at).toLocaleString('ru-RU')}`
+                    : 'Значение по умолчанию';
+
+                html += `<div class="setting-item">
+                    <div class="setting-header">
+                        <label class="setting-label">${config.label}</label>
+                        <span class="hint">${updatedAt}</span>
+                    </div>
+                    <div class="setting-description">${setting.description || ''}</div>`;
+
+                if (config.type === 'textarea') {
+                    html += `<textarea class="setting-input setting-textarea ${config.large ? 'large' : ''}" 
+                        id="setting-${key}" data-key="${key}">${escapeHtml(setting.value)}</textarea>`;
+                } else if (config.type === 'number') {
+                    html += `<div class="number-input-group">
+                        <input type="number" class="setting-input" id="setting-${key}" data-key="${key}"
+                            value="${setting.value}" min="${config.min}" max="${config.max}" step="${config.step}" />
+                        <span class="hint">Диапазон: ${config.min} - ${config.max}</span>
+                    </div>`;
+                } else if (config.type === 'select') {
+                    const options = config.options.map(opt =>
+                        `<option value="${opt.value}" ${setting.value === opt.value ? 'selected' : ''}>${opt.label}</option>`
+                    ).join('');
+                    html += `<select class="setting-input" id="setting-${key}" data-key="${key}">${options}</select>`;
+                } else {
+                    html += `<input type="text" class="setting-input" id="setting-${key}" 
+                        data-key="${key}" value="${escapeHtml(setting.value)}" />`;
+                }
+                html += '</div>';
+            }
+            grid.innerHTML = html;
+        }
+
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        function showStatus(message, isError = false) {
+            const el = document.getElementById('status');
+            el.textContent = message;
+            el.className = 'status ' + (isError ? 'error' : 'success');
+            setTimeout(() => { el.className = 'status'; }, 5000);
+        }
+
+        async function saveSettings() {
+            try {
+                const inputs = document.querySelectorAll('[data-key]');
+                const data = {};
+                inputs.forEach(input => { data[input.dataset.key] = input.value; });
+
+                const response = await fetch('/api/settings', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(data)
+                });
+                const result = await response.json();
+
+                if (result.success) {
+                    await fetch('/api/settings/clear-cache', { method: 'POST' });
+                    showStatus('✅ Настройки сохранены! Изменения применены.');
+                    setTimeout(() => loadSettings(), 1500);
+                } else {
+                    throw new Error(result.error);
+                }
+            } catch (error) {
+                showStatus('❌ Ошибка сохранения: ' + error.message, true);
+            }
+        }
+
+        async function resetSettings() {
+            if (!confirm('⚠️ Сбросить ВСЕ настройки к значениям по умолчанию?\n\nЭто действие нельзя отменить!')) return;
+
+            try {
+                const response = await fetch('/api/settings/reset', { method: 'POST' });
+                const result = await response.json();
+
+                if (result.success) {
+                    showStatus('✅ Настройки сброшены к значениям по умолчанию!');
+                    await loadSettings();
+                } else {
+                    throw new Error(result.error);
+                }
+            } catch (error) {
+                showStatus('❌ Ошибка сброса: ' + error.message, true);
+            }
+        }
+
+        loadSettings();
+    </script>
+</body>
+
+</html>

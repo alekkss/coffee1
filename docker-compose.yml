@@ -1,0 +1,37 @@
+services:
+  coffee-oracle-bot:
+    build: .
+    container_name: coffee_oracle_bot
+    restart: always
+    env_file:
+      - .env
+    volumes:
+      - ./db_data:/app/data  # Persist SQLite database
+      - ./logs:/app/logs     # Persist logs
+      - coffee_media:/app/media # Persist media files
+    ports:
+      - "8000:8000"  # Admin panel port
+    environment:
+      - PYTHONPATH=/app
+      - PYTHONUNBUFFERED=1
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+    healthcheck:
+      test: ["CMD", "python", "-c", "import requests; requests.get('http://localhost:8000/health')"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    networks:
+      - coffee-oracle-network
+
+networks:
+  coffee-oracle-network:
+    driver: bridge
+
+volumes:
+  db_data:
+    driver: local
+  logs:
+    driver: local
+  coffee_media:
+    driver: local
