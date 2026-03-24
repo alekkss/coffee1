@@ -1,9 +1,13 @@
-"""Main application entry point."""
+"""Главная точка входа приложения.
+
+Запускает параллельно Telegram-бота, MAX-бота (опционально)
+и админ-панель FastAPI. Управляет жизненным циклом всех сервисов.
+"""
 
 import asyncio
 import signal
 import sys
-from typing import Any
+from typing import Any, Optional
 
 import uvicorn
 
@@ -13,141 +17,197 @@ from coffee_oracle.config import config
 from coffee_oracle.database.connection import db_manager
 from coffee_oracle.utils.logging import setup_logging, get_logger
 
-# Setup logging
+# Настройка логирования
 setup_logging(level="INFO", log_file="logs/coffee_oracle.log")
 logger = get_logger(__name__)
 
 
 class ApplicationOrchestrator:
-    """Main application orchestrator."""
-    
-    def __init__(self):
+    """Главный оркестратор приложения.
+
+    Управляет параллельным запуском и корректным завершением
+    всех сервисов: Telegram-бот, MAX-бот, админ-панель.
+    """
+
+    def __init__(self) -> None:
         self.bot = CoffeeOracleBot()
-        self.admin_server = None
+        self.max_bot: Optional[Any] = None
+        self.admin_server: Optional[uvicorn.Server] = None
         self.shutdown_event = asyncio.Event()
-    
+
+        # MAX-бот создаётся только если токен указан в конфигурации
+        self._init_max_bot()
+
+    def _init_max_bot(self) -> None:
+        """Инициализация MAX-бота если токен доступен."""
+        max_token = getattr(config, "max_bot_token", None)
+        if not max_token:
+            logger.info("MAX_BOT_TOKEN не задан — MAX-бот не будет запущен")
+            return
+
+        try:
+            from coffee_oracle.max_bot.bot import MaxOracleBot
+
+            self.max_bot = MaxOracleBot(token=max_token)
+            logger.info("MAX-бот инициализирован")
+        except ImportError as e:
+            logger.warning(
+                "Не удалось импортировать модуль MAX-бота: %s. "
+                "MAX-бот не будет запущен",
+                e,
+            )
+        except Exception as e:
+            logger.error("Ошибка инициализации MAX-бота: %s", e)
+
     async def start_admin_server(self) -> None:
-        """Start FastAPI admin server."""
+        """Запуск FastAPI админ-сервера."""
         config_uvicorn = uvicorn.Config(
             admin_app,
             host="0.0.0.0",
             port=config.admin_port,
             log_level="info",
-            access_log=True
+            access_log=True,
         )
-        
+
         self.admin_server = uvicorn.Server(config_uvicorn)
-        logger.info("Starting admin server on port %d", config.admin_port)
-        
+        logger.info("Запуск админ-сервера на порту %d", config.admin_port)
+
         try:
             await self.admin_server.serve()
         except Exception as e:
-            logger.error("Admin server error: %s", e)
+            logger.error("Ошибка админ-сервера: %s", e)
             raise
-    
+
     async def start_bot(self) -> None:
-        """Start Telegram bot."""
-        logger.info("Starting Telegram bot")
-        
+        """Запуск Telegram-бота."""
+        logger.info("Запуск Telegram-бота")
+
         try:
             await self.bot.start_polling()
         except Exception as e:
-            logger.error("Bot error: %s", e)
+            logger.error("Ошибка Telegram-бота: %s", e)
             raise
-    
+
+    async def start_max_bot(self) -> None:
+        """Запуск MAX-бота."""
+        if not self.max_bot:
+            return
+
+        logger.info("Запуск MAX-бота")
+
+        try:
+            await self.max_bot.start_polling()
+        except Exception as e:
+            logger.error("Ошибка MAX-бота: %s", e)
+            raise
+
     async def setup_database(self) -> None:
-        """Initialize database."""
-        logger.info("Setting up database...")
+        """Инициализация базы данных."""
+        logger.info("Настройка базы данных...")
         try:
             await db_manager.create_tables()
-            logger.info("Database setup completed")
+            logger.info("База данных настроена")
         except Exception as e:
-            logger.error("Database setup error: %s", e)
+            logger.error("Ошибка настройки базы данных: %s", e)
             raise
-    
+
     async def start_services(self) -> None:
-        """Start all services concurrently."""
-        logger.info("Starting Coffee Oracle services...")
-        
-        # Setup database first
+        """Запуск всех сервисов параллельно."""
+        logger.info("Запуск сервисов Coffee Oracle...")
+
+        # Сначала инициализация БД
         await self.setup_database()
-        
-        # Start both services concurrently
+
+        # Формирование списка задач
         tasks = [
             asyncio.create_task(self.start_bot(), name="telegram_bot"),
-            asyncio.create_task(self.start_admin_server(), name="admin_server")
+            asyncio.create_task(self.start_admin_server(), name="admin_server"),
         ]
-        
+
+        # MAX-бот добавляется только если инициализирован
+        if self.max_bot:
+            tasks.append(
+                asyncio.create_task(self.start_max_bot(), name="max_bot")
+            )
+            logger.info("MAX-бот добавлен в список сервисов")
+
         try:
-            # Wait for shutdown signal or any task to complete
+            # Ожидание сигнала завершения или завершения любой задачи
             _, pending = await asyncio.wait(
                 tasks + [asyncio.create_task(self.shutdown_event.wait())],
-                return_when=asyncio.FIRST_COMPLETED
+                return_when=asyncio.FIRST_COMPLETED,
             )
-            
-            # Cancel remaining tasks
+
+            # Отмена оставшихся задач
             for task in pending:
                 task.cancel()
                 try:
                     await task
                 except asyncio.CancelledError:
                     pass
-            
+
         except Exception as e:
-            logger.error("Service error: %s", e)
+            logger.error("Ошибка сервиса: %s", e)
             raise
         finally:
             await self.cleanup()
-    
+
     async def cleanup(self) -> None:
-        """Cleanup resources."""
-        logger.info("Cleaning up resources...")
-        
+        """Освобождение ресурсов при завершении."""
+        logger.info("Освобождение ресурсов...")
+
         try:
-            # Stop bot
+            # Остановка Telegram-бота
             await self.bot.stop()
-            
-            # Stop admin server
+
+            # Остановка MAX-бота
+            if self.max_bot:
+                try:
+                    await self.max_bot.stop()
+                except Exception as e:
+                    logger.error("Ошибка остановки MAX-бота: %s", e)
+
+            # Остановка админ-сервера
             if self.admin_server:
                 self.admin_server.should_exit = True
-            
-            # Close database connections
+
+            # Закрытие соединений с БД
             await db_manager.close()
-            
-            logger.info("Cleanup completed")
+
+            logger.info("Ресурсы освобождены")
         except Exception as e:
-            logger.error("Cleanup error: %s", e)
-    
+            logger.error("Ошибка освобождения ресурсов: %s", e)
+
     def signal_handler(self, signum: int, _: Any) -> None:
-        """Handle shutdown signals."""
-        logger.info("Received signal %d, initiating shutdown...", signum)
+        """Обработка сигналов завершения."""
+        logger.info("Получен сигнал %d, начинаю завершение...", signum)
         self.shutdown_event.set()
 
 
 async def main() -> None:
-    """Main application function."""
+    """Главная асинхронная функция приложения."""
     orchestrator = ApplicationOrchestrator()
-    
-    # Setup signal handlers
+
+    # Установка обработчиков сигналов
     for sig in (signal.SIGTERM, signal.SIGINT):
         signal.signal(sig, orchestrator.signal_handler)
-    
+
     try:
         await orchestrator.start_services()
     except KeyboardInterrupt:
-        logger.info("Received keyboard interrupt")
+        logger.info("Получено прерывание с клавиатуры")
     except Exception as e:
-        logger.error("Application error: %s", e)
+        logger.error("Ошибка приложения: %s", e)
         sys.exit(1)
-    
-    logger.info("Coffee Oracle application stopped")
+
+    logger.info("Приложение Coffee Oracle остановлено")
 
 
 if __name__ == "__main__":
     try:
         asyncio.run(main())
     except KeyboardInterrupt:
-        logger.info("Application interrupted by user")
+        logger.info("Приложение прервано пользователем")
     except Exception as e:
-        logger.error("Fatal error: %s", e)
+        logger.error("Критическая ошибка: %s", e)
         sys.exit(1)
