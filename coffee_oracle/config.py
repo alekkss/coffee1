@@ -29,7 +29,7 @@ class Config:
 
     # База данных
     database_url: str = ""
-    admin_port: int = 8000
+    admin_port: int = 8008
 
     # MAX-бот (опционально — если не задан, MAX-бот не запускается)
     max_bot_token: Optional[str] = None
@@ -80,7 +80,7 @@ class Config:
         database_url = f"sqlite+aiosqlite:///data/{db_name}"
 
         # Опциональный порт админки
-        admin_port = int(os.getenv("ADMIN_PORT", "8000"))
+        admin_port = int(os.getenv("ADMIN_PORT", "8008"))
 
         # LiteLLM / OpenAI конфигурация
         litellm_model = os.getenv("LITELLM_MODEL", "gpt-4o-mini")
