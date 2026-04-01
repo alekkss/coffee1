@@ -1,8 +1,8 @@
 # ☕🔮 Coffee Oracle Bot
 
-**Telegram-бот для гадания на кофейной гуще с использованием AI Vision**
+**Мультиплатформенный бот для гадания на кофейной гуще с использованием AI Vision**
 
-Бот анализирует фотографии кофейной гущи через OpenAI-совместимый Vision API и генерирует мистические позитивные предсказания в стихах. Включает админ-панель с аналитикой, систему подписок с оплатой через YooKassa и автопродлением.
+Бот работает одновременно в Telegram и мессенджере MAX. Анализирует фотографии кофейной гущи через OpenAI-совместимый Vision API и генерирует мистические позитивные предсказания в стихах. Включает админ-панель с аналитикой, систему подписок с оплатой через YooKassa и автопродлением. Все данные из обоих мессенджеров хранятся в общей базе и отображаются в единой админ-панели.
 
 ---
 
@@ -33,26 +33,38 @@
 Приложение состоит из трёх основных компонентов, запускаемых параллельно через `ApplicationOrchestrator` в `main.py`:
 
 ```
-┌──────────────────────────────────────────────────────────────┐
-│                   ApplicationOrchestrator                     │
-│                                                              │
-│  ┌──────────────┐  ┌──────────────┐  ┌────────────────────┐ │
-│  │ Telegram Bot  │  │ Admin Panel  │  │ Subscription       │ │
-│  │ (aiogram 3.x) │  │ (FastAPI +   │  │ Scheduler          │ │
-│  │ Long Polling  │  │  Uvicorn)    │  │ (asyncio background│ │
-│  └──────┬───────┘  └──────┬───────┘  │  task, 6h interval)│ │
-│         │                 │          └─────────┬──────────┘ │
-│         └────────┬────────┘                    │            │
-│                  │                             │            │
-│          ┌───────▼──────────┐    ┌─────────────▼──────────┐ │
-│          │  LLM API         │    │  YooKassa API          │ │
-│          │  (OpenAI-compat) │    │  (Платежи, рекурренты) │ │
-│          └──────────────────┘    └────────────────────────┘ │
-│                                                              │
-│          ┌──────────────────────────────────────┐           │
-│          │  SQLite + SQLAlchemy (async, WAL)     │           │
-│          └──────────────────────────────────────┘           │
-└──────────────────────────────────────────────────────────────┘
+┌───────────────────────────────────────────────────────────────────┐
+│                    ApplicationOrchestrator                         │
+│                                                                   │
+│  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐           │
+│  │ Telegram Bot  │  │  MAX Bot     │  │ Admin Panel  │           │
+│  │ (aiogram 3.x) │  │ (aiohttp +   │  │ (FastAPI +   │           │
+│  │ Long Polling  │  │  Long Polling)│  │  Uvicorn)    │           │
+│  │ source="tg"  │  │ source="max" │  └──────┬───────┘           │
+│  └──────┬───────┘  └──────┬───────┘         │                   │
+│         │                 │                  │                   │
+│         └────────┬────────┘         ┌────────┘                   │
+│                  │                  │    ┌────────────────────┐   │
+│                  │                  │    │ Subscription       │   │
+│                  │                  │    │ Scheduler          │   │
+│                  │                  │    │ (6h interval)      │   │
+│                  │                  │    └─────────┬──────────┘   │
+│          ┌───────▼──────────┐       │              │              │
+│          │  LLM API         │    ┌──▼──────────────▼──────────┐  │
+│          │  (OpenAI-compat) │    │  YooKassa API              │  │
+│          └──────────────────┘    │  (Платежи, рекурренты)     │  │
+│                                  └────────────────────────────┘  │
+│          ┌──────────────────────────────────────┐                │
+│          │  SQLite + SQLAlchemy (async, WAL)     │                │
+│          │  Общая БД: users.source = 'tg'|'max' │                │
+│          └──────────────────────────────────────┘                │
+└───────────────────────────────────────────────────────────────────┘
+
+Компоненты запускаются условно:
+- Telegram Bot — если задан BOT_TOKEN
+- MAX Bot — если задан MAX_BOT_TOKEN
+- Admin Panel — запускается всегда
+- Subscription Scheduler — привязан к Telegram-боту
 ```
 
 ### Поток обработки предсказания
@@ -112,6 +124,54 @@ PaymentService.create_first_payment() → YooKassa API
 Активация premium на 1 месяц + включение автопродления
 ```
 
+### Разделение пользователей по платформам
+
+Пользователи из Telegram и MAX хранятся в общей таблице `users` с разделением по полю `source`:
+
+| source | Платформа | Бот | Пространство ID |
+|--------|-----------|-----|-----------------|
+| `tg`   | Telegram  | CoffeeOracleBot (aiogram) | Telegram user_id |
+| `max`  | MAX       | MaxOracleBot (aiohttp)    | MAX user_id      |
+
+Составной unique constraint `(telegram_id, source)` исключает коллизии ID между платформами.
+Все предсказания, фото и платежи привязаны к внутреннему `users.id`, не зависящему от платформы.
+
+## MAX-бот
+
+Параллельный бот для мессенджера MAX (platform-api.max.ru). Функционально повторяет Telegram-бота
+(предсказания по фото, история, случайные предсказания), но без системы подписок и платежей.
+
+### Компоненты
+
+| Компонент | Файл | Описание |
+|-----------|------|----------|
+| MaxOracleBot | `max_bot/bot.py` | Главный класс: инициализация, цикл long polling, graceful shutdown |
+| MaxApiClient | `max_bot/api_client.py` | HTTP-клиент для MAX Bot API (aiohttp). Отправка/редактирование сообщений, callback-ответы, скачивание файлов |
+| MaxBotHandlers | `max_bot/handlers.py` | Маршрутизация обновлений: bot_started, message_created, message_callback |
+| MaxPhotoProcessor | `max_bot/photo_processor.py` | Скачивание фото через MAX API, ресайз (≤800×800), сохранение, анализ через LLM |
+| MaxKeyboardManager | `max_bot/keyboards.py` | Формирование inline-клавиатур в формате MAX API |
+
+### Особенности MAX API
+
+- Авторизация: заголовок `Authorization: <token>` (без Bearer)
+- Long polling: `GET /updates` с параметрами `marker`, `timeout`, `types`
+- Сообщения: `POST /messages`, `PUT /messages`, `DELETE /messages`
+- Callback-ответы: `POST /answers` с `callback_id`
+- Фото приходят как вложения типа `image` с прямым URL в поле `payload.url`
+- Лимит сообщения: 4000 символов (против 4096 у Telegram)
+- Клавиатуры: передаются через `attachments` как объект `inline_keyboard`
+
+### Переподключение при ошибках
+
+Экспоненциальная задержка: 1с → 2с → 4с → ... → 60с (максимум). Сбрасывается при успешном опросе.
+
+### Ограничения MAX-бота
+
+- Нет системы подписок и платежей (нет аналога YooKassa для MAX)
+- Нет MediaGroupMiddleware — MAX отправляет все фото в одном сообщении
+- Нет FSM-состояний
+- Нет форматирования текста (Markdown/HTML) — отправляется plain text
+
 ---
 
 ## Стек технологий
@@ -133,6 +193,8 @@ PaymentService.create_first_payment() → YooKassa API
 | Конфигурация | python-dotenv | Переменные окружения из .env |
 | Графики | Chart.js (CDN) | Аналитика в админ-панели |
 | Markdown | marked.js (CDN) | Рендеринг предсказаний в админке |
+| MAX Bot API       | aiohttp            | Long polling, отправка сообщений в MAX   |
+| MAX Bot Platform  | platform-api.max.ru | REST API мессенджера MAX                |
 
 ---
 
@@ -148,6 +210,13 @@ coffee_oracle/
 │   ├── handlers.py                      # Хендлеры команд, фото, подписок, платежей
 │   ├── keyboards.py                     # KeyboardManager — Reply и Inline клавиатуры
 │   └── middleware.py                    # MediaGroupMiddleware — сбор групп фото
+├── max_bot/
+│   ├── __init__.py                      # Инициализация пакета, реэкспорт классов
+│   ├── bot.py                           # MaxOracleBot — инициализация, long polling
+│   ├── api_client.py                    # MaxApiClient — HTTP-клиент MAX Bot API (aiohttp)
+│   ├── handlers.py                      # MaxBotHandlers — обработчики событий MAX
+│   ├── keyboards.py                     # MaxKeyboardManager — inline-клавиатуры MAX
+│   └── photo_processor.py              # MaxPhotoProcessor — скачивание, ресайз, LLM-анализ
 │
 ├── admin/
 │   ├── app.py                           # FastAPI-приложение, роуты, API, вебхуки YooKassa
@@ -260,7 +329,7 @@ docker run -d \
 
 | Переменная | Описание | Валидация |
 |-----------|----------|-----------|
-| `BOT_TOKEN` | Токен Telegram-бота от BotFather | Не пустой |
+| `BOT_TOKEN` или `MAX_BOT_TOKEN` | Токен Telegram-бота и/или MAX-бота | Хотя бы один задан |
 | `ADMIN_USERNAME` | Логин для входа в админ-панель | Не пустой |
 | `ADMIN_PASSWORD` | Пароль для входа в админ-панель | Не пустой |
 | `SECRET_KEY` | Секретный ключ приложения | Минимум 32 символа |
@@ -283,6 +352,8 @@ docker run -d \
 | `YOOKASSA_SECRET_KEY` | — | Секретный ключ YooKassa |
 | `ERROR_NOTIFY_TELEGRAM_IDS` | — | Telegram ID для уведомлений об ошибках (через запятую) |
 | `SECURE_COOKIES` | `true` | HTTPS-only cookies |
+| `MAX_BOT_TOKEN` | — | Токен MAX-бота (если не задан, MAX-бот не запускается) |
+
 
 ### Пример .env
 
@@ -302,6 +373,7 @@ ADMIN_PORT=8000
 YOOKASSA_SHOP_ID=1270434
 YOOKASSA_SECRET_KEY=live_xxxxxxxxxxxxx
 ERROR_NOTIFY_TELEGRAM_IDS=91675683
+MAX_BOT_TOKEN=your-max-bot-token-here
 ```
 
 ---
@@ -471,7 +543,8 @@ SQLite с асинхронным доступом через `aiosqlite`. WAL-р
 | Поле | Тип | Описание |
 |------|-----|----------|
 | `id` | Integer, PK | Автоинкрементный ID |
-| `telegram_id` | BigInteger, UNIQUE | Telegram user ID |
+| `telegram_id` | BigInteger, INDEX | ID пользователя на платформе (Telegram или MAX) |
+| `source` | String(10), default `tg` | Платформа-источник: `tg` (Telegram), `max` (MAX) |
 | `username` | String(255), nullable | @username |
 | `full_name` | String(255) | Отображаемое имя |
 | `email` | String(255), nullable | Email для чеков |
@@ -482,6 +555,8 @@ SQLite с асинхронным доступом через `aiosqlite`. WAL-р
 | `telegram_recurring_payment_charge_id` | String(255), nullable | ID метода оплаты для рекуррентов |
 | `deleted_at` | DateTime, nullable | Soft delete |
 | `created_at` | DateTime | Дата регистрации |
+
+**Unique constraint:** `(telegram_id, source)` — гарантирует уникальность пользователя в пределах одной платформы. Один и тот же числовой ID из разных мессенджеров создаёт разных пользователей.
 
 #### Prediction
 
@@ -564,6 +639,7 @@ User 1 ──── * Payment
 | `soft_delete_users` | Добавление deleted_at в users |
 | `payment_amount_to_integer_kopecks` | Конвертация amount из REAL (рубли) в INTEGER (копейки) |
 | `user_email` | Добавление email в users |
+| `user_source` | Добавление поля source в users, замена unique index telegram_id на составной (telegram_id, source) |
 
 Дополнительно `DatabaseManager.check_and_migrate_db()` выполняет legacy-миграции через `ALTER TABLE` с проверкой существования колонок.
 
@@ -795,10 +871,11 @@ python main.py
 - `80, 443` — Nginx (внешний доступ)
 - `8000` — админ-панель и API (localhost, проксируется через Nginx)
 - Telegram-бот работает через Long Polling и не требует открытых портов
+- MAX-бот работает через Long Polling и не требует открытых портов
 
 ### Сигналы завершения
 
-Приложение корректно обрабатывает `SIGTERM` и `SIGINT`: останавливает бота, закрывает сессию Telegram, останавливает планировщик подписок, останавливает Uvicorn и закрывает соединение с БД.
+Приложение корректно обрабатывает SIGTERM и SIGINT: останавливает Telegram-бота (если запущен), останавливает MAX-бота (если запущен), закрывает HTTP-сессии, останавливает планировщик подписок, останавливает Uvicorn и закрывает соединение с БД.
 
 ---
 
@@ -874,6 +951,18 @@ certbot renew
 curl https://oracle.kachestvozhizni.ru/health
 ```
 
+### MAX-бот не отвечает
+
+```bash
+# Проверить логи MAX-бота
+grep -i "MAX-бот" /opt/oracle-bot/app/logs/coffee_oracle.log | tail -30
+
+# Проверить ошибки API
+grep -i "MAX API" /opt/oracle-bot/app/logs/coffee_oracle.log | tail -30
+
+# Проверить, что MAX_BOT_TOKEN задан в .env
+grep MAX_BOT_TOKEN /opt/oracle-bot/app/.env
+
 ---
 
 ## Ограничения
@@ -882,6 +971,7 @@ curl https://oracle.kachestvozhizni.ru/health
 - Фото хранятся на локальном диске. Для масштабирования — S3-совместимое хранилище.
 - Pending-платежи хранятся in-memory (`_pending_payments`) — при перезапуске теряются. Вебхук YooKassa компенсирует это.
 - Кэш настроек LLM не имеет TTL — очищается только вручную или при сохранении настроек.
+- Подписки и платежи работают только в Telegram-боте. MAX-бот не поддерживает платежи — все пользователи MAX имеют бесплатный тариф без лимитов (проверка подписки в MAX-обработчиках не реализована).
 
 ---
 
