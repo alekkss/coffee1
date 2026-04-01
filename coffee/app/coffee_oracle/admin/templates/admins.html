@@ -1,0 +1,371 @@
+<!DOCTYPE html>
+<html lang="ru">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🛡️ Администраторы - Coffee Oracle Admin</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            color: #333;
+        }
+
+        .header {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            padding: 1rem 2rem;
+            box-shadow: 0 2px 20px rgba(0, 0, 0, 0.1);
+            margin-bottom: 2rem;
+            text-align: center;
+        }
+
+        .header h1 {
+            color: #4a5568;
+            font-size: 1.5rem;
+        }
+
+        .header .nav-links {
+            margin-top: 0.5rem;
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 1rem 1.5rem;
+        }
+
+        .header .nav-links a {
+            color: #667eea;
+            text-decoration: none;
+            font-weight: 500;
+        }
+
+        .header .nav-links a:hover {
+            text-decoration: underline;
+        }
+
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+            padding: 0 2rem 2rem;
+        }
+
+        .section {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 16px;
+            padding: 2rem;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+            margin-bottom: 2rem;
+        }
+
+        .form-grid {
+            display: grid;
+            gap: 1rem;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            align-items: end;
+        }
+
+        .form-group {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+
+        .form-group label {
+            font-weight: 600;
+            color: #4a5568;
+            font-size: 0.9rem;
+        }
+
+        .form-input {
+            padding: 0.75rem 1rem;
+            border: 2px solid #e2e8f0;
+            border-radius: 8px;
+            font-size: 1rem;
+            background: white;
+        }
+
+        .form-input:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .btn {
+            padding: 0.75rem 1.5rem;
+            border: none;
+            border-radius: 8px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .btn-primary {
+            background: #667eea;
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: #5a67d8;
+        }
+
+        .btn-danger {
+            background: #fc8181;
+            color: white;
+            padding: 0.4rem 0.8rem;
+            font-size: 0.85rem;
+        }
+
+        .btn-danger:hover {
+            background: #f56565;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 1.5rem;
+        }
+
+        th,
+        td {
+            text-align: left;
+            padding: 1rem;
+            border-bottom: 1px solid #e2e8f0;
+        }
+
+        th {
+            background: #f7fafc;
+            color: #4a5568;
+            font-size: 0.85rem;
+            text-transform: uppercase;
+        }
+
+        .badge {
+            display: inline-block;
+            padding: 0.25rem 0.5rem;
+            border-radius: 4px;
+            font-size: 0.8rem;
+            font-weight: 600;
+        }
+
+        .badge-superadmin {
+            background: #e9d8fd;
+            color: #553c9a;
+        }
+
+        .badge-restricted {
+            background: #e2e8f0;
+            color: #4a5568;
+        }
+
+        .status {
+            margin-bottom: 1rem;
+            padding: 1rem;
+            border-radius: 8px;
+            display: none;
+        }
+
+        .status.success {
+            background: #c6f6d5;
+            color: #276749;
+            display: block;
+        }
+
+        .status.error {
+            background: #fed7d7;
+            color: #c53030;
+            display: block;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="header">
+        <h1>🛡️ Управление администраторами</h1>
+        <div class="user-info" style="margin-top: 0.5rem; color: #4a5568; font-size: 0.9rem;">
+            👤 Вы вошли как: <strong>{{ user.username }}</strong> <span
+                style="background: #e2e8f0; padding: 2px 6px; border-radius: 4px; font-size: 0.8rem;">{{ user.role
+                }}</span>
+        </div>
+        <div class="nav-links">
+            <a href="/">← Дашборд</a>
+            <a href="/users">👥 Пользователи</a>
+            <a href="/predictions">🔮 Предсказания</a>
+            <a href="/subscriptions">💎 Подписки</a>
+            <a href="/settings">⚙️ Настройки</a>
+            <a href="/logout" style="color: #c53030;">🚪 Выйти</a>
+        </div>
+    </div>
+
+    <div class="container">
+        <!-- Create Admin Form -->
+        <div class="section">
+            <h2 style="margin-bottom: 1.5rem; color: #2d3748;">➕ Добавить администратора</h2>
+            <div id="create-status" class="status"></div>
+
+            <form id="create-form" onsubmit="createAdmin(event)">
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label>Имя пользователя (Логин)</label>
+                        <input type="text" id="username" class="form-input" required minlength="3"
+                            placeholder="ivan_admin">
+                    </div>
+
+                    <div class="form-group">
+                        <label>Пароль</label>
+                        <input type="password" id="password" class="form-input" required minlength="6"
+                            placeholder="******">
+                    </div>
+
+                    <div class="form-group">
+                        <label>Роль</label>
+                        <select id="role" class="form-input">
+                            <option value="restricted">👤 Ограниченный (без настроек)</option>
+                            <option value="superadmin">👑 Супер-админ (полный доступ)</option>
+                        </select>
+                    </div>
+
+                    <button type="submit" class="btn btn-primary">Создать</button>
+                </div>
+            </form>
+        </div>
+
+        <!-- Admins List -->
+        <div class="section">
+            <h2 style="margin-bottom: 1rem; color: #2d3748;">📋 Список администраторов</h2>
+            <div id="list-status" class="status"></div>
+
+            <table>
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Логин</th>
+                        <th>Роль</th>
+                        <th>Дата создания</th>
+                        <th>Действия</th>
+                    </tr>
+                </thead>
+                <tbody id="admins-table-body">
+                    <tr>
+                        <td colspan="5" style="text-align: center; color: #718096;">Загрузка...</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <script>
+        const currentUserId = {{ user.id }};
+
+        async function loadAdmins() {
+            try {
+                const response = await fetch('/api/admin-users');
+                const admins = await response.json();
+                renderTable(admins);
+            } catch (error) {
+                document.getElementById('admins-table-body').innerHTML =
+                    '<tr><td colspan="5" style="text-align: center; color: red;">Ошибка загрузки списка</td></tr>';
+            }
+        }
+
+        function renderTable(admins) {
+            const tbody = document.getElementById('admins-table-body');
+
+            if (admins.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="5" style="text-align: center;">Нет администраторов</td></tr>';
+                return;
+            }
+
+            tbody.innerHTML = admins.map(admin => `
+                <tr>
+                    <td>${admin.id}</td>
+                    <td><strong>${admin.username}</strong></td>
+                    <td>
+                        <span class="badge badge-${admin.role}">
+                            ${admin.role === 'superadmin' ? '👑 Superadmin' : '👤 Restricted'}
+                        </span>
+                    </td>
+                    <td>${new Date(admin.created_at).toLocaleString('ru-RU')}</td>
+                    <td>
+                        ${admin.id !== currentUserId ?
+                    `<button class="btn btn-danger" onclick="deleteAdmin(${admin.id}, '${admin.username}')">🗑 Удалить</button>` :
+                    '<span style="color: #cbd5e0;">(Это вы)</span>'
+                }
+                    </td>
+                </tr>
+            `).join('');
+        }
+
+        async function createAdmin(e) {
+            e.preventDefault();
+            const btn = e.target.querySelector('button');
+            const statusEl = document.getElementById('create-status');
+
+            btn.disabled = true;
+            statusEl.className = 'status';
+            statusEl.textContent = '';
+
+            const data = {
+                username: document.getElementById('username').value,
+                password: document.getElementById('password').value,
+                role: document.getElementById('role').value
+            };
+
+            try {
+                const response = await fetch('/api/admin-users', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(data)
+                });
+
+                const result = await response.json();
+
+                if (response.ok) {
+                    statusEl.textContent = '✅ Пользователь успешно создан!';
+                    statusEl.classList.add('success');
+                    document.getElementById('create-form').reset();
+                    loadAdmins();
+                } else {
+                    throw new Error(result.detail || 'Ошибка создания');
+                }
+            } catch (error) {
+                statusEl.textContent = '❌ ' + error.message;
+                statusEl.classList.add('error');
+            } finally {
+                btn.disabled = false;
+            }
+        }
+
+        async function deleteAdmin(id, username) {
+            if (!confirm(`Вы уверены, что хотите удалить администратора ${username}?`)) return;
+
+            try {
+                const response = await fetch(`/api/admin-users/${id}`, {
+                    method: 'DELETE'
+                });
+
+                if (response.ok) {
+                    loadAdmins();
+                } else {
+                    const result = await response.json();
+                    alert('Ошибка: ' + (result.detail || 'Не удалось удалить'));
+                }
+            } catch (error) {
+                alert('Ошибка сети');
+            }
+        }
+
+        // Initialize
+        loadAdmins();
+    </script>
+</body>
+
+</html>

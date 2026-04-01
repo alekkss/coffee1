@@ -1,0 +1,51 @@
+services:
+  ai-bot:
+    image: "${CI_REGISTRY_IMAGE}:${CI_COMMIT_SHORT_SHA}"
+    container_name: ${CI_ENVIRONMENT_NAME:-ai}-bot
+    restart: always
+    volumes:
+      - /opt/${CI_ENVIRONMENT_NAME:-ai}-bot/data:/app/data # Persist SQLite database
+      - /opt/${CI_ENVIRONMENT_NAME:-ai}-bot/media:/app/media # Persist photo files
+    environment:
+      - BOT_TOKEN=${BOT_TOKEN}
+      - ADMIN_USERNAME=${ADMIN_USERNAME:-admin}
+      - ADMIN_PASSWORD=${ADMIN_PASSWORD}
+      - SECRET_KEY=${SECRET_KEY}
+      - DB_NAME=coffee_oracle.db
+      - DOMAIN=${DOMAIN}
+
+      - LITELLM_MODEL=${LITELLM_MODEL:-platto/gpt-5.1}
+      - LITELLM_MODEL_FALLBACK=${LITELLM_MODEL_FALLBACK:-platto/gpt-5.1}
+      - LITELLM_API_KEY=${LITELLM_API_KEY}
+      - LITELLM_API_BASE=${LITELLM_API_BASE:-https://api.1bitai.ru/v1}
+      - LITELLM_TIMEOUT=30
+      - LITELLM_MAX_TOKENS=1500
+      - LITELLM_TEMPERATURE=0.8
+
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+
+      - PAYMENT_PROVIDER_TOKEN=${PAYMENT_PROVIDER_TOKEN}
+      - YOOKASSA_SHOP_ID=${YOOKASSA_SHOP_ID}
+      - YOOKASSA_SECRET_KEY=${YOOKASSA_SECRET_KEY}
+
+      - ERROR_NOTIFY_TELEGRAM_IDS=${ERROR_NOTIFY_TELEGRAM_IDS:-}
+
+      - PYTHONPATH=/app
+      - PYTHONUNBUFFERED=1
+    healthcheck:
+      test: [ "CMD", "python", "-c", "import requests; requests.get('http://localhost:8000/health')" ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.${CI_ENVIRONMENT_NAME}.rule=Host(`${DOMAIN}`)
+      - traefik.http.routers.${CI_ENVIRONMENT_NAME}.tls=true
+      - traefik.http.routers.${CI_ENVIRONMENT_NAME}.entrypoints=https
+      - traefik.http.routers.${CI_ENVIRONMENT_NAME}.tls.certresolver=letsencrypt
+
+networks:
+  default:
+    name: 1bitai
+    external: true

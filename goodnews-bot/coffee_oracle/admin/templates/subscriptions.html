@@ -1,0 +1,557 @@
+<!DOCTYPE html>
+<html lang="ru">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>💎 Подписки - Coffee Oracle Admin</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            color: #333;
+        }
+
+        .header {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            padding: 1rem 2rem;
+            box-shadow: 0 2px 20px rgba(0, 0, 0, 0.1);
+            margin-bottom: 2rem;
+            text-align: center;
+        }
+
+        .header h1 {
+            color: #4a5568;
+            font-size: 1.5rem;
+        }
+
+        .header .nav-links {
+            margin-top: 0.5rem;
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 1rem 1.5rem;
+        }
+
+        .header .nav-links a {
+            color: #667eea;
+            text-decoration: none;
+            font-weight: 500;
+        }
+
+        .header .nav-links a:hover {
+            text-decoration: underline;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 0 2rem 2rem;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+        }
+
+        .stat-card {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 16px;
+            padding: 1.5rem;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+            text-align: center;
+        }
+
+        .stat-card .value {
+            font-size: 2.5rem;
+            font-weight: bold;
+            color: #667eea;
+        }
+
+        .stat-card .label {
+            color: #718096;
+            margin-top: 0.5rem;
+        }
+
+        .stat-card.premium .value {
+            color: #d69e2e;
+        }
+
+        .stat-card.vip .value {
+            color: #ed64a6;
+        }
+
+        .stat-card.revenue .value {
+            color: #38a169;
+        }
+
+        .section {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 16px;
+            padding: 2rem;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+            margin-bottom: 2rem;
+        }
+
+        .section h2 {
+            margin-bottom: 1.5rem;
+            color: #4a5568;
+        }
+
+        .table-container {
+            overflow-x: auto;
+            border-radius: 8px;
+            border: 1px solid #e2e8f0;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            background: white;
+        }
+
+        th,
+        td {
+            padding: 1rem;
+            text-align: left;
+            border-bottom: 1px solid #e2e8f0;
+        }
+
+        th {
+            background: #f7fafc;
+            font-weight: 600;
+            color: #4a5568;
+            text-transform: uppercase;
+            font-size: 0.8rem;
+        }
+
+        tr:hover {
+            background: #f7fafc;
+        }
+
+        .badge {
+            padding: 0.25rem 0.75rem;
+            border-radius: 9999px;
+            font-size: 0.75rem;
+            font-weight: 600;
+        }
+
+        .badge-vip {
+            background: #fce7f3;
+            color: #be185d;
+        }
+
+        .badge-premium {
+            background: #fef3c7;
+            color: #d97706;
+        }
+
+        .btn {
+            padding: 0.5rem 1rem;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 500;
+            transition: all 0.2s;
+        }
+
+        .btn-primary {
+            background: #667eea;
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: #5a67d8;
+        }
+
+        .btn-danger {
+            background: #fc8181;
+            color: white;
+        }
+
+        .btn-danger:hover {
+            background: #f56565;
+        }
+
+        .btn-success {
+            background: #68d391;
+            color: white;
+        }
+
+        .btn-success:hover {
+            background: #48bb78;
+        }
+
+        .form-inline {
+            display: flex;
+            gap: 1rem;
+            margin-bottom: 1rem;
+            flex-wrap: wrap;
+            align-items: flex-end;
+        }
+
+        .form-group {
+            display: flex;
+            flex-direction: column;
+            gap: 0.25rem;
+        }
+
+        .form-group label {
+            font-size: 0.85rem;
+            color: #718096;
+        }
+
+        .form-group input,
+        .form-group select {
+            padding: 0.5rem 1rem;
+            border: 2px solid #e2e8f0;
+            border-radius: 8px;
+            font-size: 1rem;
+        }
+
+        .form-group input:focus,
+        .form-group select:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .empty-message {
+            text-align: center;
+            padding: 2rem;
+            color: #718096;
+        }
+
+        .telegram-link {
+            color: #667eea;
+            text-decoration: none;
+        }
+
+        .telegram-link:hover {
+            text-decoration: underline;
+        }
+
+        .alert {
+            padding: 1rem;
+            border-radius: 8px;
+            margin-bottom: 1rem;
+        }
+
+        .alert-success {
+            background: #c6f6d5;
+            color: #22543d;
+        }
+
+        .alert-error {
+            background: #fed7d7;
+            color: #c53030;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="header">
+        <h1>💎 Управление подписками</h1>
+        <div class="nav-links">
+            <a href="/">← Дашборд</a>
+            <a href="/users">👥 Пользователи</a>
+            <a href="/predictions">🔮 Предсказания</a>
+            {% if user.role == 'superadmin' %}
+            {# <a href="/admins">🛡️ Админы</a> #}
+            <a href="/settings">⚙️ Настройки</a>
+            {% endif %}
+            <a href="/logout" style="color: #c53030;">🚪 Выйти</a>
+        </div>
+    </div>
+
+    <div class="container">
+        <div id="alert-container"></div>
+
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="value" id="free-count">-</div>
+                <div class="label">Бесплатных</div>
+            </div>
+            <div class="stat-card premium">
+                <div class="value" id="premium-count">-</div>
+                <div class="label">Premium</div>
+            </div>
+            <div class="stat-card vip">
+                <div class="value" id="vip-count">-</div>
+                <div class="label">VIP</div>
+            </div>
+            <div class="stat-card revenue">
+                <div class="value" id="revenue">-</div>
+                <div class="label">Выручка ₽</div>
+            </div>
+        </div>
+
+        {% if user.role == 'superadmin' %}
+        <div class="section">
+            <h2>➕ Добавить VIP-пользователя</h2>
+            <div class="form-inline">
+                <div class="form-group">
+                    <label>Telegram ID пользователя</label>
+                    <input type="number" id="vip-user-id" placeholder="123456789" />
+                </div>
+                <div class="form-group">
+                    <label>Причина</label>
+                    <input type="text" id="vip-reason" placeholder="Тестер / Партнёр" />
+                </div>
+                <button class="btn btn-primary" onclick="addVip()">Добавить VIP</button>
+            </div>
+        </div>
+
+        <div class="section">
+            <h2>✅ Подтвердить платёж вручную</h2>
+            <div class="form-inline">
+                <div class="form-group">
+                    <label>Метка платежа (label)</label>
+                    <input type="text" id="payment-label" placeholder="sub_123_1234567890_abcd" />
+                </div>
+                <button class="btn btn-success" onclick="completePayment()">Подтвердить</button>
+            </div>
+        </div>
+        {% endif %}
+
+        <div class="section">
+            <h2>⭐ VIP-пользователи</h2>
+            <div class="table-container">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Telegram ID</th>
+                            <th>Username</th>
+                            <th>Имя</th>
+                            <th>Причина</th>
+                            {% if user.role == 'superadmin' %}<th>Действия</th>{% endif %}
+                        </tr>
+                    </thead>
+                    <tbody id="vip-table-body">
+                        <tr>
+                            <td colspan="6" class="empty-message">Загрузка...</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <div class="section">
+            <h2>💫 Premium-подписчики</h2>
+            <div class="table-container">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Telegram ID</th>
+                            <th>Username</th>
+                            <th>Имя</th>
+                            <th>Действует до</th>
+                            {% if user.role == 'superadmin' %}<th>Действия</th>{% endif %}
+                        </tr>
+                    </thead>
+                    <tbody id="premium-table-body">
+                        <tr>
+                            <td colspan="5" class="empty-message">Загрузка...</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const isSuperadmin = {{ 'true' if user.role == 'superadmin' else 'false' }};
+
+        function showAlert(message, type = 'success') {
+            const container = document.getElementById('alert-container');
+            container.innerHTML = `<div class="alert alert-${type}">${message}</div>`;
+            setTimeout(() => container.innerHTML = '', 5000);
+        }
+
+        async function loadStats() {
+            try {
+                const response = await fetch('/api/subscriptions/stats');
+                const data = await response.json();
+                if (data.success) {
+                    document.getElementById('free-count').textContent = data.stats.free_users;
+                    document.getElementById('premium-count').textContent = data.stats.premium_users;
+                    document.getElementById('vip-count').textContent = data.stats.vip_users;
+                    document.getElementById('revenue').textContent = data.stats.total_revenue || 0;
+                }
+            } catch (e) {
+                console.error('Error loading stats:', e);
+            }
+        }
+
+        async function loadVipUsers() {
+            try {
+                const response = await fetch('/api/subscriptions/vip');
+                const data = await response.json();
+                const tbody = document.getElementById('vip-table-body');
+                
+                if (!data.users || data.users.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="6" class="empty-message">Нет VIP-пользователей</td></tr>';
+                    return;
+                }
+                
+                tbody.innerHTML = data.users.map(u => `
+                    <tr>
+                        <td>${u.id}</td>
+                        <td>${u.telegram_id}</td>
+                        <td>${u.username ? `<a href="https://t.me/${u.username}" target="_blank" class="telegram-link">@${u.username}</a>` : '—'}</td>
+                        <td>${u.full_name}</td>
+                        <td><span class="badge badge-vip">${u.vip_reason || 'Не указана'}</span></td>
+                        ${isSuperadmin ? `<td><button class="btn btn-danger" onclick="removeVip(${u.id})">Удалить</button></td>` : ''}
+                    </tr>
+                `).join('');
+            } catch (e) {
+                console.error('Error loading VIP users:', e);
+            }
+        }
+
+        async function loadPremiumUsers() {
+            try {
+                const response = await fetch('/api/subscriptions/premium');
+                const data = await response.json();
+                const tbody = document.getElementById('premium-table-body');
+                
+                const colspan = isSuperadmin ? '6' : '5';
+                if (!data.users || data.users.length === 0) {
+                    tbody.innerHTML = `<tr><td colspan="${colspan}" class="empty-message">Нет Premium-подписчиков</td></tr>`;
+                    return;
+                }
+                
+                tbody.innerHTML = data.users.map(u => `
+                    <tr>
+                        <td>${u.id}</td>
+                        <td>${u.telegram_id}</td>
+                        <td>${u.username ? `<a href="https://t.me/${u.username}" target="_blank" class="telegram-link">@${u.username}</a>` : '—'}</td>
+                        <td>${u.full_name}</td>
+                        <td>${u.subscription_until ? new Date(u.subscription_until).toLocaleDateString('ru-RU') : '—'}</td>
+                        ${isSuperadmin ? `<td><button class="btn btn-danger" onclick="removePremium(${u.id})">Удалить</button></td>` : ''}
+                    </tr>
+                `).join('');
+            } catch (e) {
+                console.error('Error loading premium users:', e);
+            }
+        }
+
+        async function addVip() {
+            const userId = document.getElementById('vip-user-id').value;
+            const reason = document.getElementById('vip-reason').value;
+            
+            if (!userId || !reason) {
+                showAlert('Заполните все поля', 'error');
+                return;
+            }
+            
+            try {
+                const response = await fetch('/api/subscriptions/vip', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ user_id: parseInt(userId), reason })
+                });
+                const data = await response.json();
+                
+                if (data.success) {
+                    showAlert('VIP-статус успешно присвоен');
+                    document.getElementById('vip-user-id').value = '';
+                    document.getElementById('vip-reason').value = '';
+                    loadVipUsers();
+                    loadStats();
+                } else {
+                    showAlert(data.detail || 'Ошибка', 'error');
+                }
+            } catch (e) {
+                showAlert('Ошибка: ' + e.message, 'error');
+            }
+        }
+
+        async function removeVip(userId) {
+            if (!confirm('Удалить VIP-статус?')) return;
+            
+            try {
+                const response = await fetch(`/api/subscriptions/vip/${userId}`, { method: 'DELETE' });
+                const data = await response.json();
+                
+                if (data.success) {
+                    showAlert('VIP-статус удалён');
+                    loadVipUsers();
+                    loadStats();
+                } else {
+                    showAlert(data.detail || 'Ошибка', 'error');
+                }
+            } catch (e) {
+                showAlert('Ошибка: ' + e.message, 'error');
+            }
+        }
+
+        async function completePayment() {
+            const label = document.getElementById('payment-label').value;
+            
+            if (!label) {
+                showAlert('Введите метку платежа', 'error');
+                return;
+            }
+            
+            try {
+                const response = await fetch('/api/subscriptions/complete-payment', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ label })
+                });
+                const data = await response.json();
+                
+                if (data.success) {
+                    showAlert('Платёж подтверждён, подписка активирована');
+                    document.getElementById('payment-label').value = '';
+                    loadPremiumUsers();
+                    loadStats();
+                } else {
+                    showAlert(data.detail || 'Ошибка', 'error');
+                }
+            } catch (e) {
+                showAlert('Ошибка: ' + e.message, 'error');
+            }
+        }
+
+        async function removePremium(userId) {
+            if (!confirm('Удалить Premium-подписку? Пользователь вернётся на бесплатный тариф.')) return;
+            
+            try {
+                const response = await fetch(`/api/subscriptions/premium/${userId}`, { method: 'DELETE' });
+                const data = await response.json();
+                
+                if (data.success) {
+                    showAlert('Premium-подписка удалена');
+                    loadPremiumUsers();
+                    loadStats();
+                } else {
+                    showAlert(data.detail || 'Ошибка', 'error');
+                }
+            } catch (e) {
+                showAlert('Ошибка: ' + e.message, 'error');
+            }
+        }
+
+        // Load data on page load
+        loadStats();
+        loadVipUsers();
+        loadPremiumUsers();
+    </script>
+</body>
+
+</html>

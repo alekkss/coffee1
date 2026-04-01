@@ -1,0 +1,69 @@
+stages:
+  - build
+  - deploy
+
+variables:
+  DOCKER_BUILDKIT: 1
+  BUILDKIT_PROGRESS: plain
+  GIT_STRATEGY: clone
+
+.template_docker_setup:
+  image: docker:latest
+  services:
+    - docker:dind
+  before_script:
+    - docker info
+    - echo "$CI_REGISTRY_PASSWORD" | docker login -u "$CI_REGISTRY_USER" --password-stdin $CI_REGISTRY
+
+.template_deploy:
+  image: docker:latest
+  variables:
+    DOCKER_HOST: ssh://deploy-ai@${DEPLOY_SERVER}
+  before_script:
+    - apk add openssh-client
+    - eval $(ssh-agent -s)
+    - ssh-add <(echo "$SSH_PRIVATE_KEY")
+    - echo "StrictHostKeyChecking no" >> $(find /etc -iname ssh_config)
+  script:
+    - docker login -u $CI_REGISTRY_USER -p $CI_REGISTRY_PASSWORD $CI_REGISTRY
+    - docker compose -p $CI_PROJECT_NAME-$CI_ENVIRONMENT_NAME -f docker-compose.deploy.yml pull
+    - docker compose -p $CI_PROJECT_NAME-$CI_ENVIRONMENT_NAME -f docker-compose.deploy.yml down
+    - docker compose -p $CI_PROJECT_NAME-$CI_ENVIRONMENT_NAME -f docker-compose.deploy.yml up -d --no-build --wait --remove-orphans
+
+build:
+  stage: build
+  extends: .template_docker_setup
+  script:
+    - |
+      docker build \
+        --cache-from $CI_REGISTRY_IMAGE:latest \
+        --build-arg BUILDKIT_INLINE_CACHE=1 \
+        -t $CI_REGISTRY_IMAGE:$CI_COMMIT_SHORT_SHA \
+        -t $CI_REGISTRY_IMAGE:$CI_COMMIT_REF_SLUG .
+
+    - docker push $CI_REGISTRY_IMAGE:$CI_COMMIT_SHORT_SHA
+    - docker push $CI_REGISTRY_IMAGE:$CI_COMMIT_REF_SLUG
+
+    - |
+      if [ "$CI_COMMIT_REF_NAME" = "master" ]; then
+        docker tag $CI_REGISTRY_IMAGE:$CI_COMMIT_SHORT_SHA $CI_REGISTRY_IMAGE:latest
+        docker push $CI_REGISTRY_IMAGE:latest
+      fi
+
+oracle:deploy:
+  stage: deploy
+  environment:
+    name: oracle
+    url: https://oracle.kachestvozhizni.ru
+  extends: .template_deploy
+  only:
+    - master
+
+goodnews:deploy:
+  stage: deploy
+  environment:
+    name: goodnews
+    url: https://goodnews.kachestvozhizni.ru
+  extends: .template_deploy
+  only:
+    - master

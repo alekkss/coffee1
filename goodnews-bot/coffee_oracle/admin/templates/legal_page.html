@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ title }} - Coffee Oracle</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #f7fafc;
+            color: #2d3748;
+            line-height: 1.7;
+        }
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 2rem;
+            text-align: center;
+        }
+        .header h1 { font-size: 1.75rem; margin-bottom: 0.5rem; }
+        .header a { color: rgba(255,255,255,0.85); text-decoration: none; font-size: 0.9rem; }
+        .header a:hover { color: white; text-decoration: underline; }
+        .container {
+            max-width: 800px;
+            margin: 2rem auto;
+            padding: 0 1.5rem 3rem;
+        }
+        .card {
+            background: white;
+            border-radius: 12px;
+            padding: 2.5rem;
+            box-shadow: 0 2px 12px rgba(0,0,0,0.08);
+            white-space: pre-wrap;
+            font-size: 0.95rem;
+        }
+        .footer-links {
+            text-align: center;
+            margin-top: 1.5rem;
+            font-size: 0.9rem;
+            color: #718096;
+        }
+        .footer-links a { color: #667eea; text-decoration: none; margin: 0 0.75rem; }
+        .footer-links a:hover { text-decoration: underline; }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>☕ Coffee Oracle</h1>
+        <a href="/">← На главную</a>
+    </div>
+    <div class="container">
+        <div class="card">{{ content }}</div>
+        <div class="footer-links">
+            <a href="/terms">Условия использования</a>
+            <a href="/privacy">Политика конфиденциальности</a>
+        </div>
+    </div>
+</body>
+</html>
