@@ -1,4 +1,9 @@
-"""Bot message handlers."""
+"""Обработчики сообщений Telegram-бота.
+
+Содержит логику реакции на все типы входящих событий:
+команды, текстовые сообщения, фотографии, callback от кнопок,
+FSM для оплаты подписки.
+"""
 
 import asyncio
 import logging
@@ -27,6 +32,9 @@ router = Router()
 
 EMAIL_RE = re.compile(r"^[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}$")
 
+# Идентификатор платформы для всех операций с БД в Telegram-боте
+_SOURCE = "tg"
+
 
 class PaymentStates(StatesGroup):
     waiting_for_email = State()
@@ -49,18 +57,19 @@ async def start_handler(message: Message) -> Any:
     user = message.from_user
     if not user:
         return
-    
+
     async for session in db_manager.get_session():
         user_repo = UserRepository(session)
         settings_repo = SettingsRepository(session)
-        
+
         # Create or get existing user
         db_user = await user_repo.create_user(
             telegram_id=user.id,
             username=user.username,
-            full_name=user.full_name or f"{user.first_name} {user.last_name or ''}".strip()
+            full_name=user.full_name or f"{user.first_name} {user.last_name or ''}".strip(),
+            source=_SOURCE,
         )
-        
+
         # Get welcome message from settings
         welcome_template = await settings_repo.get_setting("welcome_message")
         if not welcome_template:
@@ -74,9 +83,9 @@ async def start_handler(message: Message) -> Any:
 🌟 Мои предсказания всегда несут свет и вдохновение!
 
 Выбери действие в меню:"""
-        
+
         welcome_text = welcome_template.replace("{name}", db_user.full_name)
-        
+
         await message.answer(
             welcome_text,
             reply_markup=KeyboardManager.get_main_menu_with_subscription()
@@ -103,7 +112,7 @@ async def prediction_request_handler(message: Message) -> Any:
 • Фото сделано сверху
 
 Я внимательно изучу узоры и расскажу, что они предвещают! ✨""")
-    
+
     await message.answer(instruction_text)
 
 
@@ -113,13 +122,13 @@ async def history_handler(message: Message) -> Any:
     user = message.from_user
     if not user:
         return
-    
+
     async for session in db_manager.get_session():
         user_repo = UserRepository(session)
         prediction_repo = PredictionRepository(session)
-        
+
         # Get user
-        db_user = await user_repo.get_user_by_telegram_id(user.id)
+        db_user = await user_repo.get_user_by_telegram_id(user.id, source=_SOURCE)
         if not db_user:
             await message.answer(
                 "Сначала получите ваше первое предсказание! 🔮\n\n"
@@ -127,10 +136,10 @@ async def history_handler(message: Message) -> Any:
                 "что говорят узоры гущи о вашем будущем!"
             )
             return
-        
+
         # Get user's predictions (limit to 5 as per requirements)
         predictions = await prediction_repo.get_user_predictions(db_user.id, limit=5)
-        
+
         if not predictions:
             await message.answer(
                 "📜 У вас пока нет предсказаний в истории.\n\n"
@@ -138,10 +147,10 @@ async def history_handler(message: Message) -> Any:
                 "чтобы получить первое магическое предсказание! ☕✨"
             )
             return
-        
+
         # Format history with proper numbering and dates
         history_text = f"📜 Ваши последние предсказания ({len(predictions)} из 5):\n\n"
-        
+
         for i, prediction in enumerate(predictions, 1):
             # Format date in Russian locale style
             date_str = prediction.created_at.strftime("%d.%m.%Y в %H:%M")
@@ -150,10 +159,10 @@ async def history_handler(message: Message) -> Any:
             formatted_pred = markdown_to_telegram_html(prediction.prediction_text)
             history_text += f"{formatted_pred}\n"
             history_text += "─" * 30 + "\n\n"
-        
+
         # Remove last separator
         history_text = history_text.rstrip("─" * 30 + "\n\n")
-        
+
         # Split message if too long (Telegram limit: 4096 chars)
         chunks = split_message(history_text)
         for chunk in chunks:
@@ -176,13 +185,13 @@ async def about_handler(message: Message) -> Any:
 🌟 Помни: будущее создаёшь ты сам, а я лишь помогаю увидеть возможности!
 
 С любовью, твой Кофейный Оракул ☕✨""")
-    
+
     await message.answer(about_text)
 
 
 @router.message(F.photo)
 async def photo_handler(
-    message: Message, 
+    message: Message,
     bot: Bot,
     media_group_photos: list = None,
     is_media_group: bool = False,
@@ -192,24 +201,25 @@ async def photo_handler(
     user = message.from_user
     if not user or not message.photo:
         return
-    
+
     # Check subscription status before processing
     async for session in db_manager.get_session():
         user_repo = UserRepository(session)
         subscription_repo = SubscriptionRepository(session)
-        
+
         # Get or create user first
-        db_user = await user_repo.get_user_by_telegram_id(user.id)
+        db_user = await user_repo.get_user_by_telegram_id(user.id, source=_SOURCE)
         if not db_user:
             db_user = await user_repo.create_user(
                 telegram_id=user.id,
                 username=user.username,
-                full_name=user.full_name or f"{user.first_name} {user.last_name or ''}".strip()
+                full_name=user.full_name or f"{user.first_name} {user.last_name or ''}".strip(),
+                source=_SOURCE,
             )
-        
+
         # Check if user can make a prediction
         can_predict, reason = await subscription_repo.can_make_prediction(db_user.id)
-        
+
         if not can_predict:
             # User has exhausted free predictions - show paywall
             try:
@@ -241,33 +251,33 @@ async def photo_handler(
                     "Попробуйте /subscribe позже."
                 )
             return
-    
+
     # Get photos to process (from middleware or single photo)
     photos_to_process = media_group_photos or [message]
-    
+
     # Show typing indicator
     await bot.send_chat_action(chat_id=message.chat.id, action=ChatAction.TYPING)
-    
+
     # Get processing message from settings
     processing_text = await get_bot_text("processing_message", "🔮 Смотрю в чашку... Звезды открывают свои тайны... ✨")
-    
+
     # Adjust message for multiple photos
     if is_media_group and len(photos_to_process) > 1:
         processing_text = f"🔮 Получено {len(photos_to_process)} фото. Изучаю узоры... ✨"
-    
+
     processing_msg = await message.answer(processing_text)
-    
+
     # Get user's caption/question if provided
     user_message = media_group_caption or (message.caption.strip() if message.caption else None)
-    
+
     try:
         # Initialize photo processor
         photo_processor = PhotoProcessor(bot)
-        
+
         # Check setting for multiple photos
         analyze_all = await get_bot_text("analyze_all_photos", "true")
         analyze_all = analyze_all.lower() == "true"
-        
+
         # Collect photos to analyze
         if is_media_group and len(photos_to_process) > 1 and analyze_all:
             # Process multiple photos
@@ -275,17 +285,17 @@ async def photo_handler(
             for photo_msg in photos_to_process:
                 if photo_processor.is_valid_photo(photo_msg.photo):
                     valid_photos.append(photo_processor.get_best_photo_size(photo_msg.photo))
-            
+
             if not valid_photos:
                 await processing_msg.edit_text(
                     "📸 Все фото слишком большие или повреждены. Попробуйте отправить другие фото."
                 )
                 return
-            
+
             # Process multiple photos
             try:
                 prediction_text, photos_data = await photo_processor.process_multiple_photos(
-                    valid_photos, 
+                    valid_photos,
                     user_message=user_message,
                     username=user.first_name
                 )
@@ -295,18 +305,18 @@ async def photo_handler(
         else:
             # Process single photo (first one)
             first_photo_msg = photos_to_process[0]
-            
+
             if not photo_processor.is_valid_photo(first_photo_msg.photo):
                 await processing_msg.edit_text(
                     "📸 Фото слишком большое или повреждено. Попробуйте отправить другое фото."
                 )
                 return
-            
+
             best_photo = photo_processor.get_best_photo_size(first_photo_msg.photo)
-            
+
             try:
                 prediction_text, photo_path = await photo_processor.process_photo(
-                    best_photo, 
+                    best_photo,
                     user_message=user_message,
                     username=user.first_name
                 )
@@ -320,32 +330,33 @@ async def photo_handler(
             except (PhotoProcessingError, OpenAIError) as e:
                 await processing_msg.edit_text(format_error_message(e, user_friendly=True))
                 return
-        
+
         if not prediction_text:
             await processing_msg.edit_text(
                 "🔮 Не удалось получить предсказание. Попробуйте еще раз."
             )
             return
-        
+
         # Get photo file_id for saving (use first valid photo)
         photo_file_id = photos_data[0]["file_id"] if photos_data else "unknown"
         photo_path = photos_data[0]["file_path"] if photos_data else None
-        
+
         # Save to database
         try:
             async for session in db_manager.get_session():
                 user_repo = UserRepository(session)
                 prediction_repo = PredictionRepository(session)
-                
+
                 # Get or create user
-                db_user = await user_repo.get_user_by_telegram_id(user.id)
+                db_user = await user_repo.get_user_by_telegram_id(user.id, source=_SOURCE)
                 if not db_user:
                     db_user = await user_repo.create_user(
                         telegram_id=user.id,
                         username=user.username,
-                        full_name=user.full_name or f"{user.first_name} {user.last_name or ''}".strip()
+                        full_name=user.full_name or f"{user.first_name} {user.last_name or ''}".strip(),
+                        source=_SOURCE,
                     )
-                
+
                 # Save prediction
                 await prediction_repo.create_prediction(
                     user_id=db_user.id,
@@ -363,14 +374,14 @@ async def photo_handler(
                 f"{prediction_text}\n\n⚠️ Предсказание не сохранено в истории из-за технической ошибки."
             )
             return
-        
+
         # Send prediction to user with action buttons
         # Convert markdown to Telegram HTML format
         formatted_prediction = markdown_to_telegram_html(prediction_text)
-        
+
         # Split if too long (Telegram limit: 4096 chars)
         chunks = split_message(formatted_prediction)
-        
+
         async def send_with_fallback(msg_func, text, **kwargs):
             """Try to send with HTML, fallback to plain text on error."""
             try:
@@ -383,7 +394,7 @@ async def photo_handler(
                     kwargs.pop('parse_mode', None)
                     return await msg_func(plain_text, **kwargs)
                 raise
-        
+
         try:
             if len(chunks) == 1:
                 await send_with_fallback(
@@ -415,7 +426,7 @@ async def photo_handler(
                 "👆 Ваше предсказание выше!",
                 reply_markup=KeyboardManager.get_prediction_actions()
             )
-        
+
     except Exception as e:
         logger.error(
             "Error in photo_handler: user_id=%s, username=%s, chat_id=%s, "
@@ -455,7 +466,7 @@ async def random_prediction_handler(message: Message) -> Any:
         "🌸 Любовь и дружба окружат вас теплом. Цените близких людей - они ваша главная сила.",
         "🚀 Впереди открываются новые возможности для роста. Не бойтесь выходить из зоны комфорта!"
     ]
-    
+
     prediction = random.choice(random_predictions)
     await message.answer(
         f"🔮 Случайное предсказание от Кофейного Оракула:\n\n{prediction}",
@@ -504,7 +515,7 @@ async def support_handler(message: Message) -> Any:
 Если бот не работает, попробуйте перезапустить диалог командой /start
 
 ✨ Помните: магия требует терпения!"""
-    
+
     await message.answer(support_text)
 
 
@@ -528,10 +539,10 @@ async def stats_command_handler(message: Message) -> Any:
     """Handle /stats command (hidden)."""
     async for session in db_manager.get_session():
         prediction_repo = PredictionRepository(session)
-        
+
         predictions_count = await prediction_repo.get_predictions_count()
         photos_count = await prediction_repo.get_photos_count()
-        
+
         await message.answer(
             f"📊 Статистика:\n\n"
             f"🔮 Всего предсказаний: {predictions_count}\n"
@@ -589,10 +600,10 @@ async def update_menu_command_handler(message: Message, bot: Bot) -> Any:
             BotCommand(command="clear", description="🗑️ Очистить историю"),
             BotCommand(command="support", description="📞 Поддержка"),
         ]
-        
+
         await bot.set_my_commands(commands)
         await message.answer("✅ Меню команд обновлено! Перезапустите чат или нажмите на кнопку меню рядом с полем ввода.")
-        
+
     except Exception as e:
         logger.error(f"Failed to update commands: {e}")
         await message.answer("❌ Ошибка при обновлении меню команд.")
@@ -627,13 +638,13 @@ async def show_history_callback(callback: CallbackQuery) -> Any:
     if not user:
         await callback.answer()
         return
-    
+
     async for session in db_manager.get_session():
         user_repo = UserRepository(session)
         prediction_repo = PredictionRepository(session)
-        
+
         # Get user
-        db_user = await user_repo.get_user_by_telegram_id(user.id)
+        db_user = await user_repo.get_user_by_telegram_id(user.id, source=_SOURCE)
         if not db_user:
             await callback.message.answer(
                 "Сначала получите ваше первое предсказание! 🔮\n\n"
@@ -642,10 +653,10 @@ async def show_history_callback(callback: CallbackQuery) -> Any:
             )
             await callback.answer()
             return
-        
+
         # Get user's predictions (limit to 5 as per requirements)
         predictions = await prediction_repo.get_user_predictions(db_user.id, limit=5)
-        
+
         if not predictions:
             await callback.message.answer(
                 "📜 У вас пока нет предсказаний в истории.\n\n"
@@ -654,10 +665,10 @@ async def show_history_callback(callback: CallbackQuery) -> Any:
             )
             await callback.answer()
             return
-        
+
         # Format history with proper numbering and dates
         history_text = f"📜 Ваши последние предсказания ({len(predictions)} из 5):\n\n"
-        
+
         for i, prediction in enumerate(predictions, 1):
             # Format date in Russian locale style
             date_str = prediction.created_at.strftime("%d.%m.%Y в %H:%M")
@@ -666,17 +677,17 @@ async def show_history_callback(callback: CallbackQuery) -> Any:
             formatted_pred = markdown_to_telegram_html(prediction.prediction_text)
             history_text += f"{formatted_pred}\n"
             history_text += "─" * 30 + "\n\n"
-        
+
         # Remove last separator
         history_text = history_text.rstrip("─" * 30 + "\n\n")
-        
+
         # Split message if too long (Telegram limit: 4096 chars)
         chunks = split_message(history_text)
-        
+
         # Send all chunks as new messages to keep the prediction visible
         for chunk in chunks:
             await callback.message.answer(chunk, parse_mode="HTML")
-    
+
     await callback.answer()
 
 
@@ -696,7 +707,7 @@ async def share_prediction_callback(callback: CallbackQuery) -> Any:
 async def help_callback(callback: CallbackQuery) -> Any:
     """Handle help callbacks."""
     help_type = callback.data.split("_")[1]
-    
+
     help_texts = {
         "photo": """📸 Как правильно сфотографировать чашку:
 
@@ -707,7 +718,7 @@ async def help_callback(callback: CallbackQuery) -> Any:
 5. 📤 Отправьте фото как изображение (не файл)
 
 💡 Совет: лучше всего фотографировать при дневном свете!""",
-        
+
         "coffee": """☕ Приготовление кофе для гадания:
 
 1. ☕ Используйте молотый кофе среднего помола
@@ -718,7 +729,7 @@ async def help_callback(callback: CallbackQuery) -> Any:
 6. ⏰ Подождите 2-3 минуты, пока гуща осядет
 
 ✨ Чем крепче кофе, тем четче узоры!""",
-        
+
         "divination": """🔮 О гадании на кофейной гуще:
 
 📜 Древнее искусство, пришедшее с Востока
@@ -734,7 +745,7 @@ async def help_callback(callback: CallbackQuery) -> Any:
 • Птицы - хорошие новости
 
 💫 Помните: будущее в ваших руках!""",
-        
+
         "faq": """❓ Частые вопросы:
 
 Q: Почему бот не отвечает на фото?
@@ -755,13 +766,10 @@ A: Используйте настройки → Очистить историю
 Q: Бот не работает, что делать?
 A: Попробуйте команду /start"""
     }
-    
+
     text = help_texts.get(help_type, "Информация не найдена")
     await callback.message.edit_text(text, reply_markup=KeyboardManager.get_help_menu())
     await callback.answer()
-
-
-
 
 
 @router.callback_query(F.data == "cancel_subscription")
@@ -792,7 +800,7 @@ async def confirm_cancel_subscription_callback(callback: CallbackQuery) -> Any:
             user_repo = UserRepository(session)
             subscription_repo = SubscriptionRepository(session)
 
-            db_user = await user_repo.get_user_by_telegram_id(user.id)
+            db_user = await user_repo.get_user_by_telegram_id(user.id, source=_SOURCE)
             if not db_user:
                 await callback.message.edit_text("Пользователь не найден. Используйте /start")
                 await callback.answer()
@@ -834,17 +842,16 @@ async def confirm_cancel_subscription_callback(callback: CallbackQuery) -> Any:
 async def confirm_callback(callback: CallbackQuery) -> Any:
     """Handle confirmation callbacks."""
     action = callback.data.split("_")[1]
-    
+
     if action == "clear_history":
         user = callback.from_user
         if user:
             try:
                 async for session in db_manager.get_session():
                     user_repo = UserRepository(session)
-                    prediction_repo = PredictionRepository(session)
-                    
+
                     # Get user
-                    db_user = await user_repo.get_user_by_telegram_id(user.id)
+                    db_user = await user_repo.get_user_by_telegram_id(user.id, source=_SOURCE)
                     if db_user:
                         # Delete all user predictions using raw SQL for simplicity
                         from sqlalchemy import text
@@ -853,7 +860,7 @@ async def confirm_callback(callback: CallbackQuery) -> Any:
                             {"user_id": db_user.id}
                         )
                         await session.commit()
-                
+
                 await callback.message.edit_text(
                     "✅ История предсказаний очищена!\n\n"
                     "Теперь вы можете начать с чистого листа. "
@@ -865,7 +872,7 @@ async def confirm_callback(callback: CallbackQuery) -> Any:
                     "❌ Произошла ошибка при очистке истории.\n\n"
                     "Попробуйте позже или обратитесь в поддержку."
                 )
-    
+
     await callback.answer()
 
 
@@ -887,24 +894,25 @@ async def subscription_handler(message: Message) -> Any:
     user = message.from_user
     if not user:
         return
-    
+
     async for session in db_manager.get_session():
         user_repo = UserRepository(session)
         subscription_repo = SubscriptionRepository(session)
         settings_repo = SettingsRepository(session)
-        
-        db_user = await user_repo.get_user_by_telegram_id(user.id)
+
+        db_user = await user_repo.get_user_by_telegram_id(user.id, source=_SOURCE)
         if not db_user:
             db_user = await user_repo.create_user(
                 telegram_id=user.id,
                 username=user.username,
-                full_name=user.full_name or f"{user.first_name} {user.last_name or ''}".strip()
+                full_name=user.full_name or f"{user.first_name} {user.last_name or ''}".strip(),
+                source=_SOURCE,
             )
-        
+
         status = await subscription_repo.get_subscription_status(db_user.id)
         price_str = await settings_repo.get_setting("subscription_price")
         price = int(float(price_str)) if price_str else 300
-        
+
         if status["type"] == "vip":
             status_text = (
                 "✨ Твой статус: VIP ⭐\n\n"
@@ -933,7 +941,7 @@ async def subscription_handler(message: Message) -> Any:
                     f"🎁 Использовано бесплатных гаданий: {used} из {limit}\n\n"
                     f"💰 Подписка для безлимита: {price}₽/мес"
                 )
-        
+
         has_active = (status["type"] == "vip") or (status["type"] == "premium" and status["active"])
         is_vip = status["type"] == "vip"
         recurring_enabled, _ = await subscription_repo.is_recurring_enabled(db_user.id)
@@ -958,25 +966,25 @@ async def subscription_status_callback(callback: CallbackQuery) -> Any:
     if not user:
         await callback.answer()
         return
-    
+
     async for session in db_manager.get_session():
         user_repo = UserRepository(session)
         subscription_repo = SubscriptionRepository(session)
         settings_repo = SettingsRepository(session)
-        
-        db_user = await user_repo.get_user_by_telegram_id(user.id)
+
+        db_user = await user_repo.get_user_by_telegram_id(user.id, source=_SOURCE)
         if not db_user:
             await callback.message.edit_text("Пользователь не найден. Используйте /start")
             await callback.answer()
             return
-        
+
         status = await subscription_repo.get_subscription_status(db_user.id)
         price_str = await settings_repo.get_setting("subscription_price")
         price = int(float(price_str)) if price_str else 300
-        
+
         # Check if recurring payment is enabled
         recurring_enabled, recurring_charge_id = await subscription_repo.is_recurring_enabled(db_user.id)
-        
+
         if status["type"] == "vip":
             status_text = f"✨ Статус: VIP ⭐\nТебе открыты все тайны!"
         elif status["type"] == "premium" and status["active"]:
@@ -987,7 +995,7 @@ async def subscription_status_callback(callback: CallbackQuery) -> Any:
             used = status.get("predictions_used", 0)
             limit = status.get("predictions_limit", 10)
             status_text = f"☕ Гость Оракула\n🎁 Использовано: {used}/{limit}\n💰 Подписка: {price}₽/мес"
-        
+
         has_active = (status["type"] == "vip") or (status["type"] == "premium" and status["active"])
         is_vip = status["type"] == "vip"
 
@@ -1002,7 +1010,7 @@ async def subscription_status_callback(callback: CallbackQuery) -> Any:
                 recurring_enabled=recurring_enabled,
             )
         )
-    
+
     await callback.answer()
 
 
@@ -1049,7 +1057,9 @@ async def _poll_payment_and_activate(
                     user_repo = UserRepository(session)
                     sub_repo = SubscriptionRepository(session)
 
-                    db_user = await user_repo.get_user_by_telegram_id(telegram_user_id)
+                    db_user = await user_repo.get_user_by_telegram_id(
+                        telegram_user_id, source=_SOURCE,
+                    )
                     if not db_user:
                         return
 
@@ -1194,7 +1204,9 @@ async def _create_payment_and_respond(
         settings_repo = SettingsRepository(session)
         sub_repo = SubscriptionRepository(session)
 
-        db_user = await user_repo.get_user_by_telegram_id(telegram_user_id)
+        db_user = await user_repo.get_user_by_telegram_id(
+            telegram_user_id, source=_SOURCE,
+        )
         if not db_user:
             await bot.send_message(chat_id, "Пользователь не найден. Используйте /start")
             return
@@ -1339,7 +1351,7 @@ async def check_payment_callback(callback: CallbackQuery) -> Any:
         user_repo = UserRepository(session)
         sub_repo = SubscriptionRepository(session)
 
-        db_user = await user_repo.get_user_by_telegram_id(user.id)
+        db_user = await user_repo.get_user_by_telegram_id(user.id, source=_SOURCE)
         if not db_user:
             await callback.message.edit_text("Пользователь не найден. Используйте /start")
             await callback.answer()
@@ -1427,10 +1439,9 @@ async def check_payment_callback(callback: CallbackQuery) -> Any:
     await callback.answer()
 
 
-
 @router.message(F.text & ~F.text.in_([
     "🔮 Получить предсказание", "📜 Моя история", "ℹ️ О боте",
-    "🎯 Случайное предсказание", "📚 Как гадать", "🗑️ Очистить историю", 
+    "🎯 Случайное предсказание", "📚 Как гадать", "🗑️ Очистить историю",
     "📞 Поддержка", "💎 Подписка"
 ]))
 async def text_handler(message: Message) -> Any:
