@@ -309,6 +309,8 @@ async def get_predictions(
                 {
                     "id": prediction.id,
                     "user_id": prediction.user_id,
+                    "telegram_id": prediction.user.telegram_id if prediction.user else None,
+                    "source": prediction.user.source if prediction.user else "tg",
                     "user_name": prediction.user.full_name if prediction.user else "Unknown",
                     "prediction_text": prediction.prediction_text,
                     "user_request": prediction.user_request,

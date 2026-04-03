@@ -202,6 +202,29 @@
             color: #6b46c1;
         }
 
+        .badge-tg {
+            background: #dbeafe;
+            color: #1e40af;
+        }
+
+        .badge-max {
+            background: #dcfce7;
+            color: #166534;
+        }
+
+        .platform-id {
+            display: flex;
+            flex-direction: column;
+            gap: 0.3rem;
+            font-size: 0.85rem;
+        }
+
+        .platform-id code {
+            font-family: 'SF Mono', 'Consolas', monospace;
+            font-size: 0.8rem;
+            color: #2d3748;
+        }
+
         .loading {
             text-align: center;
             padding: 2rem;
@@ -307,7 +330,7 @@
         <div class="data-section">
             <div class="controls">
                 <div class="search-box"><input type="text" id="search"
-                        placeholder="Поиск по тексту или имени пользователя..." /></div>
+                        placeholder="Поиск по тексту, имени или ID платформы..." /></div>
                 <div class="stats" id="stats">Загрузка...</div>
             </div>
             <div class="table-container">
@@ -316,6 +339,7 @@
                         <tr>
                             <th>ID</th>
                             <th>Пользователь</th>
+                            <th>ID платформы</th>
                             <th>Фото</th>
                             <th>Запрос</th>
                             <th>Тариф</th>
@@ -326,7 +350,7 @@
                     </thead>
                     <tbody id="table-body">
                         <tr>
-                            <td colspan="8" class="loading">Загрузка...</td>
+                            <td colspan="9" class="loading">Загрузка...</td>
                         </tr>
                     </tbody>
                 </table>
@@ -360,6 +384,13 @@
         let currentPage = 1;
         const perPage = 50;
 
+        function getPlatformBadge(source) {
+            if (source === 'max') {
+                return '<span class="badge badge-max">MAX</span>';
+            }
+            return '<span class="badge badge-tg">TG</span>';
+        }
+
         async function loadData() {
             try {
                 const response = await fetch('/api/predictions');
@@ -370,7 +401,7 @@
             }
 
             catch (error) {
-                tbody.innerHTML = '<tr><td colspan="8" class="error">Ошибка загрузки</td></tr>';
+                document.getElementById('table-body').innerHTML = '<tr><td colspan="9" class="error">Ошибка загрузки</td></tr>';
             }
         }
 
@@ -396,7 +427,7 @@
             const tbody = document.getElementById('table-body');
 
             if (pageData.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="8">Предсказания не найдены</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="9">Предсказания не найдены</td></tr>';
                 return;
             }
 
@@ -407,10 +438,18 @@
                 if (st === 'vip') { badgeClass = 'badge-vip'; badgeLabel = '⭐ VIP'; }
                 else if (st === 'premium') { badgeClass = 'badge-premium'; badgeLabel = '💎 Premium'; }
                 const badge = `<span class="badge ${badgeClass}">${badgeLabel}</span>`;
+                const platformBadge = getPlatformBadge(p.source);
+                const platformId = p.telegram_id || '—';
                 return `
                 <tr>
                     <td>${p.id}</td>
                     <td>${p.user_name}</td>
+                    <td>
+                        <div class="platform-id">
+                            ${platformBadge}
+                            <code>${platformId}</code>
+                        </div>
+                    </td>
                     <td>
                         ${p.photos && p.photos.length > 0 ?
                     `<div class="gallery-wrapper" style="position: relative; display: inline-block; cursor: pointer;" onclick="showPrediction(${p.id})">
@@ -513,9 +552,12 @@
             document.getElementById('modal-text').innerHTML = marked.parse(p.prediction_text);
 
             const subBadge = {'vip': '<span class="badge badge-vip">⭐ VIP</span>', 'premium': '<span class="badge badge-premium">💎 Premium</span>', 'free': '<span class="badge badge-free">Free</span>'};
+            const platformBadge = getPlatformBadge(p.source);
+            const platformId = p.telegram_id || '—';
             document.getElementById('modal-meta').innerHTML = `
                 <strong>ID:</strong> ${p.id} | 
                 <strong>Пользователь:</strong> ${p.user_name} | 
+                <strong>Платформа:</strong> ${platformBadge} <code>${platformId}</code> | 
                 <strong>Тариф:</strong> ${subBadge[p.subscription_type] || subBadge['free']} | 
                 <strong>Дата:</strong> ${new Date(p.created_at).toLocaleString('ru-RU')} | 
                 <strong>Символов:</strong> ${p.prediction_text.length}
@@ -533,7 +575,11 @@
 
         document.getElementById('search').addEventListener('input', (e) => {
             const term = e.target.value.toLowerCase();
-            filteredData = allData.filter(p => p.prediction_text.toLowerCase().includes(term) || (p.user_name || '').toLowerCase().includes(term));
+            filteredData = allData.filter(p =>
+                p.prediction_text.toLowerCase().includes(term) ||
+                (p.user_name || '').toLowerCase().includes(term) ||
+                String(p.telegram_id || '').includes(term)
+            );
             currentPage = 1;
             renderTable();
             updateStats();
