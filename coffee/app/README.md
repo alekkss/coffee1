@@ -25,6 +25,7 @@
 - [Утилиты](#утилиты)
 - [Инфраструктура и деплой](#инфраструктура-и-деплой)
 - [Диагностика проблем](#диагностика-проблем)
+- [Партнёрская реферальная система](#партнёрская-реферальная-система)
 
 ---
 
@@ -57,7 +58,12 @@
 │          ┌──────────────────────────────────────┐                │
 │          │  SQLite + SQLAlchemy (async, WAL)     │                │
 │          │  Общая БД: users.source = 'tg'|'max' │                │
-│          └──────────────────────────────────────┘                │
+│          └──────────────────────────────────────┘ 
+│          ┌──────────────────────────────────────┐                │
+│          │  Партнёрская реферальная система       │                │
+│          │  Partners → ReferralClicks            │                │
+│          │  /start?start=КОД → учёт переходов   │                │
+│          └──────────────────────────────────────┘                │        
 └───────────────────────────────────────────────────────────────────┘
 
 Компоненты запускаются условно:
@@ -227,7 +233,8 @@ coffee_oracle/
 │       ├── users.html                   # Таблица пользователей с поиском и пагинацией
 │       ├── predictions.html             # Таблица предсказаний с модалкой и marked.js
 │       ├── subscriptions.html           # Управление подписками, VIP, платежи
-│       ├── settings.html                # Редактор настроек (промпты, цены, тексты)
+│       ├── settings.html                # Редактор настроек + управление партнёрами
+│       ├── partner_cabinet.html         # Кабинет партнёра (реф. ссылка, статистика)
 │       ├── admins.html                  # CRUD администраторов (временно отключено)
 │       └── legal_page.html              # Шаблон для /terms и /privacy (публичный)
 │
@@ -353,6 +360,7 @@ docker run -d \
 | `ERROR_NOTIFY_TELEGRAM_IDS` | — | Telegram ID для уведомлений об ошибках (через запятую) |
 | `SECURE_COOKIES` | `true` | HTTPS-only cookies |
 | `MAX_BOT_TOKEN` | — | Токен MAX-бота (если не задан, MAX-бот не запускается) |
+| `BOT_USERNAME`| — |	Имя Telegram-бота без @ (для реферальных ссылок партнёров) |
 
 
 ### Пример .env
@@ -373,6 +381,7 @@ ADMIN_PORT=8000
 YOOKASSA_SHOP_ID=1270434
 YOOKASSA_SECRET_KEY=live_xxxxxxxxxxxxx
 ERROR_NOTIFY_TELEGRAM_IDS=91675683
+BOT_USERNAME=oracul_coffee_bot
 MAX_BOT_TOKEN=your-max-bot-token-here
 ```
 
@@ -384,7 +393,7 @@ MAX_BOT_TOKEN=your-max-bot-token-here
 
 | Команда | Описание |
 |---------|----------|
-| `/start` | Приветствие, создание пользователя в БД, показ главного меню |
+| `/start` | Приветствие, создание пользователя в БД, показ главного меню. При наличии deep link параметра (реферального кода партнёра) записывает переход и привязывает пользователя к партнёру |
 | `/help` | Inline-меню с разделами помощи (фото, кофе, гадание, FAQ) |
 | `/predict` | Инструкция по отправке фото для предсказания |
 | `/history` | Последние 5 предсказаний пользователя |
@@ -467,6 +476,32 @@ In-memory хранение pending-платежей: `_pending_payments: dict[in
 
 ---
 
+## Партнёрская реферальная система
+
+Система позволяет создавать партнёров с уникальными реферальными ссылками,
+отслеживать переходы и привлечённых пользователей.
+
+### Поток работы
+
+1. Суперадмин создаёт партнёра в разделе «Настройки» → блок «Управление партнёрами».
+2. Система автоматически создаёт AdminUser (role=partner) и Partner с уникальным 8-символьным кодом.
+3. Суперадмин передаёт партнёру логин, пароль и URL входа.
+4. Партнёр входит в админку → видит только кабинет партнёра (/partner).
+5. В кабинете отображается реферальная ссылка вида `https://t.me/oracul_coffee_bot?start=КОД`.
+6. Пользователь переходит по ссылке → бот обрабатывает `/start КОД`:
+   - Записывает ReferralClick (partner_id, telegram_id, source).
+   - Создаёт пользователя с referred_by_partner_id = partner.id.
+7. Партнёр видит в кабинете: общее число переходов, переходы за сегодня,
+   количество привлечённых пользователей, таблицу переходов по дням.
+
+### Особенности
+
+- Каждый переход записывается отдельно (без дедупликации), чтобы партнёр видел реальный трафик.
+- Привязка пользователя к партнёру (referred_by_partner_id) сохраняется при первой регистрации.
+- При удалении партнёра: ReferralClicks удаляются каскадно, referred_by_partner_id обнуляется (SET NULL).
+- Реферальный код генерируется криптографически стойко через secrets.choice (8 символов: a-z, 0-9).
+- Партнёрам недоступны остальные разделы админки (дашборд, пользователи, предсказания, подписки, настройки).
+
 ## Админ-панель
 
 FastAPI-приложение (`Coffee Oracle Admin v2.0`) на порту `ADMIN_PORT` (по умолчанию 8000). Шаблоны — Jinja2. Стилизация — inline CSS с градиентным фоном (`#667eea → #764ba2`), glassmorphism-карточки, Chart.js для графиков.
@@ -501,6 +536,7 @@ FastAPI-приложение (`Coffee Oracle Admin v2.0`) на порту `ADMIN
 | `/privacy` | `legal_page.html` | Политика конфиденциальности (текст из `bot_settings`) | публичная |
 | `/health` | — | JSON health-check | публичная |
 | `/logout` | — | Очистка cookie, редирект на `/login` | авторизованные |
+| `/partner` | `partner_cabinet.html` | Кабинет партнёра: реферальная ссылка, KPI-карточки (всего переходов, за сегодня, привлечённых пользователей), таблица переходов по дням | partner |
 
 ### Роли администраторов
 
@@ -508,6 +544,7 @@ FastAPI-приложение (`Coffee Oracle Admin v2.0`) на порту `ADMIN
 |------|--------|
 | `superadmin` | Полный доступ: настройки, управление VIP, ручное завершение платежей, CRUD админов |
 | `restricted` | Дашборд, пользователи, предсказания, подписки (без настроек и управления админами) |
+| `partner` |	Только кабинет партнёра (/partner): реферальная ссылка, статистика переходов |
 
 ### Настраиваемые параметры (страница Settings)
 
@@ -526,6 +563,10 @@ FastAPI-приложение (`Coffee Oracle Admin v2.0`) на порту `ADMIN
 | `terms_text` | textarea (large) | Текст условий использования |
 | `privacy_text` | textarea (large) | Текст политики конфиденциальности |
 
+Страница Settings также содержит блок «Управление партнёрами» (только superadmin):
+форма создания партнёра (логин, пароль, описание), таблица существующих партнёров
+с реферальными ссылками, статистикой переходов и кнопкой удаления.
+
 ### Статические файлы
 
 Медиафайлы (фото пользователей) раздаются через FastAPI `StaticFiles` по пути `/media/<filename>`, маппинг на директорию с фото на диске.
@@ -537,6 +578,26 @@ FastAPI-приложение (`Coffee Oracle Admin v2.0`) на порту `ADMIN
 SQLite с асинхронным доступом через `aiosqlite`. WAL-режим включён для конкурентных чтений. Автоматические миграции при старте приложения.
 
 ### Модели
+
+#### Partner
+
+| Поле | Тип | Описание |
+|------|-----|----------|
+| `id` | Integer, PK | Автоинкрементный ID |
+| `admin_user_id` | Integer, FK → admin_users.id, UNIQUE | Связь с AdminUser (роль partner) |
+| `referral_code` | String(50), UNIQUE, INDEX | Уникальный реферальный код |
+| `description` | String(500), nullable | Описание партнёра (компания, канал, блогер) |
+| `created_at` | DateTime | Дата создания |
+
+#### ReferralClick
+
+| Поле | Тип | Описание |
+|------|-----|----------|
+| `id` | Integer, PK | Автоинкрементный ID |
+| `partner_id` | Integer, FK → partners.id, INDEX | Связь с партнёром |
+| `telegram_id` | BigInteger | ID пользователя, перешедшего по ссылке |
+| `source` | String(10), default `tg` | Платформа перехода (tg/max) |
+| `created_at` | DateTime | Дата перехода |
 
 #### User
 
@@ -555,6 +616,7 @@ SQLite с асинхронным доступом через `aiosqlite`. WAL-р
 | `telegram_recurring_payment_charge_id` | String(255), nullable | ID метода оплаты для рекуррентов |
 | `deleted_at` | DateTime, nullable | Soft delete |
 | `created_at` | DateTime | Дата регистрации |
+| `referred_by_partner_id` | Integer, FK → partners.id, nullable | ID партнёра, по чьей ссылке пришёл пользователь |
 
 **Unique constraint:** `(telegram_id, source)` — гарантирует уникальность пользователя в пределах одной платформы. Один и тот же числовой ID из разных мессенджеров создаёт разных пользователей.
 
@@ -614,7 +676,7 @@ SQLite с асинхронным доступом через `aiosqlite`. WAL-р
 | `id` | Integer, PK | Автоинкрементный ID |
 | `username` | String(255), UNIQUE | Логин |
 | `password_hash` | String(255) | Хеш пароля |
-| `role` | String(50), default `restricted` | Роль: superadmin, admin, restricted |
+| `role` | String(50), default `restricted` | Роль: superadmin, restricted, partner |
 | `created_at` | DateTime | Дата создания |
 
 ### Связи
@@ -622,6 +684,8 @@ SQLite с асинхронным доступом через `aiosqlite`. WAL-р
 ```
 User 1 ──── * Prediction 1 ──── * PredictionPhoto
 User 1 ──── * Payment
+AdminUser 1 ──── 1 Partner 1 ──── * ReferralClick
+Partner 1 ──── * User (referred_by_partner_id)
 ```
 
 Каскадное удаление: удаление предсказания удаляет все связанные фото (`cascade="all, delete-orphan"`).
@@ -639,7 +703,9 @@ User 1 ──── * Payment
 | `soft_delete_users` | Добавление deleted_at в users |
 | `payment_amount_to_integer_kopecks` | Конвертация amount из REAL (рубли) в INTEGER (копейки) |
 | `user_email` | Добавление email в users |
-| `user_source` | Добавление поля source в users, замена unique index telegram_id на составной (telegram_id, source) |
+| `partners_table` | Создание таблицы partners (реферальная система) |
+| `referral_clicks_table` | Создание таблицы referral_clicks (учёт переходов) |
+| `user_referred_by_partner` | Добавление referred_by_partner_id в users |
 
 Дополнительно `DatabaseManager.check_and_migrate_db()` выполняет legacy-миграции через `ALTER TABLE` с проверкой существования колонок.
 
@@ -649,12 +715,21 @@ User 1 ──── * Payment
 
 Все API-эндпоинты защищены JWT-аутентификацией (кроме `/health`, `/terms`, `/privacy`, `/login`, вебхука YooKassa).
 
+### Управление партнёрами
+
+| Метод | URL | Доступ | Описание |
+|-------|-----|--------|----------|
+| `GET` | `/api/partners` | superadmin | Список партнёров с реферальными ссылками и статистикой |
+| `POST` | `/api/partners` | superadmin | Создать партнёра. Body: `{username, password, description}` |
+| `DELETE` | `/api/partners/{partner_id}` | superadmin | Удалить партнёра (каскадно удаляет AdminUser и ReferralClicks) |
+| `GET` | `/api/partner/stats` | partner | Статистика кабинета: реф. ссылка, total_clicks, today_clicks, referred_users, clicks_by_day |
+
 ### Аутентификация
 
 | Метод | URL | Описание |
 |-------|-----|----------|
 | `GET` | `/login` | Страница входа |
-| `POST` | `/login` | Авторизация, установка JWT cookie. Body: `{username, password}` |
+| `POST` | `/login` | Авторизация, установка JWT cookie. Body: `{username, password}`. Ответ включает `redirect_url`: `/partner` для партнёров, `/` для остальных |
 | `GET` | `/logout` | Удаление cookie, редирект на `/login` |
 
 ### Дашборд и аналитика

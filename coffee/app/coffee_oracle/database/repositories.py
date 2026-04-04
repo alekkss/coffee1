@@ -1,11 +1,13 @@
 """Репозитории для работы с базой данных.
 
 Содержит репозитории для всех сущностей: пользователи,
-предсказания, настройки, подписки и платежи.
+предсказания, настройки, подписки, платежи и партнёры.
 """
 
 import os
 import logging
+import secrets
+import string
 from datetime import datetime, timedelta
 from typing import Any, Dict, List, Optional
 
@@ -13,7 +15,16 @@ from sqlalchemy import desc, func, select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.exc import IntegrityError
 
-from coffee_oracle.database.models import BotSettings, Payment, Prediction, PredictionPhoto, User
+from coffee_oracle.database.models import (
+    AdminUser,
+    BotSettings,
+    Partner,
+    Payment,
+    Prediction,
+    PredictionPhoto,
+    ReferralClick,
+    User,
+)
 
 MEDIA_DIR = "/opt/oracle-bot/media"
 logger = logging.getLogger(__name__)
@@ -36,6 +47,7 @@ class UserRepository:
         username: Optional[str],
         full_name: str,
         source: str = "tg",
+        referred_by_partner_id: Optional[int] = None,
     ) -> User:
         """Создание нового пользователя. Если пользователь был soft-deleted, восстанавливает его.
 
@@ -44,6 +56,7 @@ class UserRepository:
             username: Имя пользователя (@username).
             full_name: Отображаемое имя.
             source: Платформа-источник ('tg' для Telegram, 'max' для MAX).
+            referred_by_partner_id: ID партнёра, по чьей ссылке пришёл пользователь.
 
         Returns:
             Созданный или восстановленный объект User.
@@ -61,6 +74,8 @@ class UserRepository:
             existing_deleted.deleted_at = None
             existing_deleted.username = username
             existing_deleted.full_name = full_name
+            if referred_by_partner_id and not existing_deleted.referred_by_partner_id:
+                existing_deleted.referred_by_partner_id = referred_by_partner_id
             await self.session.commit()
             await self.session.refresh(existing_deleted)
             return existing_deleted
@@ -70,6 +85,7 @@ class UserRepository:
             username=username,
             full_name=full_name,
             source=source,
+            referred_by_partner_id=referred_by_partner_id,
         )
 
         self.session.add(user)
@@ -1025,3 +1041,331 @@ class SubscriptionRepository:
             )
         )
         return list(result.scalars().all())
+
+
+class PartnerRepository:
+    """Репозиторий для операций с партнёрами и реферальными переходами.
+
+    Отвечает за полный жизненный цикл партнёра: создание (вместе
+    с AdminUser), удаление, запись реферальных кликов и получение
+    статистики переходов с группировкой по дням.
+    """
+
+    # Длина генерируемого реферального кода
+    _REFERRAL_CODE_LENGTH = 8
+
+    def __init__(self, session: AsyncSession):
+        self.session = session
+
+    def _generate_referral_code(self) -> str:
+        """Генерация уникального реферального кода.
+
+        Код состоит из букв латинского алфавита (строчных) и цифр.
+        Длина определяется _REFERRAL_CODE_LENGTH (по умолчанию 8 символов).
+
+        Returns:
+            Строка вида 'a7k2m9x1'.
+        """
+        alphabet = string.ascii_lowercase + string.digits
+        return "".join(secrets.choice(alphabet) for _ in range(self._REFERRAL_CODE_LENGTH))
+
+    async def _ensure_unique_referral_code(self) -> str:
+        """Генерация гарантированно уникального реферального кода.
+
+        Проверяет отсутствие коллизий в таблице partners.
+        При коллизии генерирует новый код (до 10 попыток).
+
+        Returns:
+            Уникальный реферальный код.
+
+        Raises:
+            RuntimeError: Если не удалось сгенерировать уникальный код за 10 попыток.
+        """
+        for _ in range(10):
+            code = self._generate_referral_code()
+            result = await self.session.execute(
+                select(Partner).where(Partner.referral_code == code)
+            )
+            if result.scalar_one_or_none() is None:
+                return code
+
+        raise RuntimeError("Не удалось сгенерировать уникальный реферальный код за 10 попыток")
+
+    async def create_partner(
+        self,
+        username: str,
+        password_hash: str,
+        description: Optional[str] = None,
+    ) -> Dict[str, Any]:
+        """Создание нового партнёра.
+
+        Создаёт запись AdminUser с ролью 'partner' и связанную
+        запись Partner с уникальным реферальным кодом.
+
+        Args:
+            username: Логин партнёра для входа в админку.
+            password_hash: Хеш пароля (bcrypt).
+            description: Описание партнёра (компания, канал и т.д.).
+
+        Returns:
+            Словарь с данными созданного партнёра:
+            {partner_id, admin_user_id, username, referral_code, description}.
+
+        Raises:
+            IntegrityError: Если username уже занят.
+        """
+        # Создаём AdminUser с ролью partner
+        admin_user = AdminUser(
+            username=username,
+            password_hash=password_hash,
+            role="partner",
+        )
+        self.session.add(admin_user)
+        await self.session.flush()  # Получаем admin_user.id без коммита
+
+        # Генерируем уникальный реферальный код
+        referral_code = await self._ensure_unique_referral_code()
+
+        # Создаём запись Partner
+        partner = Partner(
+            admin_user_id=admin_user.id,
+            referral_code=referral_code,
+            description=description,
+        )
+        self.session.add(partner)
+
+        await self.session.commit()
+        await self.session.refresh(partner)
+        await self.session.refresh(admin_user)
+
+        logger.info(
+            "Создан партнёр: username=%s, referral_code=%s, partner_id=%d",
+            username, referral_code, partner.id,
+        )
+
+        return {
+            "partner_id": partner.id,
+            "admin_user_id": admin_user.id,
+            "username": admin_user.username,
+            "referral_code": partner.referral_code,
+            "description": partner.description,
+        }
+
+    async def delete_partner(self, partner_id: int) -> bool:
+        """Удаление партнёра и связанного AdminUser.
+
+        Каскадно удаляет: Partner → ReferralClick (через CASCADE),
+        AdminUser удаляется отдельно. Поле referred_by_partner_id
+        в users обнуляется (ON DELETE SET NULL).
+
+        Args:
+            partner_id: ID партнёра.
+
+        Returns:
+            True если партнёр найден и удалён, False иначе.
+        """
+        result = await self.session.execute(
+            select(Partner).where(Partner.id == partner_id)
+        )
+        partner = result.scalar_one_or_none()
+
+        if not partner:
+            return False
+
+        admin_user_id = partner.admin_user_id
+
+        # Удаляем партнёра (каскадно удалит referral_clicks)
+        await self.session.delete(partner)
+
+        # Удаляем связанного AdminUser
+        admin_result = await self.session.execute(
+            select(AdminUser).where(AdminUser.id == admin_user_id)
+        )
+        admin_user = admin_result.scalar_one_or_none()
+        if admin_user:
+            await self.session.delete(admin_user)
+
+        await self.session.commit()
+
+        logger.info("Удалён партнёр: partner_id=%d, admin_user_id=%d", partner_id, admin_user_id)
+        return True
+
+    async def get_partner_by_referral_code(self, referral_code: str) -> Optional[Partner]:
+        """Получение партнёра по реферальному коду.
+
+        Используется при обработке /start с реферальным параметром.
+
+        Args:
+            referral_code: Реферальный код из deep link.
+
+        Returns:
+            Объект Partner или None.
+        """
+        result = await self.session.execute(
+            select(Partner).where(Partner.referral_code == referral_code)
+        )
+        return result.scalar_one_or_none()
+
+    async def get_partner_by_admin_user_id(self, admin_user_id: int) -> Optional[Partner]:
+        """Получение партнёра по ID администратора.
+
+        Используется для отображения кабинета партнёра после авторизации.
+
+        Args:
+            admin_user_id: ID записи AdminUser.
+
+        Returns:
+            Объект Partner или None.
+        """
+        result = await self.session.execute(
+            select(Partner).where(Partner.admin_user_id == admin_user_id)
+        )
+        return result.scalar_one_or_none()
+
+    async def get_all_partners(self) -> List[Dict[str, Any]]:
+        """Получение всех партнёров с количеством кликов.
+
+        Returns:
+            Список словарей с данными партнёров, включая total_clicks.
+        """
+        result = await self.session.execute(
+            select(Partner).order_by(desc(Partner.created_at))
+        )
+        partners = list(result.scalars().all())
+
+        partners_data = []
+        for partner in partners:
+            # Подсчёт кликов
+            clicks_result = await self.session.execute(
+                select(func.count(ReferralClick.id)).where(
+                    ReferralClick.partner_id == partner.id
+                )
+            )
+            total_clicks = clicks_result.scalar() or 0
+
+            # Подсчёт уникальных пользователей, пришедших по ссылке
+            users_result = await self.session.execute(
+                select(func.count(User.id)).where(
+                    User.referred_by_partner_id == partner.id,
+                    User.deleted_at.is_(None),
+                )
+            )
+            referred_users = users_result.scalar() or 0
+
+            # Получаем username админа
+            admin_result = await self.session.execute(
+                select(AdminUser.username).where(AdminUser.id == partner.admin_user_id)
+            )
+            admin_row = admin_result.fetchone()
+            admin_username = admin_row[0] if admin_row else "unknown"
+
+            partners_data.append({
+                "id": partner.id,
+                "admin_user_id": partner.admin_user_id,
+                "username": admin_username,
+                "referral_code": partner.referral_code,
+                "description": partner.description,
+                "total_clicks": total_clicks,
+                "referred_users": referred_users,
+                "created_at": partner.created_at.isoformat() if partner.created_at else None,
+            })
+
+        return partners_data
+
+    async def record_click(
+        self,
+        partner_id: int,
+        telegram_id: int,
+        source: str = "tg",
+    ) -> ReferralClick:
+        """Запись перехода по реферальной ссылке.
+
+        Каждый переход записывается отдельно (не дедуплицируется),
+        чтобы партнёр видел полную картину трафика.
+
+        Args:
+            partner_id: ID партнёра.
+            telegram_id: ID пользователя, который перешёл.
+            source: Платформа перехода ('tg' или 'max').
+
+        Returns:
+            Созданный объект ReferralClick.
+        """
+        click = ReferralClick(
+            partner_id=partner_id,
+            telegram_id=telegram_id,
+            source=source,
+        )
+        self.session.add(click)
+        await self.session.commit()
+        await self.session.refresh(click)
+
+        logger.info(
+            "Записан реферальный переход: partner_id=%d, telegram_id=%d, source=%s",
+            partner_id, telegram_id, source,
+        )
+        return click
+
+    async def get_click_stats(self, partner_id: int) -> Dict[str, Any]:
+        """Получение полной статистики кликов для партнёра.
+
+        Args:
+            partner_id: ID партнёра.
+
+        Returns:
+            Словарь со статистикой: total_clicks, today_clicks,
+            referred_users, clicks_by_day (последние 30 дней).
+        """
+        # Общее количество кликов
+        total_result = await self.session.execute(
+            select(func.count(ReferralClick.id)).where(
+                ReferralClick.partner_id == partner_id
+            )
+        )
+        total_clicks = total_result.scalar() or 0
+
+        # Клики за сегодня
+        today_start = datetime.utcnow().replace(hour=0, minute=0, second=0, microsecond=0)
+        today_result = await self.session.execute(
+            select(func.count(ReferralClick.id)).where(
+                ReferralClick.partner_id == partner_id,
+                ReferralClick.created_at >= today_start,
+            )
+        )
+        today_clicks = today_result.scalar() or 0
+
+        # Количество привлечённых пользователей
+        users_result = await self.session.execute(
+            select(func.count(User.id)).where(
+                User.referred_by_partner_id == partner_id,
+                User.deleted_at.is_(None),
+            )
+        )
+        referred_users = users_result.scalar() or 0
+
+        # Клики по дням за последние 30 дней
+        thirty_days_ago = datetime.utcnow() - timedelta(days=30)
+        daily_result = await self.session.execute(
+            text("""
+                SELECT
+                    strftime('%Y-%m-%d', created_at) as day,
+                    COUNT(*) as count
+                FROM referral_clicks
+                WHERE partner_id = :partner_id
+                    AND created_at >= :since
+                GROUP BY strftime('%Y-%m-%d', created_at)
+                ORDER BY day
+            """),
+            {"partner_id": partner_id, "since": thirty_days_ago},
+        )
+        clicks_by_day = [
+            {"date": row[0], "count": row[1]}
+            for row in daily_result.fetchall()
+        ]
+
+        return {
+            "total_clicks": total_clicks,
+            "today_clicks": today_clicks,
+            "referred_users": referred_users,
+            "clicks_by_day": clicks_by_day,
+        }

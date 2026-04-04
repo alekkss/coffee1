@@ -24,6 +24,9 @@ class Config:
     # Telegram-бот (опционально — если не задан, Telegram-бот не запускается)
     bot_token: Optional[str] = None
 
+    # Имя Telegram-бота (без @) для формирования реферальных ссылок
+    bot_username: Optional[str] = None
+
     admin_username: str = ""
     admin_password: str = ""
     secret_key: str = "default-secret-key"
@@ -75,6 +78,9 @@ class Config:
                 "Необходимо задать хотя бы одну переменную: "
                 "BOT_TOKEN (Telegram) или MAX_BOT_TOKEN (MAX)"
             )
+
+        # Имя бота для реферальных ссылок (без @)
+        bot_username = os.getenv("BOT_USERNAME", "").strip() or None
 
         admin_username = os.getenv("ADMIN_USERNAME")
         admin_password = os.getenv("ADMIN_PASSWORD")
@@ -134,6 +140,7 @@ class Config:
 
         return cls(
             bot_token=bot_token,
+            bot_username=bot_username,
             admin_username=admin_username,
             admin_password=admin_password,
             secret_key=secret_key,

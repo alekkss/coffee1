@@ -1,0 +1,588 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Кабинет партнёра — Coffee Oracle</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            color: #333;
+        }
+
+        /* Навигация */
+        .navbar {
+            background: rgba(255, 255, 255, 0.15);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            padding: 15px 30px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .navbar-brand {
+            color: white;
+            font-size: 20px;
+            font-weight: 700;
+            text-decoration: none;
+        }
+
+        .navbar-brand span {
+            opacity: 0.8;
+            font-weight: 400;
+            font-size: 14px;
+            margin-left: 10px;
+        }
+
+        .navbar-user {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .navbar-user-name {
+            color: rgba(255, 255, 255, 0.9);
+            font-size: 14px;
+        }
+
+        .navbar-user-badge {
+            background: rgba(255, 255, 255, 0.2);
+            color: white;
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+
+        .btn-logout {
+            color: rgba(255, 255, 255, 0.8);
+            text-decoration: none;
+            font-size: 14px;
+            padding: 6px 14px;
+            border-radius: 8px;
+            transition: all 0.2s;
+            border: 1px solid rgba(255, 255, 255, 0.3);
+        }
+
+        .btn-logout:hover {
+            background: rgba(255, 255, 255, 0.15);
+            color: white;
+        }
+
+        /* Основной контент */
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+            padding: 30px 20px;
+        }
+
+        .page-title {
+            color: white;
+            font-size: 28px;
+            font-weight: 700;
+            margin-bottom: 8px;
+        }
+
+        .page-subtitle {
+            color: rgba(255, 255, 255, 0.7);
+            font-size: 15px;
+            margin-bottom: 30px;
+        }
+
+        /* Карточки */
+        .card {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border-radius: 16px;
+            padding: 24px;
+            margin-bottom: 24px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+        }
+
+        .card-title {
+            font-size: 16px;
+            font-weight: 600;
+            color: #555;
+            margin-bottom: 16px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        /* Реферальная ссылка */
+        .referral-section {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border-radius: 16px;
+            padding: 28px;
+            margin-bottom: 24px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+        }
+
+        .referral-label {
+            font-size: 14px;
+            color: #888;
+            margin-bottom: 10px;
+            font-weight: 500;
+        }
+
+        .referral-link-container {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+
+        .referral-link-input {
+            flex: 1;
+            padding: 14px 18px;
+            border: 2px solid #e0e0e0;
+            border-radius: 12px;
+            font-size: 15px;
+            color: #333;
+            background: #f8f9fa;
+            font-family: 'SF Mono', 'Fira Code', monospace;
+            outline: none;
+            transition: border-color 0.2s;
+        }
+
+        .referral-link-input:focus {
+            border-color: #667eea;
+        }
+
+        .btn-copy {
+            padding: 14px 24px;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            border: none;
+            border-radius: 12px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            white-space: nowrap;
+        }
+
+        .btn-copy:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn-copy.copied {
+            background: linear-gradient(135deg, #2ecc71, #27ae60);
+        }
+
+        .referral-code-note {
+            margin-top: 12px;
+            font-size: 13px;
+            color: #999;
+        }
+
+        .referral-code-note code {
+            background: #f0f0f0;
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-size: 13px;
+            color: #764ba2;
+            font-weight: 600;
+        }
+
+        /* KPI-карточки */
+        .kpi-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin-bottom: 24px;
+        }
+
+        .kpi-card {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border-radius: 16px;
+            padding: 24px;
+            text-align: center;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+            transition: transform 0.2s;
+        }
+
+        .kpi-card:hover {
+            transform: translateY(-2px);
+        }
+
+        .kpi-value {
+            font-size: 36px;
+            font-weight: 800;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            line-height: 1.2;
+        }
+
+        .kpi-label {
+            font-size: 13px;
+            color: #888;
+            margin-top: 6px;
+            font-weight: 500;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        /* Таблица */
+        .table-container {
+            overflow-x: auto;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        thead th {
+            background: #f8f9fa;
+            padding: 12px 16px;
+            text-align: left;
+            font-size: 13px;
+            font-weight: 600;
+            color: #666;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            border-bottom: 2px solid #e9ecef;
+        }
+
+        tbody td {
+            padding: 12px 16px;
+            border-bottom: 1px solid #f0f0f0;
+            font-size: 14px;
+            color: #444;
+        }
+
+        tbody tr:hover {
+            background: #f8f9fa;
+        }
+
+        .no-data {
+            text-align: center;
+            padding: 40px;
+            color: #999;
+            font-size: 15px;
+        }
+
+        /* Загрузка */
+        .loading {
+            text-align: center;
+            padding: 60px 20px;
+            color: rgba(255, 255, 255, 0.8);
+            font-size: 16px;
+        }
+
+        .loading-spinner {
+            display: inline-block;
+            width: 40px;
+            height: 40px;
+            border: 3px solid rgba(255, 255, 255, 0.3);
+            border-radius: 50%;
+            border-top-color: white;
+            animation: spin 0.8s linear infinite;
+            margin-bottom: 16px;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        /* Ошибка */
+        .error-message {
+            background: rgba(231, 76, 60, 0.1);
+            border: 1px solid rgba(231, 76, 60, 0.3);
+            color: #c0392b;
+            padding: 16px 20px;
+            border-radius: 12px;
+            margin-bottom: 24px;
+            font-size: 14px;
+        }
+
+        /* Описание партнёра */
+        .partner-description {
+            color: rgba(255, 255, 255, 0.7);
+            font-size: 14px;
+            margin-bottom: 24px;
+            font-style: italic;
+        }
+
+        /* Адаптивность */
+        @media (max-width: 600px) {
+            .navbar {
+                padding: 12px 16px;
+                flex-wrap: wrap;
+                gap: 10px;
+            }
+
+            .container {
+                padding: 20px 12px;
+            }
+
+            .page-title {
+                font-size: 22px;
+            }
+
+            .kpi-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .referral-link-container {
+                flex-direction: column;
+            }
+
+            .btn-copy {
+                width: 100%;
+                text-align: center;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Навигация -->
+    <nav class="navbar">
+        <a href="/partner" class="navbar-brand">
+            ☕ Coffee Oracle <span>Кабинет партнёра</span>
+        </a>
+        <div class="navbar-user">
+            <span class="navbar-user-name">{{ user.username }}</span>
+            <span class="navbar-user-badge">Партнёр</span>
+            <a href="/logout" class="btn-logout">Выйти</a>
+        </div>
+    </nav>
+
+    <div class="container">
+        <!-- Заголовок -->
+        <h1 class="page-title">👋 Добро пожаловать, {{ user.username }}!</h1>
+        <p class="page-subtitle">Здесь вы можете отслеживать переходы по вашей реферальной ссылке</p>
+
+        <!-- Состояние загрузки -->
+        <div id="loading" class="loading">
+            <div class="loading-spinner"></div>
+            <div>Загрузка данных...</div>
+        </div>
+
+        <!-- Контент (скрыт до загрузки) -->
+        <div id="content" style="display: none;">
+
+            <!-- Ошибка -->
+            <div id="error-container" style="display: none;">
+                <div class="error-message" id="error-text"></div>
+            </div>
+
+            <!-- Описание партнёра -->
+            <p class="partner-description" id="partner-description" style="display: none;"></p>
+
+            <!-- Реферальная ссылка -->
+            <div class="referral-section">
+                <div class="referral-label">Ваша реферальная ссылка</div>
+                <div class="referral-link-container">
+                    <input type="text"
+                           class="referral-link-input"
+                           id="referral-link"
+                           readonly
+                           value="Загрузка...">
+                    <button class="btn-copy" id="btn-copy" onclick="copyLink()">
+                        📋 Копировать
+                    </button>
+                </div>
+                <div class="referral-code-note">
+                    Реферальный код: <code id="referral-code">—</code>
+                </div>
+            </div>
+
+            <!-- KPI-карточки -->
+            <div class="kpi-grid">
+                <div class="kpi-card">
+                    <div class="kpi-value" id="kpi-total">0</div>
+                    <div class="kpi-label">Всего переходов</div>
+                </div>
+                <div class="kpi-card">
+                    <div class="kpi-value" id="kpi-today">0</div>
+                    <div class="kpi-label">Сегодня</div>
+                </div>
+                <div class="kpi-card">
+                    <div class="kpi-value" id="kpi-users">0</div>
+                    <div class="kpi-label">Привлечённых пользователей</div>
+                </div>
+            </div>
+
+            <!-- Таблица по дням -->
+            <div class="card">
+                <div class="card-title">📊 Переходы по дням (последние 30 дней)</div>
+                <div class="table-container">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Дата</th>
+                                <th>Переходов</th>
+                            </tr>
+                        </thead>
+                        <tbody id="clicks-table-body">
+                            <tr>
+                                <td colspan="2" class="no-data">Загрузка...</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <script>
+        /**
+         * Загрузка данных кабинета партнёра.
+         */
+        async function loadPartnerData() {
+            const loadingEl = document.getElementById('loading');
+            const contentEl = document.getElementById('content');
+            const errorContainer = document.getElementById('error-container');
+            const errorText = document.getElementById('error-text');
+
+            try {
+                const response = await fetch('/api/partner/stats');
+
+                if (response.status === 401) {
+                    window.location.href = '/login';
+                    return;
+                }
+
+                if (response.status === 403) {
+                    window.location.href = '/';
+                    return;
+                }
+
+                if (!response.ok) {
+                    const data = await response.json().catch(() => ({}));
+                    throw new Error(data.detail || 'Ошибка загрузки данных');
+                }
+
+                const data = await response.json();
+
+                if (!data.success) {
+                    throw new Error('Не удалось загрузить данные партнёра');
+                }
+
+                // Реферальная ссылка
+                const linkInput = document.getElementById('referral-link');
+                const codeEl = document.getElementById('referral-code');
+
+                if (data.referral_link) {
+                    linkInput.value = data.referral_link;
+                } else {
+                    linkInput.value = 'Ссылка недоступна (не задан BOT_USERNAME)';
+                }
+
+                codeEl.textContent = data.referral_code || '—';
+
+                // Описание партнёра
+                if (data.description) {
+                    const descEl = document.getElementById('partner-description');
+                    descEl.textContent = data.description;
+                    descEl.style.display = 'block';
+                }
+
+                // KPI
+                document.getElementById('kpi-total').textContent =
+                    (data.total_clicks || 0).toLocaleString('ru-RU');
+                document.getElementById('kpi-today').textContent =
+                    (data.today_clicks || 0).toLocaleString('ru-RU');
+                document.getElementById('kpi-users').textContent =
+                    (data.referred_users || 0).toLocaleString('ru-RU');
+
+                // Таблица по дням
+                const tableBody = document.getElementById('clicks-table-body');
+                const clicksByDay = data.clicks_by_day || [];
+
+                if (clicksByDay.length === 0) {
+                    tableBody.innerHTML =
+                        '<tr><td colspan="2" class="no-data">Переходов пока нет. Поделитесь ссылкой!</td></tr>';
+                } else {
+                    // Показываем от новых к старым
+                    const sorted = [...clicksByDay].reverse();
+                    tableBody.innerHTML = sorted.map(row => {
+                        const date = formatDate(row.date);
+                        return `<tr>
+                            <td>${date}</td>
+                            <td><strong>${row.count}</strong></td>
+                        </tr>`;
+                    }).join('');
+                }
+
+                // Показываем контент
+                loadingEl.style.display = 'none';
+                contentEl.style.display = 'block';
+
+            } catch (error) {
+                loadingEl.style.display = 'none';
+                contentEl.style.display = 'block';
+                errorContainer.style.display = 'block';
+                errorText.textContent = error.message || 'Произошла ошибка при загрузке данных';
+            }
+        }
+
+        /**
+         * Форматирование даты YYYY-MM-DD в ДД.ММ.ГГГГ.
+         */
+        function formatDate(dateStr) {
+            if (!dateStr) return '—';
+            const parts = dateStr.split('-');
+            if (parts.length !== 3) return dateStr;
+            return `${parts[2]}.${parts[1]}.${parts[0]}`;
+        }
+
+        /**
+         * Копирование реферальной ссылки в буфер обмена.
+         */
+        async function copyLink() {
+            const linkInput = document.getElementById('referral-link');
+            const btn = document.getElementById('btn-copy');
+
+            if (!linkInput.value || linkInput.value.startsWith('Ссылка недоступна')) {
+                return;
+            }
+
+            try {
+                await navigator.clipboard.writeText(linkInput.value);
+                btn.textContent = '✅ Скопировано!';
+                btn.classList.add('copied');
+
+                setTimeout(() => {
+                    btn.textContent = '📋 Копировать';
+                    btn.classList.remove('copied');
+                }, 2000);
+            } catch (err) {
+                // Fallback для старых браузеров
+                linkInput.select();
+                document.execCommand('copy');
+
+                btn.textContent = '✅ Скопировано!';
+                btn.classList.add('copied');
+
+                setTimeout(() => {
+                    btn.textContent = '📋 Копировать';
+                    btn.classList.remove('copied');
+                }, 2000);
+            }
+        }
+
+        // Загрузка данных при открытии страницы
+        document.addEventListener('DOMContentLoaded', loadPartnerData);
+    </script>
+</body>
+</html>

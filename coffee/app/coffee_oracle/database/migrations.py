@@ -298,6 +298,144 @@ async def apply_user_source_migration(session: AsyncSession) -> None:
     logger.info("✅ Миграция source в users завершена")
 
 
+# ────────────────────────────────────────────
+#  Миграция: создание таблицы partners
+# ────────────────────────────────────────────
+
+
+async def check_partners_table_migration(session: AsyncSession) -> bool:
+    """Проверка необходимости создания таблицы partners.
+
+    Миграция нужна, если таблица partners ещё не существует.
+    """
+    try:
+        await session.execute(text("SELECT id FROM partners LIMIT 1"))
+        return False
+    except Exception:
+        return True
+
+
+async def apply_partners_table_migration(session: AsyncSession) -> None:
+    """Создание таблицы partners для реферальной системы.
+
+    Таблица хранит данные партнёров: привязку к admin_users,
+    уникальный реферальный код и описание.
+    """
+    logger.info("Применение миграции: создание таблицы partners...")
+
+    await session.execute(text("""
+        CREATE TABLE IF NOT EXISTS partners (
+            id INTEGER PRIMARY KEY,
+            admin_user_id INTEGER NOT NULL UNIQUE
+                REFERENCES admin_users(id) ON DELETE CASCADE,
+            referral_code VARCHAR(50) NOT NULL UNIQUE,
+            description VARCHAR(500),
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP NOT NULL
+        )
+    """))
+
+    # Индекс для быстрого поиска по реферальному коду
+    await session.execute(text(
+        "CREATE INDEX IF NOT EXISTS ix_partners_referral_code "
+        "ON partners (referral_code)"
+    ))
+
+    await session.commit()
+    logger.info("✅ Таблица partners создана")
+
+
+# ────────────────────────────────────────────
+#  Миграция: создание таблицы referral_clicks
+# ────────────────────────────────────────────
+
+
+async def check_referral_clicks_table_migration(session: AsyncSession) -> bool:
+    """Проверка необходимости создания таблицы referral_clicks.
+
+    Миграция нужна, если таблица referral_clicks ещё не существует.
+    """
+    try:
+        await session.execute(text("SELECT id FROM referral_clicks LIMIT 1"))
+        return False
+    except Exception:
+        return True
+
+
+async def apply_referral_clicks_table_migration(session: AsyncSession) -> None:
+    """Создание таблицы referral_clicks для учёта переходов по реферальным ссылкам.
+
+    Каждая запись — один переход пользователя по ссылке партнёра.
+    """
+    logger.info("Применение миграции: создание таблицы referral_clicks...")
+
+    await session.execute(text("""
+        CREATE TABLE IF NOT EXISTS referral_clicks (
+            id INTEGER PRIMARY KEY,
+            partner_id INTEGER NOT NULL
+                REFERENCES partners(id) ON DELETE CASCADE,
+            telegram_id BIGINT NOT NULL,
+            source VARCHAR(10) NOT NULL DEFAULT 'tg',
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP NOT NULL
+        )
+    """))
+
+    # Индекс для быстрого подсчёта кликов по партнёру
+    await session.execute(text(
+        "CREATE INDEX IF NOT EXISTS ix_referral_clicks_partner_id "
+        "ON referral_clicks (partner_id)"
+    ))
+
+    # Индекс для поиска по telegram_id (дедупликация, аналитика)
+    await session.execute(text(
+        "CREATE INDEX IF NOT EXISTS ix_referral_clicks_telegram_id "
+        "ON referral_clicks (telegram_id)"
+    ))
+
+    await session.commit()
+    logger.info("✅ Таблица referral_clicks создана")
+
+
+# ────────────────────────────────────────────────────────
+#  Миграция: добавление referred_by_partner_id в users
+# ────────────────────────────────────────────────────────
+
+
+async def check_user_referred_by_partner_migration(session: AsyncSession) -> bool:
+    """Проверка необходимости добавления поля referred_by_partner_id в users.
+
+    Миграция нужна, если колонка ещё не существует.
+    """
+    try:
+        await session.execute(text(
+            "SELECT referred_by_partner_id FROM users LIMIT 1"
+        ))
+        return False
+    except Exception:
+        return True
+
+
+async def apply_user_referred_by_partner_migration(session: AsyncSession) -> None:
+    """Добавление поля referred_by_partner_id в users.
+
+    Хранит ID партнёра, по чьей ссылке пришёл пользователь.
+    FK с ON DELETE SET NULL — при удалении партнёра поле обнуляется.
+    """
+    logger.info("Применение миграции: добавление referred_by_partner_id в users...")
+
+    try:
+        await session.execute(text(
+            "ALTER TABLE users ADD COLUMN referred_by_partner_id INTEGER "
+            "REFERENCES partners(id) ON DELETE SET NULL"
+        ))
+        logger.info("Добавлено referred_by_partner_id в users")
+    except Exception as e:
+        if "duplicate column name" not in str(e).lower():
+            raise
+
+    await session.commit()
+    logger.info("✅ Миграция referred_by_partner_id в users завершена")
+
+
 # Список всех миграций (порядок важен!)
 MIGRATIONS: List[Migration] = [
     Migration(
@@ -329,6 +467,24 @@ MIGRATIONS: List[Migration] = [
         name="user_source",
         check_fn=check_user_source_migration,
         apply_fn=apply_user_source_migration,
+    ),
+    # --- Партнёрская система ---
+    # Порядок важен: сначала partners, затем referral_clicks (FK на partners),
+    # затем referred_by_partner_id в users (FK на partners).
+    Migration(
+        name="partners_table",
+        check_fn=check_partners_table_migration,
+        apply_fn=apply_partners_table_migration,
+    ),
+    Migration(
+        name="referral_clicks_table",
+        check_fn=check_referral_clicks_table_migration,
+        apply_fn=apply_referral_clicks_table_migration,
+    ),
+    Migration(
+        name="user_referred_by_partner",
+        check_fn=check_user_referred_by_partner_migration,
+        apply_fn=apply_user_referred_by_partner_migration,
     ),
 ]
 

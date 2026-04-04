@@ -1,7 +1,8 @@
 """Модели базы данных.
 
 Содержит SQLAlchemy-модели для всех сущностей приложения:
-пользователи, предсказания, фото, платежи, настройки, администраторы.
+пользователи, предсказания, фото, платежи, настройки, администраторы,
+партнёры и реферальные переходы.
 """
 
 from datetime import datetime
@@ -63,6 +64,11 @@ class User(Base):
         String(255), nullable=True
     )  # ID рекуррентного платежа для отмены
 
+    # Реферальная система — ID партнёра, по чьей ссылке пришёл пользователь
+    referred_by_partner_id: Mapped[Optional[int]] = mapped_column(
+        Integer, ForeignKey("partners.id", ondelete="SET NULL"), nullable=True
+    )
+
     # Мягкое удаление
     deleted_at: Mapped[Optional[datetime]] = mapped_column(
         DateTime(timezone=True), nullable=True, default=None
@@ -76,6 +82,11 @@ class User(Base):
     payments: Mapped[list["Payment"]] = relationship(
         "Payment",
         back_populates="user",
+    )
+    referred_by_partner: Mapped[Optional["Partner"]] = relationship(
+        "Partner",
+        back_populates="referred_users",
+        foreign_keys=[referred_by_partner_id],
     )
 
     def __repr__(self) -> str:
@@ -180,7 +191,13 @@ class BotSettings(Base):
 
 
 class AdminUser(Base):
-    """Модель администратора для контроля доступа на основе ролей."""
+    """Модель администратора для контроля доступа на основе ролей.
+
+    Роли:
+        superadmin — полный доступ ко всей админ-панели.
+        restricted — ограниченный доступ (без настроек и управления).
+        partner — доступ только к кабинету партнёра.
+    """
 
     __tablename__ = "admin_users"
 
@@ -194,6 +211,13 @@ class AdminUser(Base):
         DateTime(timezone=True),
         server_default=func.now(),
         nullable=False,
+    )
+
+    # Связь с партнёром (только для role="partner")
+    partner: Mapped[Optional["Partner"]] = relationship(
+        "Partner",
+        back_populates="admin_user",
+        uselist=False,
     )
 
     def __repr__(self) -> str:
@@ -246,4 +270,96 @@ class Payment(Base):
         return (
             f"<Payment(id={self.id}, user_id={self.user_id}, "
             f"amount={self.amount}, status='{self.status}')>"
+        )
+
+
+class Partner(Base):
+    """Модель партнёра реферальной программы.
+
+    Каждый партнёр привязан к записи AdminUser с ролью 'partner'.
+    Имеет уникальный реферальный код, который используется
+    в ссылке вида https://t.me/bot_name?start=КОД.
+    """
+
+    __tablename__ = "partners"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    admin_user_id: Mapped[int] = mapped_column(
+        Integer,
+        ForeignKey("admin_users.id", ondelete="CASCADE"),
+        unique=True,
+        nullable=False,
+    )
+    referral_code: Mapped[str] = mapped_column(
+        String(50), unique=True, nullable=False, index=True
+    )
+    description: Mapped[Optional[str]] = mapped_column(
+        String(500), nullable=True
+    )  # Описание партнёра (компания, канал, блогер и т.д.)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+        nullable=False,
+    )
+
+    # Связи
+    admin_user: Mapped["AdminUser"] = relationship(
+        "AdminUser",
+        back_populates="partner",
+    )
+    clicks: Mapped[list["ReferralClick"]] = relationship(
+        "ReferralClick",
+        back_populates="partner",
+        cascade="all, delete-orphan",
+    )
+    referred_users: Mapped[list["User"]] = relationship(
+        "User",
+        back_populates="referred_by_partner",
+        foreign_keys="[User.referred_by_partner_id]",
+    )
+
+    def __repr__(self) -> str:
+        return (
+            f"<Partner(id={self.id}, referral_code='{self.referral_code}', "
+            f"admin_user_id={self.admin_user_id})>"
+        )
+
+
+class ReferralClick(Base):
+    """Модель учёта переходов по реферальной ссылке.
+
+    Каждая запись — один переход пользователя по ссылке партнёра.
+    Хранит telegram_id перешедшего для аналитики и дедупликации.
+    """
+
+    __tablename__ = "referral_clicks"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    partner_id: Mapped[int] = mapped_column(
+        Integer,
+        ForeignKey("partners.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    telegram_id: Mapped[int] = mapped_column(
+        BigInteger, nullable=False
+    )  # ID пользователя, который перешёл по ссылке
+    source: Mapped[str] = mapped_column(
+        String(10), nullable=False, default="tg"
+    )  # Платформа перехода ('tg' или 'max')
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+        nullable=False,
+    )
+
+    # Связи
+    partner: Mapped["Partner"] = relationship(
+        "Partner", back_populates="clicks"
+    )
+
+    def __repr__(self) -> str:
+        return (
+            f"<ReferralClick(id={self.id}, partner_id={self.partner_id}, "
+            f"telegram_id={self.telegram_id})>"
         )

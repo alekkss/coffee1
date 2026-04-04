@@ -21,7 +21,13 @@ import random
 from coffee_oracle.bot.keyboards import KeyboardManager
 from coffee_oracle.config import config
 from coffee_oracle.database.connection import db_manager
-from coffee_oracle.database.repositories import PredictionRepository, SettingsRepository, SubscriptionRepository, UserRepository
+from coffee_oracle.database.repositories import (
+    PartnerRepository,
+    PredictionRepository,
+    SettingsRepository,
+    SubscriptionRepository,
+    UserRepository,
+)
 from coffee_oracle.services.photo_processor import PhotoProcessor
 from coffee_oracle.utils.errors import PhotoProcessingError, OpenAIError, format_error_message
 from coffee_oracle.utils.telegram import split_message, markdown_to_telegram_html, strip_html_tags
@@ -51,9 +57,93 @@ async def get_bot_text(key: str, default: str) -> str:
         return default
 
 
+@router.message(CommandStart(deep_link=True))
+async def start_with_referral_handler(message: Message) -> Any:
+    """Обработка /start с deep link параметром (реферальный код).
+
+    Ссылка вида https://t.me/bot?start=КОД вызывает /start КОД.
+    Если КОД соответствует реферальному коду партнёра:
+    1. Записывает переход (ReferralClick).
+    2. Создаёт/получает пользователя с привязкой к партнёру.
+    3. Отправляет стандартное приветствие.
+
+    Если КОД не найден среди партнёров — обрабатывает как обычный /start.
+    """
+    user = message.from_user
+    if not user:
+        return
+
+    # Извлекаем deep link параметр
+    args = message.text.split(maxsplit=1)
+    referral_code = args[1].strip() if len(args) > 1 else ""
+
+    # Пытаемся найти партнёра по коду
+    partner_id = None
+    if referral_code:
+        try:
+            async for session in db_manager.get_session():
+                partner_repo = PartnerRepository(session)
+                partner = await partner_repo.get_partner_by_referral_code(referral_code)
+
+                if partner:
+                    partner_id = partner.id
+
+                    # Записываем переход по реферальной ссылке
+                    await partner_repo.record_click(
+                        partner_id=partner.id,
+                        telegram_id=user.id,
+                        source=_SOURCE,
+                    )
+                    logger.info(
+                        "Реферальный переход: code=%s, partner_id=%d, telegram_id=%d",
+                        referral_code, partner.id, user.id,
+                    )
+                else:
+                    logger.debug(
+                        "Реферальный код не найден: code=%s, telegram_id=%d",
+                        referral_code, user.id,
+                    )
+        except Exception as e:
+            logger.error("Ошибка обработки реферального кода: %s", e)
+
+    # Создаём/получаем пользователя (с привязкой к партнёру, если найден)
+    async for session in db_manager.get_session():
+        user_repo = UserRepository(session)
+        settings_repo = SettingsRepository(session)
+
+        db_user = await user_repo.create_user(
+            telegram_id=user.id,
+            username=user.username,
+            full_name=user.full_name or f"{user.first_name} {user.last_name or ''}".strip(),
+            source=_SOURCE,
+            referred_by_partner_id=partner_id,
+        )
+
+        # Стандартное приветствие
+        welcome_template = await settings_repo.get_setting("welcome_message")
+        if not welcome_template:
+            welcome_template = """🔮 Добро пожаловать в мир Кофейного Оракула, {name}!
+
+Я — добрый мистический дух, живущий в узорах кофейной гущи. Присылай фото дна чашки после утреннего кофе, и я поделюсь с тобой своей мудростью ✨
+
+☕ Первые гадания — мои подарок тебе!
+Потом, если захочешь продолжить наше магическое путешествие, можно оформить подписку.
+
+🌟 Мои предсказания всегда несут свет и вдохновение!
+
+Выбери действие в меню:"""
+
+        welcome_text = welcome_template.replace("{name}", db_user.full_name)
+
+        await message.answer(
+            welcome_text,
+            reply_markup=KeyboardManager.get_main_menu_with_subscription()
+        )
+
+
 @router.message(CommandStart())
 async def start_handler(message: Message) -> Any:
-    """Handle /start command."""
+    """Обработка /start без параметров."""
     user = message.from_user
     if not user:
         return

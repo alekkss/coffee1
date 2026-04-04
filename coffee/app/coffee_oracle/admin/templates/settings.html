@@ -63,6 +63,16 @@
             border-radius: 16px;
             padding: 2rem;
             box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+            margin-bottom: 2rem;
+        }
+
+        .section-title {
+            font-size: 1.3rem;
+            font-weight: 700;
+            color: #2d3748;
+            margin-bottom: 1.5rem;
+            padding-bottom: 0.75rem;
+            border-bottom: 2px solid #e2e8f0;
         }
 
         .settings-grid {
@@ -152,6 +162,7 @@
             font-size: 1rem;
             font-weight: 600;
             cursor: pointer;
+            transition: all 0.2s;
         }
 
         .btn-primary {
@@ -181,6 +192,21 @@
             background: #f56565;
         }
 
+        .btn-sm {
+            padding: 0.4rem 0.8rem;
+            font-size: 0.85rem;
+            border-radius: 6px;
+        }
+
+        .btn-success {
+            background: #48bb78;
+            color: white;
+        }
+
+        .btn-success:hover {
+            background: #38a169;
+        }
+
         .status {
             padding: 1rem;
             border-radius: 8px;
@@ -205,6 +231,188 @@
             padding: 2rem;
             color: #718096;
         }
+
+        /* Партнёры — форма создания */
+        .partner-form {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr auto;
+            gap: 0.75rem;
+            align-items: end;
+            margin-bottom: 1.5rem;
+        }
+
+        .partner-form .form-group {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .partner-form .form-group label {
+            font-size: 0.8rem;
+            font-weight: 600;
+            color: #4a5568;
+            text-transform: uppercase;
+            letter-spacing: 0.3px;
+        }
+
+        .partner-form input {
+            padding: 0.65rem 0.8rem;
+            border: 2px solid #e2e8f0;
+            border-radius: 8px;
+            font-size: 0.95rem;
+            font-family: inherit;
+            background: white;
+        }
+
+        .partner-form input:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        /* Партнёры — таблица */
+        .partners-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 0.5rem;
+        }
+
+        .partners-table thead th {
+            background: #f7fafc;
+            padding: 0.75rem 1rem;
+            text-align: left;
+            font-size: 0.8rem;
+            font-weight: 600;
+            color: #4a5568;
+            text-transform: uppercase;
+            letter-spacing: 0.3px;
+            border-bottom: 2px solid #e2e8f0;
+        }
+
+        .partners-table tbody td {
+            padding: 0.75rem 1rem;
+            border-bottom: 1px solid #f0f0f0;
+            font-size: 0.9rem;
+            color: #333;
+            vertical-align: middle;
+        }
+
+        .partners-table tbody tr:hover {
+            background: #f7fafc;
+        }
+
+        .partner-link {
+            font-family: 'SF Mono', 'Fira Code', monospace;
+            font-size: 0.8rem;
+            background: #edf2f7;
+            padding: 4px 8px;
+            border-radius: 4px;
+            color: #553c9a;
+            word-break: break-all;
+            cursor: pointer;
+        }
+
+        .partner-link:hover {
+            background: #e2e8f0;
+        }
+
+        .partner-code {
+            font-family: 'SF Mono', 'Fira Code', monospace;
+            font-weight: 600;
+            color: #764ba2;
+        }
+
+        .partner-stats {
+            display: flex;
+            gap: 1rem;
+            font-size: 0.85rem;
+        }
+
+        .partner-stats .stat {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .partner-stats .stat-value {
+            font-weight: 700;
+            color: #2d3748;
+        }
+
+        .no-partners {
+            text-align: center;
+            padding: 2rem;
+            color: #a0aec0;
+            font-size: 0.95rem;
+        }
+
+        .partner-status-msg {
+            padding: 0.75rem 1rem;
+            border-radius: 8px;
+            margin-bottom: 1rem;
+            display: none;
+            font-size: 0.9rem;
+        }
+
+        .partner-status-msg.success {
+            background: #c6f6d5;
+            color: #276749;
+            display: block;
+        }
+
+        .partner-status-msg.error {
+            background: #fed7d7;
+            color: #c53030;
+            display: block;
+        }
+
+        .partner-created-info {
+            background: #ebf8ff;
+            border: 1px solid #bee3f8;
+            border-radius: 8px;
+            padding: 1rem;
+            margin-bottom: 1rem;
+            display: none;
+        }
+
+        .partner-created-info .info-title {
+            font-weight: 600;
+            color: #2b6cb0;
+            margin-bottom: 0.5rem;
+        }
+
+        .partner-created-info .info-row {
+            font-size: 0.9rem;
+            color: #2d3748;
+            margin-bottom: 4px;
+        }
+
+        .partner-created-info .info-row strong {
+            display: inline-block;
+            min-width: 100px;
+        }
+
+        .partner-created-info code {
+            background: #edf2f7;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-size: 0.85rem;
+        }
+
+        /* Адаптивность */
+        @media (max-width: 768px) {
+            .partner-form {
+                grid-template-columns: 1fr;
+            }
+
+            .partners-table {
+                font-size: 0.85rem;
+            }
+
+            .partners-table thead th,
+            .partners-table tbody td {
+                padding: 0.5rem;
+            }
+        }
     </style>
 </head>
 
@@ -224,8 +432,66 @@
             <a href="/logout" style="color: #c53030;">🚪 Выйти</a>
         </div>
     </div>
+
     <div class="container">
+
+        <!-- ===== Блок партнёров ===== -->
         <div class="settings-section">
+            <div class="section-title">🤝 Управление партнёрами</div>
+
+            <!-- Сообщение статуса -->
+            <div id="partner-status" class="partner-status-msg"></div>
+
+            <!-- Информация о созданном партнёре -->
+            <div id="partner-created-info" class="partner-created-info">
+                <div class="info-title">✅ Партнёр создан! Передайте ему данные для входа:</div>
+                <div class="info-row"><strong>Логин:</strong> <code id="created-username"></code></div>
+                <div class="info-row"><strong>Пароль:</strong> <code id="created-password"></code></div>
+                <div class="info-row"><strong>Ссылка входа:</strong> <code id="created-login-url"></code></div>
+                <div class="info-row"><strong>Реф. код:</strong> <code id="created-ref-code"></code></div>
+                <div class="info-row"><strong>Реф. ссылка:</strong> <code id="created-ref-link"></code></div>
+            </div>
+
+            <!-- Форма создания партнёра -->
+            <div class="partner-form">
+                <div class="form-group">
+                    <label>Логин</label>
+                    <input type="text" id="partner-username" placeholder="partner_ivan" />
+                </div>
+                <div class="form-group">
+                    <label>Пароль</label>
+                    <input type="text" id="partner-password" placeholder="Мин. 6 символов" />
+                </div>
+                <div class="form-group">
+                    <label>Описание</label>
+                    <input type="text" id="partner-description" placeholder="Канал, блогер..." />
+                </div>
+                <button class="btn btn-success" onclick="createPartner()">➕ Создать</button>
+            </div>
+
+            <!-- Таблица партнёров -->
+            <table class="partners-table">
+                <thead>
+                    <tr>
+                        <th>Логин</th>
+                        <th>Реф. код</th>
+                        <th>Описание</th>
+                        <th>Статистика</th>
+                        <th>Создан</th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody id="partners-table-body">
+                    <tr>
+                        <td colspan="6" class="no-partners">Загрузка...</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <!-- ===== Блок настроек бота ===== -->
+        <div class="settings-section">
+            <div class="section-title">🤖 Настройки бота</div>
             <div id="status" class="status"></div>
             <div class="settings-grid" id="settings-grid">
                 <div class="loading">Загрузка настроек...</div>
@@ -236,8 +502,195 @@
                 <button class="btn btn-danger" onclick="resetSettings()">⚠️ Сбросить к умолчаниям</button>
             </div>
         </div>
+
     </div>
+
     <script>
+        /* ==========================================
+         *  Управление партнёрами
+         * ========================================== */
+
+        /**
+         * Загрузка списка партнёров.
+         */
+        async function loadPartners() {
+            const tbody = document.getElementById('partners-table-body');
+
+            try {
+                const response = await fetch('/api/partners');
+
+                if (!response.ok) {
+                    throw new Error('Ошибка загрузки');
+                }
+
+                const data = await response.json();
+
+                if (!data.success || !data.partners) {
+                    throw new Error('Неверный формат ответа');
+                }
+
+                if (data.partners.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="6" class="no-partners">Партнёров пока нет</td></tr>';
+                    return;
+                }
+
+                tbody.innerHTML = data.partners.map(p => {
+                    const createdDate = p.created_at
+                        ? new Date(p.created_at).toLocaleDateString('ru-RU')
+                        : '—';
+
+                    const refLink = p.referral_link || '—';
+
+                    return `<tr>
+                        <td><strong>${escapeHtml(p.username)}</strong></td>
+                        <td>
+                            <span class="partner-code">${escapeHtml(p.referral_code)}</span>
+                            ${p.referral_link
+                                ? `<br><span class="partner-link" title="Нажмите, чтобы скопировать" onclick="copyText('${escapeHtml(p.referral_link)}')">${escapeHtml(p.referral_link)}</span>`
+                                : ''}
+                        </td>
+                        <td>${escapeHtml(p.description || '—')}</td>
+                        <td>
+                            <div class="partner-stats">
+                                <div class="stat">👆 <span class="stat-value">${p.total_clicks || 0}</span></div>
+                                <div class="stat">👤 <span class="stat-value">${p.referred_users || 0}</span></div>
+                            </div>
+                        </td>
+                        <td>${createdDate}</td>
+                        <td>
+                            <button class="btn btn-danger btn-sm"
+                                    onclick="deletePartner(${p.id}, '${escapeHtml(p.username)}')">
+                                🗑️
+                            </button>
+                        </td>
+                    </tr>`;
+                }).join('');
+
+            } catch (error) {
+                tbody.innerHTML = '<tr><td colspan="6" class="no-partners">Ошибка загрузки партнёров</td></tr>';
+            }
+        }
+
+        /**
+         * Создание нового партнёра.
+         */
+        async function createPartner() {
+            const username = document.getElementById('partner-username').value.trim();
+            const password = document.getElementById('partner-password').value.trim();
+            const description = document.getElementById('partner-description').value.trim();
+
+            // Валидация
+            if (!username || username.length < 3) {
+                showPartnerStatus('Логин должен содержать минимум 3 символа', true);
+                return;
+            }
+            if (!password || password.length < 6) {
+                showPartnerStatus('Пароль должен содержать минимум 6 символов', true);
+                return;
+            }
+
+            try {
+                const response = await fetch('/api/partners', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ username, password, description })
+                });
+
+                const data = await response.json();
+
+                if (!response.ok) {
+                    throw new Error(data.detail || 'Ошибка создания партнёра');
+                }
+
+                if (!data.success) {
+                    throw new Error('Не удалось создать партнёра');
+                }
+
+                // Показываем данные созданного партнёра
+                const info = document.getElementById('partner-created-info');
+                document.getElementById('created-username').textContent = username;
+                document.getElementById('created-password').textContent = password;
+                document.getElementById('created-login-url').textContent = window.location.origin + '/login';
+                document.getElementById('created-ref-code').textContent = data.partner.referral_code;
+                document.getElementById('created-ref-link').textContent = data.partner.referral_link || '(не задан BOT_USERNAME)';
+                info.style.display = 'block';
+
+                showPartnerStatus('Партнёр успешно создан!', false);
+
+                // Очищаем форму
+                document.getElementById('partner-username').value = '';
+                document.getElementById('partner-password').value = '';
+                document.getElementById('partner-description').value = '';
+
+                // Обновляем таблицу
+                await loadPartners();
+
+            } catch (error) {
+                showPartnerStatus(error.message, true);
+            }
+        }
+
+        /**
+         * Удаление партнёра.
+         */
+        async function deletePartner(partnerId, username) {
+            if (!confirm(`Удалить партнёра "${username}"?\n\nВсе данные о переходах будут потеряны.`)) {
+                return;
+            }
+
+            try {
+                const response = await fetch(`/api/partners/${partnerId}`, { method: 'DELETE' });
+                const data = await response.json();
+
+                if (!response.ok) {
+                    throw new Error(data.detail || 'Ошибка удаления');
+                }
+
+                showPartnerStatus('Партнёр удалён', false);
+
+                // Скрываем блок с данными, если он показан
+                document.getElementById('partner-created-info').style.display = 'none';
+
+                await loadPartners();
+
+            } catch (error) {
+                showPartnerStatus(error.message, true);
+            }
+        }
+
+        /**
+         * Показ статусного сообщения в блоке партнёров.
+         */
+        function showPartnerStatus(message, isError) {
+            const el = document.getElementById('partner-status');
+            el.textContent = (isError ? '❌ ' : '✅ ') + message;
+            el.className = 'partner-status-msg ' + (isError ? 'error' : 'success');
+            setTimeout(() => { el.className = 'partner-status-msg'; }, 5000);
+        }
+
+        /**
+         * Копирование текста в буфер обмена.
+         */
+        async function copyText(text) {
+            try {
+                await navigator.clipboard.writeText(text);
+                showPartnerStatus('Ссылка скопирована!', false);
+            } catch (err) {
+                // Fallback
+                const ta = document.createElement('textarea');
+                ta.value = text;
+                document.body.appendChild(ta);
+                ta.select();
+                document.execCommand('copy');
+                document.body.removeChild(ta);
+                showPartnerStatus('Ссылка скопирована!', false);
+            }
+        }
+
+        /* ==========================================
+         *  Настройки бота (существующий код)
+         * ========================================== */
+
         const settingsConfig = {
             'system_prompt': { label: '🤖 Системный промпт', type: 'textarea', large: true },
             'temperature': { label: '🌡️ Температура', type: 'number', min: 0, max: 2, step: 0.1 },
@@ -372,7 +825,12 @@
             }
         }
 
+        /* ==========================================
+         *  Инициализация при загрузке страницы
+         * ========================================== */
+
         loadSettings();
+        loadPartners();
     </script>
 </body>
 
