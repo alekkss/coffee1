@@ -703,6 +703,7 @@ Partner 1 ──── * User (referred_by_partner_id)
 | `soft_delete_users` | Добавление deleted_at в users |
 | `payment_amount_to_integer_kopecks` | Конвертация amount из REAL (рубли) в INTEGER (копейки) |
 | `user_email` | Добавление email в users |
+| `user_source` | Добавление source в users, создание unique constraint (telegram_id, source) |
 | `partners_table` | Создание таблицы partners (реферальная система) |
 | `referral_clicks_table` | Создание таблицы referral_clicks (учёт переходов) |
 | `user_referred_by_partner` | Добавление referred_by_partner_id в users |
@@ -917,10 +918,12 @@ Nginx (:80, :443) ← Let's Encrypt TLS (certbot)
 │   ├── main.py             # Точка входа
 │   ├── .env                # Переменные окружения
 │   ├── venv/               # Виртуальное окружение
-│   └── requirements.txt
+│   ├── requirements.txt
+│   └── data/
+│       └── coffee_oracle.db  # SQLite база данных (рабочая)
 ├── data/
-│   └── coffee_oracle.db    # SQLite база данных
-└── media/                  # Фото пользователей
+│   └── coffee_oracle.db.old  # Старая копия БД (не используется)
+└── media/                    # Фото пользователей
 ```
 
 ### Nginx конфигурация
@@ -991,16 +994,16 @@ grep -iE "yookassa|webhook|payment" /opt/oracle-bot/app/logs/coffee_oracle.log |
 
 ```bash
 # Проверить целостность
-sqlite3 /opt/oracle-bot/data/coffee_oracle.db "PRAGMA integrity_check;"
+sqlite3 /opt/oracle-bot/app/data/coffee_oracle.db "PRAGMA integrity_check;"
 
 # Размер базы
-ls -lh /opt/oracle-bot/data/coffee_oracle.db
+ls -lh /opt/oracle-bot/app/data/coffee_oracle.db
 
 # Количество пользователей
-sqlite3 /opt/oracle-bot/data/coffee_oracle.db "SELECT COUNT(*) FROM users;"
+sqlite3 /opt/oracle-bot/app/data/coffee_oracle.db "SELECT COUNT(*) FROM users;"
 
 # Последние предсказания
-sqlite3 /opt/oracle-bot/data/coffee_oracle.db \
+sqlite3 /opt/oracle-bot/app/data/coffee_oracle.db \
   "SELECT u.username, p.created_at, substr(p.prediction_text, 1, 80) FROM predictions p JOIN users u ON u.id = p.user_id ORDER BY p.created_at DESC LIMIT 10;"
 ```
 
@@ -1037,6 +1040,7 @@ grep -i "MAX API" /opt/oracle-bot/app/logs/coffee_oracle.log | tail -30
 
 # Проверить, что MAX_BOT_TOKEN задан в .env
 grep MAX_BOT_TOKEN /opt/oracle-bot/app/.env
+```
 
 ---
 
@@ -1047,6 +1051,7 @@ grep MAX_BOT_TOKEN /opt/oracle-bot/app/.env
 - Pending-платежи хранятся in-memory (`_pending_payments`) — при перезапуске теряются. Вебхук YooKassa компенсирует это.
 - Кэш настроек LLM не имеет TTL — очищается только вручную или при сохранении настроек.
 - Подписки и платежи работают только в Telegram-боте. MAX-бот не поддерживает платежи — все пользователи MAX имеют бесплатный тариф без лимитов (проверка подписки в MAX-обработчиках не реализована).
+- Поле `subscription_type` в предсказаниях автоматически подтягивается из текущего статуса пользователя в момент создания предсказания (`PredictionRepository.create_prediction`). Если статус был изменён после создания предсказания, ранее записанные предсказания сохраняют старый тип.
 
 ---
 

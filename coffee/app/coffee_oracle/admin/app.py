@@ -539,6 +539,7 @@ async def get_users(
                     {
                         "id": user.id,
                         "telegram_id": user.telegram_id,
+                        "source": user.source,
                         "username": user.username,
                         "full_name": user.full_name,
                         "subscription_type": user.subscription_type or "free",
@@ -770,6 +771,7 @@ class VipStatusRequest(BaseModel):
 
     user_id: int
     reason: str = Field(..., min_length=1, max_length=255)
+    source: str = Field("tg", pattern="^(tg|max)$")
 
 
 class PaymentCompleteRequest(BaseModel):
@@ -803,6 +805,7 @@ async def get_vip_users(
                 {
                     "id": u.id,
                     "telegram_id": u.telegram_id,
+                    "source": u.source,
                     "username": u.username,
                     "full_name": u.full_name,
                     "vip_reason": u.vip_reason,
@@ -820,12 +823,14 @@ async def set_vip_status(
     """Установка VIP-статуса (superadmin)."""
     async for session in db_manager.get_session():
         sub_repo = SubscriptionRepository(session)
-        success = await sub_repo.set_vip_status(request.user_id, request.reason)
+        success = await sub_repo.set_vip_status(
+            request.user_id, request.reason, source=request.source
+        )
         if not success:
             raise HTTPException(status_code=404, detail="Пользователь не найден")
         return {
             "success": True,
-            "message": f"VIP-статус установлен для пользователя {request.user_id}",
+            "message": f"VIP-статус установлен для пользователя {request.user_id} ({request.source})",
         }
 
 
@@ -877,6 +882,7 @@ async def get_premium_users(
                 {
                     "id": u.id,
                     "telegram_id": u.telegram_id,
+                    "source": u.source,
                     "username": u.username,
                     "full_name": u.full_name,
                     "subscription_until": u.subscription_until.isoformat()

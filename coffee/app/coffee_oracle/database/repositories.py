@@ -249,7 +249,17 @@ class PredictionRepository:
         photos: Optional[List[Dict[str, str]]] = None,
         subscription_type: Optional[str] = None,
     ) -> Prediction:
-        """Создание нового предсказания."""
+        # Если subscription_type не передан — берём актуальный из БД
+        if subscription_type is None:
+            user_result = await self.session.execute(
+                select(User).where(User.id == user_id)
+            )
+            user = user_result.scalar_one_or_none()
+            if user:
+                subscription_type = user.subscription_type or "free"
+            else:
+                subscription_type = "free"
+
         prediction = Prediction(
             user_id=user_id,
             photo_file_id=photo_file_id,
@@ -271,7 +281,6 @@ class PredictionRepository:
         await self.session.commit()
         await self.session.refresh(prediction)
 
-        # Контроль лимита фотографий
         try:
             await self.prune_old_photos()
         except Exception as e:
@@ -819,18 +828,50 @@ class SubscriptionRepository:
         logger.info("Активирована premium-подписка для пользователя %d до %s", user_id, new_until)
         return True
 
-    async def set_vip_status(self, user_id: int, reason: str) -> bool:
-        """Установка VIP-статуса для пользователя (тестеры, партнёры и т.д.)."""
-        # Сначала ищем по telegram_id, затем по внутреннему id
-        result = await self.session.execute(
-            select(User).where(User.telegram_id == user_id)
-        )
-        user = result.scalar_one_or_none()
+    async def set_vip_status(
+        self, user_id: int, reason: str, source: Optional[str] = None
+    ) -> bool:
+        """Установка VIP-статуса для пользователя (тестеры, партнёры и т.д.).
+
+        Args:
+            user_id: Telegram/MAX ID пользователя на платформе.
+            reason: Причина назначения VIP.
+            source: Платформа ('tg' или 'max'). Если указана — ищет по
+                    telegram_id + source. Если не указана — ищет по telegram_id
+                    среди всех платформ, затем fallback на внутренний id.
+
+        Returns:
+            True если пользователь найден и статус установлен, False иначе.
+        """
+        user = None
+
+        if source:
+            # Точный поиск по платформе
+            result = await self.session.execute(
+                select(User).where(
+                    User.telegram_id == user_id,
+                    User.source == source,
+                    User.deleted_at.is_(None),
+                )
+            )
+            user = result.scalar_one_or_none()
+        else:
+            # Поиск по telegram_id без фильтра платформы (обратная совместимость)
+            result = await self.session.execute(
+                select(User).where(
+                    User.telegram_id == user_id,
+                    User.deleted_at.is_(None),
+                )
+            )
+            user = result.scalar_one_or_none()
 
         if not user:
             # Fallback на внутренний id
             result = await self.session.execute(
-                select(User).where(User.id == user_id)
+                select(User).where(
+                    User.id == user_id,
+                    User.deleted_at.is_(None),
+                )
             )
             user = result.scalar_one_or_none()
 
@@ -843,8 +884,8 @@ class SubscriptionRepository:
         await self.session.commit()
 
         logger.info(
-            "Установлен VIP-статус для пользователя %d (telegram_id=%d): %s",
-            user.id, user.telegram_id, reason,
+            "Установлен VIP-статус для пользователя %d (telegram_id=%d, source=%s): %s",
+            user.id, user.telegram_id, user.source, reason,
         )
         return True
 

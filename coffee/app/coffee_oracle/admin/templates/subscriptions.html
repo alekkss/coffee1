@@ -142,10 +142,12 @@
         }
 
         .badge {
+            display: inline-block;
             padding: 0.25rem 0.75rem;
             border-radius: 9999px;
             font-size: 0.75rem;
             font-weight: 600;
+            white-space: nowrap;
         }
 
         .badge-vip {
@@ -156,6 +158,29 @@
         .badge-premium {
             background: #fef3c7;
             color: #d97706;
+        }
+
+        .badge-tg {
+            background: #dbeafe;
+            color: #1e40af;
+        }
+
+        .badge-max {
+            background: #dcfce7;
+            color: #166534;
+        }
+
+        .platform-id {
+            display: flex;
+            flex-direction: column;
+            gap: 0.3rem;
+            font-size: 0.85rem;
+        }
+
+        .platform-id code {
+            font-family: 'SF Mono', 'Consolas', monospace;
+            font-size: 0.8rem;
+            color: #2d3748;
         }
 
         .btn {
@@ -302,7 +327,14 @@
             <h2>➕ Добавить VIP-пользователя</h2>
             <div class="form-inline">
                 <div class="form-group">
-                    <label>Telegram ID пользователя</label>
+                    <label>Платформа</label>
+                    <select id="vip-source">
+                        <option value="tg">Telegram</option>
+                        <option value="max">MAX</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>ID пользователя на платформе</label>
                     <input type="number" id="vip-user-id" placeholder="123456789" />
                 </div>
                 <div class="form-group">
@@ -332,7 +364,7 @@
                     <thead>
                         <tr>
                             <th>ID</th>
-                            <th>Telegram ID</th>
+                            <th>ID платформы</th>
                             <th>Username</th>
                             <th>Имя</th>
                             <th>Причина</th>
@@ -355,7 +387,7 @@
                     <thead>
                         <tr>
                             <th>ID</th>
-                            <th>Telegram ID</th>
+                            <th>ID платформы</th>
                             <th>Username</th>
                             <th>Имя</th>
                             <th>Действует до</th>
@@ -364,7 +396,7 @@
                     </thead>
                     <tbody id="premium-table-body">
                         <tr>
-                            <td colspan="5" class="empty-message">Загрузка...</td>
+                            <td colspan="6" class="empty-message">Загрузка...</td>
                         </tr>
                     </tbody>
                 </table>
@@ -374,6 +406,13 @@
 
     <script>
         const isSuperadmin = {{ 'true' if user.role == 'superadmin' else 'false' }};
+
+        function getPlatformBadge(source) {
+            if (source === 'max') {
+                return '<span class="badge badge-max">MAX</span>';
+            }
+            return '<span class="badge badge-tg">TG</span>';
+        }
 
         function showAlert(message, type = 'success') {
             const container = document.getElementById('alert-container');
@@ -401,22 +440,34 @@
                 const response = await fetch('/api/subscriptions/vip');
                 const data = await response.json();
                 const tbody = document.getElementById('vip-table-body');
-                
+
                 if (!data.users || data.users.length === 0) {
                     tbody.innerHTML = '<tr><td colspan="6" class="empty-message">Нет VIP-пользователей</td></tr>';
                     return;
                 }
-                
-                tbody.innerHTML = data.users.map(u => `
+
+                tbody.innerHTML = data.users.map(u => {
+                    const platformBadge = getPlatformBadge(u.source);
+                    const usernameLink = u.username
+                        ? (u.source === 'tg'
+                            ? `<a href="https://t.me/${u.username}" target="_blank" class="telegram-link">@${u.username}</a>`
+                            : `@${u.username}`)
+                        : '—';
+                    return `
                     <tr>
                         <td>${u.id}</td>
-                        <td>${u.telegram_id}</td>
-                        <td>${u.username ? `<a href="https://t.me/${u.username}" target="_blank" class="telegram-link">@${u.username}</a>` : '—'}</td>
+                        <td>
+                            <div class="platform-id">
+                                ${platformBadge}
+                                <code>${u.telegram_id}</code>
+                            </div>
+                        </td>
+                        <td>${usernameLink}</td>
                         <td>${u.full_name}</td>
                         <td><span class="badge badge-vip">${u.vip_reason || 'Не указана'}</span></td>
                         ${isSuperadmin ? `<td><button class="btn btn-danger" onclick="removeVip(${u.id})">Удалить</button></td>` : ''}
                     </tr>
-                `).join('');
+                `}).join('');
             } catch (e) {
                 console.error('Error loading VIP users:', e);
             }
@@ -427,23 +478,35 @@
                 const response = await fetch('/api/subscriptions/premium');
                 const data = await response.json();
                 const tbody = document.getElementById('premium-table-body');
-                
+
                 const colspan = isSuperadmin ? '6' : '5';
                 if (!data.users || data.users.length === 0) {
                     tbody.innerHTML = `<tr><td colspan="${colspan}" class="empty-message">Нет Premium-подписчиков</td></tr>`;
                     return;
                 }
-                
-                tbody.innerHTML = data.users.map(u => `
+
+                tbody.innerHTML = data.users.map(u => {
+                    const platformBadge = getPlatformBadge(u.source);
+                    const usernameLink = u.username
+                        ? (u.source === 'tg'
+                            ? `<a href="https://t.me/${u.username}" target="_blank" class="telegram-link">@${u.username}</a>`
+                            : `@${u.username}`)
+                        : '—';
+                    return `
                     <tr>
                         <td>${u.id}</td>
-                        <td>${u.telegram_id}</td>
-                        <td>${u.username ? `<a href="https://t.me/${u.username}" target="_blank" class="telegram-link">@${u.username}</a>` : '—'}</td>
+                        <td>
+                            <div class="platform-id">
+                                ${platformBadge}
+                                <code>${u.telegram_id}</code>
+                            </div>
+                        </td>
+                        <td>${usernameLink}</td>
                         <td>${u.full_name}</td>
                         <td>${u.subscription_until ? new Date(u.subscription_until).toLocaleDateString('ru-RU') : '—'}</td>
                         ${isSuperadmin ? `<td><button class="btn btn-danger" onclick="removePremium(${u.id})">Удалить</button></td>` : ''}
                     </tr>
-                `).join('');
+                `}).join('');
             } catch (e) {
                 console.error('Error loading premium users:', e);
             }
@@ -452,20 +515,21 @@
         async function addVip() {
             const userId = document.getElementById('vip-user-id').value;
             const reason = document.getElementById('vip-reason').value;
-            
+            const source = document.getElementById('vip-source').value;
+
             if (!userId || !reason) {
                 showAlert('Заполните все поля', 'error');
                 return;
             }
-            
+
             try {
                 const response = await fetch('/api/subscriptions/vip', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ user_id: parseInt(userId), reason })
+                    body: JSON.stringify({ user_id: parseInt(userId), reason, source })
                 });
                 const data = await response.json();
-                
+
                 if (data.success) {
                     showAlert('VIP-статус успешно присвоен');
                     document.getElementById('vip-user-id').value = '';
@@ -482,11 +546,11 @@
 
         async function removeVip(userId) {
             if (!confirm('Удалить VIP-статус?')) return;
-            
+
             try {
                 const response = await fetch(`/api/subscriptions/vip/${userId}`, { method: 'DELETE' });
                 const data = await response.json();
-                
+
                 if (data.success) {
                     showAlert('VIP-статус удалён');
                     loadVipUsers();
@@ -501,12 +565,12 @@
 
         async function completePayment() {
             const label = document.getElementById('payment-label').value;
-            
+
             if (!label) {
                 showAlert('Введите метку платежа', 'error');
                 return;
             }
-            
+
             try {
                 const response = await fetch('/api/subscriptions/complete-payment', {
                     method: 'POST',
@@ -514,7 +578,7 @@
                     body: JSON.stringify({ label })
                 });
                 const data = await response.json();
-                
+
                 if (data.success) {
                     showAlert('Платёж подтверждён, подписка активирована');
                     document.getElementById('payment-label').value = '';
@@ -530,11 +594,11 @@
 
         async function removePremium(userId) {
             if (!confirm('Удалить Premium-подписку? Пользователь вернётся на бесплатный тариф.')) return;
-            
+
             try {
                 const response = await fetch(`/api/subscriptions/premium/${userId}`, { method: 'DELETE' });
                 const data = await response.json();
-                
+
                 if (data.success) {
                     showAlert('Premium-подписка удалена');
                     loadPremiumUsers();
