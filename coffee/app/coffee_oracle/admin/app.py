@@ -45,6 +45,43 @@ app.mount("/media", StaticFiles(directory="/opt/oracle-bot/media"), name="media"
 templates = Jinja2Templates(directory="coffee_oracle/admin/templates")
 
 
+# ───────────────────────────────────────────────────
+#  Вспомогательные функции для реферальных ссылок
+# ───────────────────────────────────────────────────
+
+
+def _build_tg_referral_link(referral_code: str) -> str:
+    """Формирование реферальной ссылки для Telegram.
+
+    Args:
+        referral_code: Реферальный код партнёра.
+
+    Returns:
+        Ссылка вида https://t.me/{bot_username}?start=КОД
+        или пустая строка, если BOT_USERNAME не задан.
+    """
+    bot_username = config.bot_username if config.bot_username else ""
+    if bot_username:
+        return f"https://t.me/{bot_username}?start={referral_code}"
+    return ""
+
+
+def _build_max_referral_link(referral_code: str) -> str:
+    """Формирование реферальной ссылки для MAX.
+
+    Args:
+        referral_code: Реферальный код партнёра.
+
+    Returns:
+        Ссылка вида https://max.ru/{max_bot_id}?start=КОД
+        или пустая строка, если MAX_BOT_ID не задан.
+    """
+    max_bot_id = config.max_bot_id if config.max_bot_id else ""
+    if max_bot_id:
+        return f"https://max.ru/{max_bot_id}?start={referral_code}"
+    return ""
+
+
 @app.exception_handler(status.HTTP_401_UNAUTHORIZED)
 async def unauthorized_exception_handler(request: Request, exc: HTTPException):
     """Перенаправление на страницу логина при отсутствии авторизации."""
@@ -211,7 +248,7 @@ async def get_partner_stats(
 ) -> Dict[str, Any]:
     """Получение статистики для кабинета партнёра.
 
-    Возвращает реферальную ссылку, общее число переходов,
+    Возвращает реферальные ссылки (Telegram + MAX), общее число переходов,
     переходы за сегодня, количество привлечённых пользователей
     и разбивку по дням за 30 дней.
     """
@@ -230,18 +267,15 @@ async def get_partner_stats(
         # Получаем статистику кликов
         stats = await partner_repo.get_click_stats(partner.id)
 
-        # Формируем реферальную ссылку
-        bot_username = config.bot_username if hasattr(config, "bot_username") and config.bot_username else ""
-        referral_link = (
-            f"https://t.me/{bot_username}?start={partner.referral_code}"
-            if bot_username
-            else ""
-        )
+        # Формируем реферальные ссылки для обеих платформ
+        referral_link = _build_tg_referral_link(partner.referral_code)
+        max_referral_link = _build_max_referral_link(partner.referral_code)
 
         return {
             "success": True,
             "referral_code": partner.referral_code,
             "referral_link": referral_link,
+            "max_referral_link": max_referral_link,
             "description": partner.description,
             "total_clicks": stats["total_clicks"],
             "today_clicks": stats["today_clicks"],
@@ -270,14 +304,10 @@ async def get_partners(
         partner_repo = PartnerRepository(session)
         partners = await partner_repo.get_all_partners()
 
-        # Добавляем реферальные ссылки
-        bot_username = config.bot_username if hasattr(config, "bot_username") and config.bot_username else ""
+        # Добавляем реферальные ссылки для обеих платформ
         for p in partners:
-            p["referral_link"] = (
-                f"https://t.me/{bot_username}?start={p['referral_code']}"
-                if bot_username
-                else ""
-            )
+            p["referral_link"] = _build_tg_referral_link(p["referral_code"])
+            p["max_referral_link"] = _build_max_referral_link(p["referral_code"])
 
         return {"success": True, "partners": partners}
 
@@ -320,13 +350,9 @@ async def create_partner(
                 status_code=500, detail="Ошибка создания партнёра"
             )
 
-        # Формируем реферальную ссылку
-        bot_username = config.bot_username if hasattr(config, "bot_username") and config.bot_username else ""
-        referral_link = (
-            f"https://t.me/{bot_username}?start={partner_data['referral_code']}"
-            if bot_username
-            else ""
-        )
+        # Формируем реферальные ссылки для обеих платформ
+        referral_link = _build_tg_referral_link(partner_data["referral_code"])
+        max_referral_link = _build_max_referral_link(partner_data["referral_code"])
 
         logger.info(
             "Создан партнёр: username=%s, code=%s (создал: %s)",
@@ -340,6 +366,7 @@ async def create_partner(
             "partner": {
                 **partner_data,
                 "referral_link": referral_link,
+                "max_referral_link": max_referral_link,
             },
         }
 

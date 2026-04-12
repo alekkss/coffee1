@@ -11,6 +11,7 @@ from typing import Any, Dict, List, Optional
 
 from coffee_oracle.database.connection import db_manager
 from coffee_oracle.database.repositories import (
+    PartnerRepository,
     PredictionRepository,
     SettingsRepository,
     UserRepository,
@@ -53,6 +54,7 @@ async def _get_bot_text(key: str, default: str) -> str:
 
 async def _get_or_create_user(
     max_user: MaxUser,
+    referred_by_partner_id: Optional[int] = None,
 ) -> Any:
     """Получение или создание пользователя MAX в БД.
 
@@ -61,6 +63,7 @@ async def _get_or_create_user(
 
     Args:
         max_user: Объект пользователя MAX.
+        referred_by_partner_id: ID партнёра, по чьей ссылке пришёл пользователь.
 
     Returns:
         Объект User из базы данных.
@@ -79,7 +82,58 @@ async def _get_or_create_user(
             username=max_user.username,
             full_name=max_user.full_name,
             source=_SOURCE,
+            referred_by_partner_id=referred_by_partner_id,
         )
+
+
+async def _process_referral(
+    referral_code: str,
+    user_id: int,
+) -> Optional[int]:
+    """Обработка реферального кода: запись перехода и получение ID партнёра.
+
+    Записывает ReferralClick для каждого перехода (без дедупликации).
+    Возвращает partner_id для привязки нового пользователя.
+
+    Args:
+        referral_code: Реферальный код из deep link (payload).
+        user_id: ID пользователя на платформе MAX.
+
+    Returns:
+        ID партнёра или None, если код невалидный.
+    """
+    try:
+        async for session in db_manager.get_session():
+            partner_repo = PartnerRepository(session)
+
+            partner = await partner_repo.get_partner_by_referral_code(referral_code)
+            if not partner:
+                logger.warning(
+                    "MAX: неизвестный реферальный код '%s' от пользователя %d",
+                    referral_code, user_id,
+                )
+                return None
+
+            # Записываем переход (каждый переход отдельно)
+            await partner_repo.record_click(
+                partner_id=partner.id,
+                telegram_id=user_id,
+                source=_SOURCE,
+            )
+
+            logger.info(
+                "MAX: реферальный переход записан: код='%s', partner_id=%d, user_id=%d",
+                referral_code, partner.id, user_id,
+            )
+            return partner.id
+
+    except Exception as e:
+        logger.error(
+            "MAX: ошибка обработки реферального кода '%s': %s",
+            referral_code, e,
+            exc_info=True,
+        )
+        return None
 
 
 class MaxBotHandlers:
@@ -141,6 +195,9 @@ class MaxBotHandlers:
     async def _handle_bot_started(self, update: MaxUpdate) -> None:
         """Обработка события запуска бота пользователем.
 
+        Если в payload присутствует реферальный код — записывает
+        переход и привязывает нового пользователя к партнёру.
+
         Args:
             update: Обновление с типом bot_started.
         """
@@ -150,7 +207,25 @@ class MaxBotHandlers:
 
         logger.info("MAX: пользователь %d запустил бота", user.user_id)
 
-        db_user = await _get_or_create_user(user)
+        # Обработка реферального кода из payload
+        referred_by_partner_id = None
+        referral_code = update.payload
+
+        if referral_code and referral_code.strip():
+            referral_code = referral_code.strip()
+            logger.info(
+                "MAX: обнаружен реферальный код '%s' от пользователя %d",
+                referral_code, user.user_id,
+            )
+            referred_by_partner_id = await _process_referral(
+                referral_code=referral_code,
+                user_id=user.user_id,
+            )
+
+        db_user = await _get_or_create_user(
+            user,
+            referred_by_partner_id=referred_by_partner_id,
+        )
 
         welcome_template = await _get_bot_text(
             "welcome_message",

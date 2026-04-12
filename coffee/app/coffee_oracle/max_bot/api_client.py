@@ -116,6 +116,7 @@ class MaxUpdate:
     user: Optional[MaxUser] = None
     chat_id: Optional[int] = None
     user_locale: Optional[str] = None
+    payload: Optional[str] = None
 
 
 @dataclass
@@ -669,6 +670,7 @@ class MaxApiClient:
             user=user,
             chat_id=data.get("chat_id"),
             user_locale=data.get("user_locale"),
+            payload=data.get("payload"),
         )
 
     # ────────────────────────────────────────────

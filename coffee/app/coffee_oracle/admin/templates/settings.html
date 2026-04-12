@@ -309,10 +309,29 @@
             color: #553c9a;
             word-break: break-all;
             cursor: pointer;
+            display: inline-block;
+            margin-top: 4px;
         }
 
         .partner-link:hover {
             background: #e2e8f0;
+        }
+
+        .partner-link-label {
+            font-size: 0.7rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.3px;
+            margin-top: 6px;
+            display: inline-block;
+        }
+
+        .partner-link-label.tg {
+            color: #0088cc;
+        }
+
+        .partner-link-label.max {
+            color: #e65100;
         }
 
         .partner-code {
@@ -388,7 +407,7 @@
 
         .partner-created-info .info-row strong {
             display: inline-block;
-            min-width: 100px;
+            min-width: 130px;
         }
 
         .partner-created-info code {
@@ -449,7 +468,8 @@
                 <div class="info-row"><strong>Пароль:</strong> <code id="created-password"></code></div>
                 <div class="info-row"><strong>Ссылка входа:</strong> <code id="created-login-url"></code></div>
                 <div class="info-row"><strong>Реф. код:</strong> <code id="created-ref-code"></code></div>
-                <div class="info-row"><strong>Реф. ссылка:</strong> <code id="created-ref-link"></code></div>
+                <div class="info-row"><strong>Ссылка (Telegram):</strong> <code id="created-ref-link-tg"></code></div>
+                <div class="info-row"><strong>Ссылка (MAX):</strong> <code id="created-ref-link-max"></code></div>
             </div>
 
             <!-- Форма создания партнёра -->
@@ -474,7 +494,7 @@
                 <thead>
                     <tr>
                         <th>Логин</th>
-                        <th>Реф. код</th>
+                        <th>Реф. код / Ссылки</th>
                         <th>Описание</th>
                         <th>Статистика</th>
                         <th>Создан</th>
@@ -511,6 +531,29 @@
          * ========================================== */
 
         /**
+         * Формирование HTML для ссылок партнёра в таблице.
+         */
+        function renderPartnerLinks(partner) {
+            let html = `<span class="partner-code">${escapeHtml(partner.referral_code)}</span>`;
+
+            if (partner.referral_link) {
+                html += `<br><span class="partner-link-label tg">TG:</span> `;
+                html += `<span class="partner-link" title="Нажмите, чтобы скопировать" onclick="copyText('${escapeHtml(partner.referral_link)}')">${escapeHtml(partner.referral_link)}</span>`;
+            }
+
+            if (partner.max_referral_link) {
+                html += `<br><span class="partner-link-label max">MAX:</span> `;
+                html += `<span class="partner-link" title="Нажмите, чтобы скопировать" onclick="copyText('${escapeHtml(partner.max_referral_link)}')">${escapeHtml(partner.max_referral_link)}</span>`;
+            }
+
+            if (!partner.referral_link && !partner.max_referral_link) {
+                html += `<br><span style="color:#aaa; font-size:0.8rem;">Ссылки не настроены</span>`;
+            }
+
+            return html;
+        }
+
+        /**
          * Загрузка списка партнёров.
          */
         async function loadPartners() {
@@ -539,16 +582,9 @@
                         ? new Date(p.created_at).toLocaleDateString('ru-RU')
                         : '—';
 
-                    const refLink = p.referral_link || '—';
-
                     return `<tr>
                         <td><strong>${escapeHtml(p.username)}</strong></td>
-                        <td>
-                            <span class="partner-code">${escapeHtml(p.referral_code)}</span>
-                            ${p.referral_link
-                                ? `<br><span class="partner-link" title="Нажмите, чтобы скопировать" onclick="copyText('${escapeHtml(p.referral_link)}')">${escapeHtml(p.referral_link)}</span>`
-                                : ''}
-                        </td>
+                        <td>${renderPartnerLinks(p)}</td>
                         <td>${escapeHtml(p.description || '—')}</td>
                         <td>
                             <div class="partner-stats">
@@ -612,7 +648,8 @@
                 document.getElementById('created-password').textContent = password;
                 document.getElementById('created-login-url').textContent = window.location.origin + '/login';
                 document.getElementById('created-ref-code').textContent = data.partner.referral_code;
-                document.getElementById('created-ref-link').textContent = data.partner.referral_link || '(не задан BOT_USERNAME)';
+                document.getElementById('created-ref-link-tg').textContent = data.partner.referral_link || '(не задан BOT_USERNAME)';
+                document.getElementById('created-ref-link-max').textContent = data.partner.max_referral_link || '(не задан MAX_BOT_ID)';
                 info.style.display = 'block';
 
                 showPartnerStatus('Партнёр успешно создан!', false);

@@ -37,6 +37,10 @@ class Config:
     # MAX-бот (опционально — если не задан, MAX-бот не запускается)
     max_bot_token: Optional[str] = None
 
+    # Идентификатор MAX-бота для формирования реферальных ссылок
+    # (часть URL вида "id9728167964_bot" из https://max.ru/id9728167964_bot)
+    max_bot_id: Optional[str] = None
+
     # LiteLLM конфигурация
     litellm_model: str = "platto/gpt-5.1"
     litellm_model_fallback: Optional[str] = None
@@ -81,6 +85,10 @@ class Config:
 
         # Имя бота для реферальных ссылок (без @)
         bot_username = os.getenv("BOT_USERNAME", "").strip() or None
+
+        # Идентификатор MAX-бота для реферальных ссылок
+        # (например, "id9728167964_bot" из https://max.ru/id9728167964_bot)
+        max_bot_id = os.getenv("MAX_BOT_ID", "").strip() or None
 
         admin_username = os.getenv("ADMIN_USERNAME")
         admin_password = os.getenv("ADMIN_PASSWORD")
@@ -148,6 +156,7 @@ class Config:
             domain=domain,
             admin_port=admin_port,
             max_bot_token=max_bot_token,
+            max_bot_id=max_bot_id,
             litellm_model=litellm_model,
             litellm_model_fallback=litellm_model_fallback,
             litellm_api_key=litellm_api_key,

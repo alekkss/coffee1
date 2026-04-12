@@ -130,11 +130,39 @@
             box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
         }
 
+        .referral-block {
+            margin-bottom: 20px;
+        }
+
+        .referral-block:last-child {
+            margin-bottom: 0;
+        }
+
         .referral-label {
             font-size: 14px;
             color: #888;
             margin-bottom: 10px;
             font-weight: 500;
+        }
+
+        .referral-platform-badge {
+            display: inline-block;
+            padding: 2px 10px;
+            border-radius: 6px;
+            font-size: 12px;
+            font-weight: 600;
+            margin-left: 8px;
+            vertical-align: middle;
+        }
+
+        .badge-telegram {
+            background: #e3f0ff;
+            color: #0088cc;
+        }
+
+        .badge-max {
+            background: #fff3e0;
+            color: #e65100;
         }
 
         .referral-link-container {
@@ -195,6 +223,19 @@
             font-size: 13px;
             color: #764ba2;
             font-weight: 600;
+        }
+
+        .referral-divider {
+            height: 1px;
+            background: #e9ecef;
+            margin: 20px 0;
+        }
+
+        .referral-not-configured {
+            color: #aaa;
+            font-size: 13px;
+            font-style: italic;
+            padding: 10px 0;
         }
 
         /* KPI-карточки */
@@ -368,7 +409,7 @@
     <div class="container">
         <!-- Заголовок -->
         <h1 class="page-title">👋 Добро пожаловать, {{ user.username }}!</h1>
-        <p class="page-subtitle">Здесь вы можете отслеживать переходы по вашей реферальной ссылке</p>
+        <p class="page-subtitle">Здесь вы можете отслеживать переходы по вашим реферальным ссылкам</p>
 
         <!-- Состояние загрузки -->
         <div id="loading" class="loading">
@@ -387,21 +428,50 @@
             <!-- Описание партнёра -->
             <p class="partner-description" id="partner-description" style="display: none;"></p>
 
-            <!-- Реферальная ссылка -->
+            <!-- Реферальные ссылки -->
             <div class="referral-section">
-                <div class="referral-label">Ваша реферальная ссылка</div>
-                <div class="referral-link-container">
-                    <input type="text"
-                           class="referral-link-input"
-                           id="referral-link"
-                           readonly
-                           value="Загрузка...">
-                    <button class="btn-copy" id="btn-copy" onclick="copyLink()">
-                        📋 Копировать
-                    </button>
+
+                <!-- Telegram -->
+                <div class="referral-block" id="tg-referral-block">
+                    <div class="referral-label">
+                        Реферальная ссылка
+                        <span class="referral-platform-badge badge-telegram">Telegram</span>
+                    </div>
+                    <div class="referral-link-container">
+                        <input type="text"
+                               class="referral-link-input"
+                               id="referral-link-tg"
+                               readonly
+                               value="Загрузка...">
+                        <button class="btn-copy" id="btn-copy-tg" onclick="copyLink('referral-link-tg', 'btn-copy-tg')">
+                            📋 Копировать
+                        </button>
+                    </div>
                 </div>
+
+                <div class="referral-divider" id="referral-divider"></div>
+
+                <!-- MAX -->
+                <div class="referral-block" id="max-referral-block">
+                    <div class="referral-label">
+                        Реферальная ссылка
+                        <span class="referral-platform-badge badge-max">MAX</span>
+                    </div>
+                    <div class="referral-link-container">
+                        <input type="text"
+                               class="referral-link-input"
+                               id="referral-link-max"
+                               readonly
+                               value="Загрузка...">
+                        <button class="btn-copy" id="btn-copy-max" onclick="copyLink('referral-link-max', 'btn-copy-max')">
+                            📋 Копировать
+                        </button>
+                    </div>
+                </div>
+
                 <div class="referral-code-note">
                     Реферальный код: <code id="referral-code">—</code>
+                    <span style="margin-left: 8px; color: #bbb;">(единый для обеих платформ)</span>
                 </div>
             </div>
 
@@ -478,17 +548,35 @@
                     throw new Error('Не удалось загрузить данные партнёра');
                 }
 
-                // Реферальная ссылка
-                const linkInput = document.getElementById('referral-link');
+                // Реферальный код
                 const codeEl = document.getElementById('referral-code');
+                codeEl.textContent = data.referral_code || '—';
 
+                // Telegram-ссылка
+                const tgInput = document.getElementById('referral-link-tg');
+                const tgBlock = document.getElementById('tg-referral-block');
                 if (data.referral_link) {
-                    linkInput.value = data.referral_link;
+                    tgInput.value = data.referral_link;
                 } else {
-                    linkInput.value = 'Ссылка недоступна (не задан BOT_USERNAME)';
+                    tgInput.value = 'Не настроена (не задан BOT_USERNAME)';
+                    tgInput.style.color = '#aaa';
                 }
 
-                codeEl.textContent = data.referral_code || '—';
+                // MAX-ссылка
+                const maxInput = document.getElementById('referral-link-max');
+                const maxBlock = document.getElementById('max-referral-block');
+                const divider = document.getElementById('referral-divider');
+                if (data.max_referral_link) {
+                    maxInput.value = data.max_referral_link;
+                } else {
+                    maxInput.value = 'Не настроена (не задан MAX_BOT_ID)';
+                    maxInput.style.color = '#aaa';
+                }
+
+                // Если обе ссылки не настроены — скрыть разделитель
+                if (!data.referral_link && !data.max_referral_link) {
+                    divider.style.display = 'none';
+                }
 
                 // Описание партнёра
                 if (data.description) {
@@ -511,7 +599,7 @@
 
                 if (clicksByDay.length === 0) {
                     tableBody.innerHTML =
-                        '<tr><td colspan="2" class="no-data">Переходов пока нет. Поделитесь ссылкой!</td></tr>';
+                        '<tr><td colspan="2" class="no-data">Переходов пока нет. Поделитесь ссылками!</td></tr>';
                 } else {
                     // Показываем от новых к старым
                     const sorted = [...clicksByDay].reverse();
@@ -548,12 +636,15 @@
 
         /**
          * Копирование реферальной ссылки в буфер обмена.
+         *
+         * @param {string} inputId - ID поля ввода со ссылкой.
+         * @param {string} btnId - ID кнопки копирования.
          */
-        async function copyLink() {
-            const linkInput = document.getElementById('referral-link');
-            const btn = document.getElementById('btn-copy');
+        async function copyLink(inputId, btnId) {
+            const linkInput = document.getElementById(inputId);
+            const btn = document.getElementById(btnId);
 
-            if (!linkInput.value || linkInput.value.startsWith('Ссылка недоступна')) {
+            if (!linkInput.value || linkInput.value.startsWith('Не настроена')) {
                 return;
             }
 
