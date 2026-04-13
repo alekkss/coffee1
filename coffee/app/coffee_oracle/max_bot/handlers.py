@@ -612,7 +612,7 @@ class MaxBotHandlers:
             logger.error("MAX: ошибка сохранения предсказания в БД: %s", e)
             # Всё равно отправляем предсказание пользователю
 
-        # Отправка предсказания
+        # Отправка предсказания с Markdown-форматированием
         await self._send_prediction_to_user(
             chat_id=chat_id,
             processing_msg_id=processing_msg_id,
@@ -625,15 +625,18 @@ class MaxBotHandlers:
         processing_msg_id: Optional[str],
         prediction_text: str,
     ) -> None:
-        """Отправка предсказания пользователю.
+        """Отправка предсказания пользователю с Markdown-форматированием.
 
         Редактирует сообщение-индикатор или отправляет новое.
         При длинном тексте разбивает на части.
+        Все сообщения с предсказаниями отправляются с format='markdown',
+        чтобы MAX API корректно отображал жирный, курсив и другое
+        форматирование из ответа LLM.
 
         Args:
             chat_id: ID чата для ответа.
             processing_msg_id: ID сообщения обработки для редактирования.
-            prediction_text: Текст предсказания.
+            prediction_text: Текст предсказания (содержит Markdown-разметку).
         """
         max_length = 3900  # С запасом от лимита 4000
 
@@ -645,6 +648,7 @@ class MaxBotHandlers:
                         message_id=processing_msg_id,
                         text=prediction_text,
                         attachments=[MaxKeyboardManager.get_prediction_actions()],
+                        format_type="markdown",
                     )
                     return
                 except Exception as e:
@@ -655,6 +659,7 @@ class MaxBotHandlers:
                 chat_id=chat_id,
                 text=prediction_text,
                 attachments=[MaxKeyboardManager.get_prediction_actions()],
+                format_type="markdown",
             )
         else:
             # Длинное предсказание — разбиваем
@@ -662,21 +667,34 @@ class MaxBotHandlers:
 
             # Первый чанк — редактируем индикатор
             if processing_msg_id:
-                await self._safe_edit_message(processing_msg_id, chunks[0])
+                await self._safe_edit_message(
+                    processing_msg_id,
+                    chunks[0],
+                    format_type="markdown",
+                )
             else:
-                await self._api.send_message(chat_id=chat_id, text=chunks[0])
+                await self._api.send_message(
+                    chat_id=chat_id,
+                    text=chunks[0],
+                    format_type="markdown",
+                )
 
             # Средние чанки — новые сообщения
             for chunk in chunks[1:-1]:
-                await self._api.send_message(chat_id=chat_id, text=chunk)
+                await self._api.send_message(
+                    chat_id=chat_id,
+                    text=chunk,
+                    format_type="markdown",
+                )
 
             # Последний чанк — с кнопками
-            last_chunk = chunks[-1] if len(chunks) > 1 else chunks[0]
-            await self._api.send_message(
-                chat_id=chat_id,
-                text=last_chunk,
-                attachments=[MaxKeyboardManager.get_prediction_actions()],
-            )
+            if len(chunks) > 1:
+                await self._api.send_message(
+                    chat_id=chat_id,
+                    text=chunks[-1],
+                    attachments=[MaxKeyboardManager.get_prediction_actions()],
+                    format_type="markdown",
+                )
 
     # ────────────────────────────────────────────
     #  Callback от кнопок
@@ -950,17 +968,28 @@ class MaxBotHandlers:
     #  Вспомогательные методы
     # ────────────────────────────────────────────
 
-    async def _safe_edit_message(self, message_id: Optional[str], text: str) -> None:
+    async def _safe_edit_message(
+        self,
+        message_id: Optional[str],
+        text: str,
+        format_type: Optional[str] = None,
+    ) -> None:
         """Безопасное редактирование сообщения (игнорирует ошибки).
 
         Args:
             message_id: ID сообщения для редактирования.
             text: Новый текст.
+            format_type: Формат текста ('markdown' или 'html'). По умолчанию
+                         None — отправляется как plain text.
         """
         if not message_id:
             return
         try:
-            await self._api.edit_message(message_id=message_id, text=text)
+            await self._api.edit_message(
+                message_id=message_id,
+                text=text,
+                format_type=format_type,
+            )
         except Exception as e:
             logger.warning("MAX: не удалось отредактировать сообщение %s: %s", message_id, e)
 
