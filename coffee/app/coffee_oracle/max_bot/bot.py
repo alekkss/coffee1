@@ -81,6 +81,9 @@ class MaxOracleBot:
                 f"MAX-бот не может подключиться к API: {e.message}"
             ) from e
 
+        # Пропускаем накопившиеся обновления перед началом polling
+        await self._skip_pending_updates()
+
         logger.info("MAX-бот: начинаю long polling (timeout=%d)", POLL_TIMEOUT)
 
         while self._running:
@@ -115,6 +118,49 @@ class MaxOracleBot:
                 await self._wait_before_retry()
 
         logger.info("MAX-бот: цикл polling завершён")
+
+    async def _skip_pending_updates(self) -> None:
+        """Пропуск накопившихся обновлений при запуске бота.
+
+        Делает запросы к MAX API с timeout=0 (без ожидания новых обновлений),
+        забирает все обновления из очереди и обновляет маркер,
+        но НЕ обрабатывает их. Это предотвращает отправку
+        запоздалых предсказаний пользователям после простоя бота.
+        """
+        total_skipped = 0
+
+        try:
+            while True:
+                raw_data = await self._api_client.get_updates_raw(
+                    marker=self._marker,
+                    limit=POLL_LIMIT,
+                    timeout=0,
+                    types=POLL_UPDATE_TYPES,
+                )
+
+                # Обновляем маркер
+                new_marker = raw_data.get("marker")
+                if new_marker is not None:
+                    self._marker = new_marker
+
+                raw_updates = raw_data.get("updates", [])
+                if not raw_updates:
+                    break
+
+                total_skipped += len(raw_updates)
+
+        except Exception as e:
+            logger.warning(
+                "MAX-бот: ошибка при пропуске накопившихся обновлений: %s", e
+            )
+
+        if total_skipped > 0:
+            logger.info(
+                "MAX-бот: пропущено %d накопившихся обновлений при запуске",
+                total_skipped,
+            )
+        else:
+            logger.info("MAX-бот: накопившихся обновлений нет")
 
     async def _poll_once(self) -> None:
         """Один цикл опроса обновлений.
