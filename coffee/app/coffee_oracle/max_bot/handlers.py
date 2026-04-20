@@ -2,18 +2,23 @@
 
 Содержит логику реакции на все типы входящих событий:
 текстовые сообщения, фотографии, callback от кнопок.
+Включает систему подписок и платежей через YooKassa.
 Аналог bot/handlers.py для мессенджера MAX.
 """
 
+import asyncio
 import logging
+import re
 import random
 from typing import Any, Dict, List, Optional
 
+from coffee_oracle.config import config
 from coffee_oracle.database.connection import db_manager
 from coffee_oracle.database.repositories import (
     PartnerRepository,
     PredictionRepository,
     SettingsRepository,
+    SubscriptionRepository,
     UserRepository,
 )
 from coffee_oracle.max_bot.api_client import (
@@ -32,6 +37,76 @@ logger = logging.getLogger(__name__)
 # Идентификатор платформы для всех операций с БД в MAX-боте
 _SOURCE = "max"
 
+# Регулярное выражение для валидации email
+_EMAIL_RE = re.compile(r"^[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}$")
+
+
+# ────────────────────────────────────────────
+#  In-memory FSM для MAX-бота
+# ────────────────────────────────────────────
+
+class _UserStateManager:
+    """Менеджер состояний пользователей для MAX-бота.
+
+    Простая замена aiogram FSM — хранит состояния в памяти.
+    При перезапуске бота состояния сбрасываются, что допустимо:
+    пользователь просто начнёт процесс оплаты заново.
+    """
+
+    def __init__(self) -> None:
+        self._states: Dict[int, Dict[str, Any]] = {}
+
+    def set_state(self, user_id: int, state: str, **data: Any) -> None:
+        """Установка состояния пользователя.
+
+        Args:
+            user_id: ID пользователя на платформе MAX.
+            state: Название состояния (например, 'waiting_for_email').
+            **data: Дополнительные данные (chat_id и т.д.).
+        """
+        self._states[user_id] = {"state": state, **data}
+
+    def get_state(self, user_id: int) -> Optional[Dict[str, Any]]:
+        """Получение текущего состояния пользователя.
+
+        Args:
+            user_id: ID пользователя на платформе MAX.
+
+        Returns:
+            Словарь с состоянием и данными, или None.
+        """
+        return self._states.get(user_id)
+
+    def clear_state(self, user_id: int) -> None:
+        """Сброс состояния пользователя.
+
+        Args:
+            user_id: ID пользователя на платформе MAX.
+        """
+        self._states.pop(user_id, None)
+
+    def is_waiting_for_email(self, user_id: int) -> bool:
+        """Проверка: ожидается ли ввод email от пользователя.
+
+        Args:
+            user_id: ID пользователя на платформе MAX.
+
+        Returns:
+            True, если пользователь в состоянии ввода email.
+        """
+        state_data = self._states.get(user_id)
+        if state_data and state_data.get("state") == "waiting_for_email":
+            return True
+        return False
+
+
+# Глобальный менеджер состояний (аналог FSM)
+_state_manager = _UserStateManager()
+
+
+# ────────────────────────────────────────────
+#  Вспомогательные функции
+# ────────────────────────────────────────────
 
 async def _get_bot_text(key: str, default: str) -> str:
     """Получение текста из настроек бота или значения по умолчанию.
@@ -136,12 +211,189 @@ async def _process_referral(
         return None
 
 
+# ────────────────────────────────────────────
+#  Background polling оплаты
+# ────────────────────────────────────────────
+
+async def _poll_payment_and_activate(
+    api_client: MaxApiClient,
+    chat_id: int,
+    max_user_id: int,
+    payment_id: str,
+    processing_msg_id: Optional[str],
+) -> None:
+    """Фоновая задача: опрос YooKassa до завершения платежа.
+
+    Аналог _poll_payment_and_activate из bot/handlers.py,
+    но отправляет уведомления через MAX API.
+
+    Args:
+        api_client: HTTP-клиент MAX API.
+        chat_id: ID чата для отправки уведомлений.
+        max_user_id: ID пользователя на платформе MAX.
+        payment_id: ID платежа в YooKassa.
+        processing_msg_id: ID сообщения для редактирования (опционально).
+    """
+    from coffee_oracle.services.payment_service import get_payment_service
+
+    payment_service = get_payment_service()
+    if payment_service is None:
+        return
+
+    # Расписание polling: 15с, 30с, 60с, 120с (≈3.5 мин суммарно)
+    delays = [15, 30, 60, 120]
+
+    for delay in delays:
+        await asyncio.sleep(delay)
+
+        # Если пользователь уже подтвердил вручную, pending будет очищен
+        if payment_service.get_pending_payment(max_user_id) != payment_id:
+            return
+
+        try:
+            status_result = await payment_service.get_payment_status(payment_id)
+        except Exception as exc:
+            logger.warning(
+                "MAX: ошибка фонового polling для платежа %s: %s",
+                payment_id, exc,
+            )
+            continue
+
+        if not status_result.get("success"):
+            continue
+
+        status = status_result.get("status")
+        paid = status_result.get("paid", False)
+
+        if status == "succeeded" and paid:
+            # Активация подписки
+            try:
+                async for session in db_manager.get_session():
+                    user_repo = UserRepository(session)
+                    sub_repo = SubscriptionRepository(session)
+
+                    db_user = await user_repo.get_user_by_telegram_id(
+                        max_user_id, source=_SOURCE,
+                    )
+                    if not db_user:
+                        return
+
+                    await sub_repo.activate_premium(db_user.id)
+
+                    payment_method_saved = status_result.get(
+                        "payment_method_saved", False,
+                    )
+                    payment_method_id = status_result.get("payment_method_id")
+                    if payment_method_saved and payment_method_id:
+                        await sub_repo.enable_recurring_payment(
+                            db_user.id, payment_method_id,
+                        )
+
+                    await sub_repo.update_payment_status(payment_id, "succeeded")
+
+                payment_service.clear_pending_payment(max_user_id)
+
+                recurring_msg = ""
+                if status_result.get("payment_method_saved"):
+                    recurring_msg = "\n🔄 Автопродление включено."
+
+                success_text = (
+                    "✅ Оплата прошла успешно!\n\n"
+                    "Премиум-подписка активирована на 1 месяц.\n"
+                    f"Спасибо за поддержку! ☕{recurring_msg}"
+                )
+
+                keyboard = MaxKeyboardManager.get_subscription_status_keyboard(
+                    has_active_subscription=True,
+                    recurring_enabled=bool(
+                        status_result.get("payment_method_saved")
+                        and status_result.get("payment_method_id")
+                    ),
+                )
+
+                # Пробуем отредактировать, иначе — новое сообщение
+                if processing_msg_id:
+                    try:
+                        await api_client.edit_message(
+                            message_id=processing_msg_id,
+                            text=success_text,
+                            attachments=[keyboard],
+                        )
+                        return
+                    except Exception:
+                        pass
+
+                await api_client.send_message(
+                    chat_id=chat_id,
+                    text=success_text,
+                    attachments=[keyboard],
+                )
+
+            except Exception as exc:
+                logger.error(
+                    "MAX: ошибка активации подписки при polling: %s",
+                    exc, exc_info=True,
+                )
+            return
+
+        if status == "canceled":
+            try:
+                async for session in db_manager.get_session():
+                    sub_repo = SubscriptionRepository(session)
+                    await sub_repo.update_payment_status(payment_id, "canceled")
+
+                payment_service.clear_pending_payment(max_user_id)
+
+                cancel_text = (
+                    "❌ Платёж отменён.\n"
+                    "Попробуйте оформить подписку снова."
+                )
+                keyboard = MaxKeyboardManager.get_subscription_status_keyboard(
+                    has_active_subscription=False,
+                )
+
+                if processing_msg_id:
+                    try:
+                        await api_client.edit_message(
+                            message_id=processing_msg_id,
+                            text=cancel_text,
+                            attachments=[keyboard],
+                        )
+                        return
+                    except Exception:
+                        pass
+
+                await api_client.send_message(
+                    chat_id=chat_id,
+                    text=cancel_text,
+                    attachments=[keyboard],
+                )
+
+            except Exception as exc:
+                logger.error(
+                    "MAX: ошибка обработки отмены при polling: %s",
+                    exc, exc_info=True,
+                )
+            return
+
+    # Все попытки исчерпаны — платёж всё ещё pending
+    logger.info(
+        "MAX: фоновый polling исчерпан для платежа %s, пользователь %d",
+        payment_id, max_user_id,
+    )
+
+
+# ────────────────────────────────────────────
+#  Основной класс обработчиков
+# ────────────────────────────────────────────
+
 class MaxBotHandlers:
     """Обработчики событий MAX-бота.
 
     Маршрутизирует входящие обновления к соответствующим
     методам-обработчикам. Управляет взаимодействием между
     MAX API клиентом, обработчиком фото и базой данных.
+    Включает систему подписок и платежей через YooKassa.
 
     Args:
         api_client: HTTP-клиент MAX API.
@@ -207,6 +459,9 @@ class MaxBotHandlers:
 
         logger.info("MAX: пользователь %d запустил бота", user.user_id)
 
+        # Сбрасываем FSM-состояние при перезапуске бота
+        _state_manager.clear_state(user.user_id)
+
         # Обработка реферального кода из payload
         referred_by_partner_id = None
         referral_code = update.payload
@@ -244,7 +499,7 @@ class MaxBotHandlers:
         await self._api.send_message(
             user_id=user.user_id,
             text=welcome_text,
-            attachments=[MaxKeyboardManager.get_main_menu()],
+            attachments=[MaxKeyboardManager.get_main_menu_with_subscription()],
         )
 
     # ────────────────────────────────────────────
@@ -289,7 +544,7 @@ class MaxBotHandlers:
             chat_id=chat_id,
             text="📸 Пожалуйста, отправьте фотографию кофейной чашки "
                  "с гущей или воспользуйтесь кнопками меню.",
-            attachments=[MaxKeyboardManager.get_main_menu()],
+            attachments=[MaxKeyboardManager.get_main_menu_with_subscription()],
         )
 
     # ────────────────────────────────────────────
@@ -304,11 +559,24 @@ class MaxBotHandlers:
     ) -> None:
         """Обработка текстового сообщения.
 
+        Сначала проверяет, есть ли активное FSM-состояние
+        (ожидание ввода email). Если да — обрабатывает ввод.
+        Иначе — маршрутизация по командам и кнопкам.
+
         Args:
             text: Текст сообщения.
             message: Полное сообщение MAX.
             chat_id: ID чата для ответа.
         """
+        user = message.sender
+        if not user:
+            return
+
+        # Проверяем FSM: если ожидаем email — перехватываем ввод
+        if _state_manager.is_waiting_for_email(user.user_id):
+            await self._handle_email_input(text, user, chat_id)
+            return
+
         # Обработка команд (начинаются с /)
         text_lower = text.lower()
 
@@ -328,6 +596,8 @@ class MaxBotHandlers:
             await self._handle_clear_command(chat_id)
         elif text_lower == "/support":
             await self._handle_support_command(chat_id)
+        elif text_lower == "/subscribe":
+            await self._handle_subscription_command(user, chat_id)
         else:
             # Произвольный текст — предложить меню
             await self._api.send_message(
@@ -335,8 +605,197 @@ class MaxBotHandlers:
                 text="🔮 Я понимаю только язык кофейной гущи!\n\n"
                      "Отправьте фото вашей кофейной чашки "
                      "или воспользуйтесь кнопками меню.",
-                attachments=[MaxKeyboardManager.get_main_menu()],
+                attachments=[MaxKeyboardManager.get_main_menu_with_subscription()],
             )
+
+    # ────────────────────────────────────────────
+    #  Обработка ввода email (FSM)
+    # ────────────────────────────────────────────
+
+    async def _handle_email_input(
+        self,
+        text: str,
+        user: MaxUser,
+        chat_id: int,
+    ) -> None:
+        """Обработка ввода email для создания платежа.
+
+        Вызывается, когда пользователь находится в состоянии
+        waiting_for_email. Валидирует email и создаёт платёж.
+
+        Args:
+            text: Введённый текст (предполагаемый email).
+            user: Объект пользователя MAX.
+            chat_id: ID чата для ответа.
+        """
+        email = text.strip()
+
+        if not _EMAIL_RE.match(email):
+            await self._api.send_message(
+                chat_id=chat_id,
+                text="❌ Некорректный email. Попробуйте ещё раз.\n\n"
+                     "Пример: user@example.com",
+                attachments=[MaxKeyboardManager.get_email_cancel_keyboard()],
+            )
+            return
+
+        # Email валиден — сбрасываем состояние и создаём платёж
+        _state_manager.clear_state(user.user_id)
+
+        await self._api.send_message(
+            chat_id=chat_id,
+            text=f"✉️ Чек будет отправлен на {email}\n⏳ Создаём платёж...",
+        )
+
+        await self._create_payment_and_respond(
+            chat_id=chat_id,
+            max_user_id=user.user_id,
+            user_email=email,
+        )
+
+    # ────────────────────────────────────────────
+    #  Создание платежа и отправка ссылки
+    # ────────────────────────────────────────────
+
+    async def _create_payment_and_respond(
+        self,
+        chat_id: int,
+        max_user_id: int,
+        user_email: Optional[str],
+    ) -> None:
+        """Создание платежа в YooKassa и отправка ссылки на оплату.
+
+        Аналог _create_payment_and_respond из bot/handlers.py.
+
+        Args:
+            chat_id: ID чата для ответа.
+            max_user_id: ID пользователя на платформе MAX.
+            user_email: Email для чека 54-ФЗ.
+        """
+        from coffee_oracle.services.payment_service import get_payment_service
+
+        payment_service = get_payment_service()
+        if payment_service is None:
+            await self._api.send_message(
+                chat_id=chat_id,
+                text="⚠️ Платежи временно недоступны.\n"
+                     "Обратитесь в поддержку для оформления подписки.",
+            )
+            return
+
+        async for session in db_manager.get_session():
+            user_repo = UserRepository(session)
+            settings_repo = SettingsRepository(session)
+            sub_repo = SubscriptionRepository(session)
+
+            db_user = await user_repo.get_user_by_telegram_id(
+                max_user_id, source=_SOURCE,
+            )
+            if not db_user:
+                await self._api.send_message(
+                    chat_id=chat_id,
+                    text="Пользователь не найден. Используйте /start",
+                )
+                return
+
+            # Сохраняем email для будущих рекуррентных платежей
+            if user_email and db_user.email != user_email:
+                db_user.email = user_email
+                await session.commit()
+
+            try:
+                price_str = await settings_repo.get_setting("subscription_price")
+                price = float(price_str) if price_str else 300.0
+                price_kopecks = int(price * 100)
+
+                description = "Подписка Coffee Oracle (1 месяц)"
+
+                result = await payment_service.create_first_payment(
+                    amount=price_kopecks,
+                    description=description,
+                    user_id=max_user_id,
+                    user_email=user_email,
+                    return_url=f"https://max.ru/{config.max_bot_id}" if config.max_bot_id else "https://max.ru",
+                )
+
+                if not result.get("success"):
+                    error_msg = result.get("error", "Неизвестная ошибка")
+                    logger.error(
+                        "MAX: ошибка создания платежа YooKassa: %s",
+                        error_msg,
+                    )
+                    await self._api.send_message(
+                        chat_id=chat_id,
+                        text="❌ Ошибка создания платежа.\n"
+                             "Попробуйте позже или обратитесь в поддержку.",
+                    )
+                    return
+
+                payment_id = result["payment_id"]
+                confirmation_url = result["confirmation_url"]
+                label = result["label"]
+                is_recurring = result.get("recurring", False)
+
+                # Сохраняем платёж в БД
+                await sub_repo.create_payment(
+                    user_id=db_user.id,
+                    amount=price_kopecks,
+                    label=label,
+                    payment_id=payment_id,
+                )
+
+                # Запоминаем pending-платёж в памяти
+                payment_service.set_pending_payment(max_user_id, payment_id)
+
+                recurring_note = ""
+                if not is_recurring:
+                    recurring_note = (
+                        "\n⚠️ Автопродление временно недоступно. "
+                        "По истечении подписки потребуется оплатить заново."
+                    )
+
+                domain = config.domain
+                payment_text = (
+                    "💳 Для оплаты подписки перейдите по ссылке ниже.\n\n"
+                    f"Сумма: {price:.0f} ₽\n"
+                    "Период: 1 месяц\n\n"
+                    f"Продолжая оплату, вы соглашаетесь с условиями использования "
+                    f"(https://{domain}/terms) и политикой конфиденциальности "
+                    f"(https://{domain}/privacy).\n\n"
+                    f"Статус оплаты обновится автоматически.{recurring_note}"
+                )
+
+                sent_msg = await self._api.send_message(
+                    chat_id=chat_id,
+                    text=payment_text,
+                    attachments=[
+                        MaxKeyboardManager.get_subscription_keyboard(
+                            payment_url=confirmation_url,
+                        ),
+                    ],
+                )
+
+                # Запускаем фоновый polling статуса платежа
+                asyncio.create_task(
+                    _poll_payment_and_activate(
+                        api_client=self._api,
+                        chat_id=chat_id,
+                        max_user_id=max_user_id,
+                        payment_id=payment_id,
+                        processing_msg_id=sent_msg.message_id,
+                    )
+                )
+
+            except Exception as e:
+                logger.error(
+                    "MAX: непредвиденная ошибка в потоке оплаты: %s",
+                    e, exc_info=True,
+                )
+                await self._api.send_message(
+                    chat_id=chat_id,
+                    text="❌ Произошла непредвиденная ошибка.\n"
+                         "Попробуйте позже или обратитесь в поддержку.",
+                )
 
     # ────────────────────────────────────────────
     #  Команды
@@ -347,6 +806,9 @@ class MaxBotHandlers:
         user = message.sender
         if not user:
             return
+
+        # Сбрасываем FSM-состояние
+        _state_manager.clear_state(user.user_id)
 
         db_user = await _get_or_create_user(user)
 
@@ -363,7 +825,7 @@ class MaxBotHandlers:
         await self._api.send_message(
             chat_id=chat_id,
             text=welcome_text,
-            attachments=[MaxKeyboardManager.get_main_menu()],
+            attachments=[MaxKeyboardManager.get_main_menu_with_subscription()],
         )
 
     async def _handle_help_command(self, chat_id: int) -> None:
@@ -503,12 +965,98 @@ class MaxBotHandlers:
         )
         await self._api.send_message(chat_id=chat_id, text=support_text)
 
+    async def _handle_subscription_command(
+        self,
+        user: MaxUser,
+        chat_id: int,
+    ) -> None:
+        """Обработка команды /subscribe — показ статуса подписки.
+
+        Args:
+            user: Объект пользователя MAX.
+            chat_id: ID чата для ответа.
+        """
+        db_user = await _get_or_create_user(user)
+        await self._show_subscription_status(db_user, chat_id)
+
+    # ────────────────────────────────────────────
+    #  Подписка — общие методы
+    # ────────────────────────────────────────────
+
+    async def _show_subscription_status(
+        self,
+        db_user: Any,
+        chat_id: int,
+    ) -> None:
+        """Отображение текущего статуса подписки пользователя.
+
+        Args:
+            db_user: Объект User из базы данных.
+            chat_id: ID чата для ответа.
+        """
+        async for session in db_manager.get_session():
+            sub_repo = SubscriptionRepository(session)
+            settings_repo = SettingsRepository(session)
+
+            status = await sub_repo.get_subscription_status(db_user.id)
+            price_str = await settings_repo.get_setting("subscription_price")
+            price = int(float(price_str)) if price_str else 300
+
+            recurring_enabled, _ = await sub_repo.is_recurring_enabled(db_user.id)
+
+            if status["type"] == "vip":
+                status_text = (
+                    "✨ Твой статус: VIP ⭐\n\n"
+                    f"Причина: {status.get('vip_reason', 'Особый гость Оракула')}\n\n"
+                    "Тебе открыты все тайны кофейных узоров!"
+                )
+            elif status["type"] == "premium" and status["active"]:
+                status_text = (
+                    "✨ Твой статус: Премиум 💫\n\n"
+                    f"Магия действует до: {status['until'][:10]}\n\n"
+                    "Тебе открыты безграничные сеансы гадания!"
+                )
+                if not recurring_enabled:
+                    status_text += (
+                        "\n\n⚠️ Автопродление выключено — "
+                        "подписка не продлится автоматически."
+                    )
+            else:
+                remaining = status.get("predictions_remaining", 0)
+                used = status.get("predictions_used", 0)
+                limit = status.get("predictions_limit", 10)
+                status_text = (
+                    f"☕ Твой статус: Гость Оракула\n\n"
+                    f"🎁 Использовано бесплатных гаданий: {used} из {limit}\n\n"
+                    f"💰 Подписка для безлимита: {price}₽/мес"
+                )
+
+            has_active = (
+                status["type"] == "vip"
+                or (status["type"] == "premium" and status["active"])
+            )
+            is_vip = status["type"] == "vip"
+
+            await self._api.send_message(
+                chat_id=chat_id,
+                text=status_text,
+                attachments=[
+                    MaxKeyboardManager.get_subscription_status_keyboard(
+                        has_active_subscription=has_active,
+                        is_vip=is_vip,
+                        recurring_enabled=recurring_enabled,
+                    ),
+                ],
+            )
+
     # ────────────────────────────────────────────
     #  Фотографии
     # ────────────────────────────────────────────
 
     async def _handle_photo_message(self, message: MaxMessage, chat_id: int) -> None:
         """Обработка сообщения с фотографией.
+
+        Перед анализом проверяет лимиты подписки пользователя.
 
         Args:
             message: Сообщение MAX с фото-вложениями.
@@ -517,6 +1065,41 @@ class MaxBotHandlers:
         user = message.sender
         if not user:
             return
+
+        # Сбрасываем FSM-состояние при отправке фото
+        _state_manager.clear_state(user.user_id)
+
+        # ── Проверка подписки ──
+        db_user = await _get_or_create_user(user)
+
+        async for session in db_manager.get_session():
+            sub_repo = SubscriptionRepository(session)
+            settings_repo = SettingsRepository(session)
+
+            can_predict, reason = await sub_repo.can_make_prediction(db_user.id)
+
+            if not can_predict:
+                price_str = await settings_repo.get_setting("subscription_price")
+                price = int(float(price_str)) if price_str else 300
+
+                paywall_text = (
+                    f"{reason}\n\n"
+                    "✨ Хочешь продолжить наше магическое путешествие?\n\n"
+                    "Оформи подписку и получи:\n"
+                    "• Безлимитные сеансы магии\n"
+                    "• Безграничную мудрость Оракула\n"
+                    "• Поддержку проекта ❤️\n\n"
+                    f"💰 Стоимость: {price}₽/мес"
+                )
+
+                await self._api.send_message(
+                    chat_id=chat_id,
+                    text=paywall_text,
+                    attachments=[MaxKeyboardManager.get_paywall_keyboard()],
+                )
+                return
+
+        # ── Обработка фото ──
 
         # Показываем индикатор набора
         try:
@@ -607,12 +1190,13 @@ class MaxBotHandlers:
                     photo_path=photo_path,
                     user_request=user_message,
                     photos=photos_data,
+                    subscription_type=db_user.subscription_type,
                 )
         except Exception as e:
             logger.error("MAX: ошибка сохранения предсказания в БД: %s", e)
             # Всё равно отправляем предсказание пользователю
 
-        # Отправка предсказания с Markdown-форматированием
+        # Отправка предсказания
         await self._send_prediction_to_user(
             chat_id=chat_id,
             processing_msg_id=processing_msg_id,
@@ -629,9 +1213,6 @@ class MaxBotHandlers:
 
         Редактирует сообщение-индикатор или отправляет новое.
         При длинном тексте разбивает на части.
-        Все сообщения с предсказаниями отправляются с format='markdown',
-        чтобы MAX API корректно отображал жирный, курсив и другое
-        форматирование из ответа LLM.
 
         Args:
             chat_id: ID чата для ответа.
@@ -736,7 +1317,10 @@ class MaxBotHandlers:
             )
             return
 
-        logger.info("MAX callback: payload=%s, user=%d, chat_id=%d", payload, user.user_id, chat_id)
+        logger.info(
+            "MAX callback: payload=%s, user=%d, chat_id=%d",
+            payload, user.user_id, chat_id,
+        )
 
         # Маршрутизация по payload
         try:
@@ -765,10 +1349,32 @@ class MaxBotHandlers:
                 await self._handle_predict_command(chat_id)
 
             elif payload == "action_back_to_menu":
+                # Сбрасываем FSM-состояние при возврате в меню
+                _state_manager.clear_state(user.user_id)
                 await self._callback_back_to_menu(callback, chat_id)
 
             elif payload == "action_cancel":
+                _state_manager.clear_state(user.user_id)
                 await self._callback_cancel(callback, chat_id)
+
+            # ── Подписка и платежи ──
+            elif payload == "action_subscription":
+                await self._callback_subscription(user, chat_id)
+
+            elif payload == "action_subscription_status":
+                await self._callback_subscription_status(user, chat_id)
+
+            elif payload == "action_start_payment":
+                await self._callback_start_payment(user, chat_id)
+
+            elif payload == "action_check_payment":
+                await self._callback_check_payment(user, chat_id)
+
+            elif payload == "action_cancel_subscription":
+                await self._callback_cancel_subscription(chat_id)
+
+            elif payload == "action_confirm_cancel_sub":
+                await self._callback_confirm_cancel_sub(user, chat_id)
 
             elif payload.startswith("confirm_"):
                 await self._callback_confirm(callback, payload, chat_id)
@@ -785,6 +1391,277 @@ class MaxBotHandlers:
                 payload, e,
                 exc_info=True,
             )
+
+    # ────────────────────────────────────────────
+    #  Callback: подписка и платежи
+    # ────────────────────────────────────────────
+
+    async def _callback_subscription(
+        self,
+        user: MaxUser,
+        chat_id: int,
+    ) -> None:
+        """Callback: показ статуса подписки (кнопка 💎 Подписка)."""
+        db_user = await _get_or_create_user(user)
+        await self._show_subscription_status(db_user, chat_id)
+
+    async def _callback_subscription_status(
+        self,
+        user: MaxUser,
+        chat_id: int,
+    ) -> None:
+        """Callback: обновление статуса подписки."""
+        db_user = await _get_or_create_user(user)
+        await self._show_subscription_status(db_user, chat_id)
+
+    async def _callback_start_payment(
+        self,
+        user: MaxUser,
+        chat_id: int,
+    ) -> None:
+        """Callback: начало оплаты — запрос email.
+
+        Переводит пользователя в состояние ожидания email.
+        """
+        from coffee_oracle.services.payment_service import get_payment_service
+
+        payment_service = get_payment_service()
+        if payment_service is None:
+            await self._api.send_message(
+                chat_id=chat_id,
+                text="⚠️ Платежи временно недоступны.\n"
+                     "Обратитесь в поддержку для оформления подписки.",
+            )
+            return
+
+        # Устанавливаем FSM-состояние
+        _state_manager.set_state(
+            user.user_id,
+            state="waiting_for_email",
+            chat_id=chat_id,
+        )
+
+        await self._api.send_message(
+            chat_id=chat_id,
+            text="По закону мы обязаны отправить вам чек об оплате 🧾\n\n"
+                 "Пожалуйста, напишите ваш email, куда мы сможем его прислать:",
+            attachments=[MaxKeyboardManager.get_email_cancel_keyboard()],
+        )
+
+    async def _callback_check_payment(
+        self,
+        user: MaxUser,
+        chat_id: int,
+    ) -> None:
+        """Callback: ручная проверка статуса платежа.
+
+        Аналог check_payment_callback из bot/handlers.py.
+        """
+        from coffee_oracle.services.payment_service import get_payment_service
+
+        payment_service = get_payment_service()
+        if payment_service is None:
+            await self._api.send_message(
+                chat_id=chat_id,
+                text="⚠️ Платежи временно недоступны.",
+            )
+            return
+
+        # Получаем pending-платёж
+        payment_id = payment_service.get_pending_payment(user.user_id)
+        if not payment_id:
+            await self._api.send_message(
+                chat_id=chat_id,
+                text="ℹ️ Нет ожидающих платежей.",
+            )
+            return
+
+        async for session in db_manager.get_session():
+            user_repo = UserRepository(session)
+            sub_repo = SubscriptionRepository(session)
+
+            db_user = await user_repo.get_user_by_telegram_id(
+                user.user_id, source=_SOURCE,
+            )
+            if not db_user:
+                await self._api.send_message(
+                    chat_id=chat_id,
+                    text="Пользователь не найден. Используйте /start",
+                )
+                return
+
+            try:
+                status_result = await payment_service.get_payment_status(payment_id)
+
+                if not status_result.get("success"):
+                    logger.error(
+                        "MAX: ошибка проверки статуса платежа: %s",
+                        status_result.get("error"),
+                    )
+                    await self._api.send_message(
+                        chat_id=chat_id,
+                        text="❌ Не удалось проверить статус платежа.\n"
+                             "Попробуйте позже.",
+                    )
+                    return
+
+                status = status_result.get("status")
+                paid = status_result.get("paid", False)
+
+                if status == "succeeded" and paid:
+                    # Активация подписки
+                    await sub_repo.activate_premium(db_user.id)
+
+                    payment_method_saved = status_result.get(
+                        "payment_method_saved", False,
+                    )
+                    payment_method_id = status_result.get("payment_method_id")
+                    if payment_method_saved and payment_method_id:
+                        await sub_repo.enable_recurring_payment(
+                            db_user.id, payment_method_id,
+                        )
+
+                    await sub_repo.update_payment_status(payment_id, "succeeded")
+                    payment_service.clear_pending_payment(user.user_id)
+
+                    recurring_msg = ""
+                    if payment_method_saved:
+                        recurring_msg = "\n🔄 Автопродление включено."
+
+                    await self._api.send_message(
+                        chat_id=chat_id,
+                        text=(
+                            "✅ Оплата прошла успешно!\n\n"
+                            "Премиум-подписка активирована на 1 месяц.\n"
+                            f"Спасибо за поддержку! ☕{recurring_msg}"
+                        ),
+                        attachments=[
+                            MaxKeyboardManager.get_subscription_status_keyboard(
+                                has_active_subscription=True,
+                                recurring_enabled=bool(
+                                    payment_method_saved and payment_method_id
+                                ),
+                            ),
+                        ],
+                    )
+
+                elif status == "pending":
+                    await self._api.send_message(
+                        chat_id=chat_id,
+                        text="⏳ Платёж ещё обрабатывается, проверьте позже.",
+                        attachments=[
+                            MaxKeyboardManager.get_subscription_keyboard(),
+                        ],
+                    )
+
+                elif status == "canceled":
+                    await sub_repo.update_payment_status(payment_id, "canceled")
+                    payment_service.clear_pending_payment(user.user_id)
+
+                    await self._api.send_message(
+                        chat_id=chat_id,
+                        text="❌ Платёж отменён.\n"
+                             "Попробуйте оформить подписку снова.",
+                        attachments=[
+                            MaxKeyboardManager.get_subscription_status_keyboard(
+                                has_active_subscription=False,
+                            ),
+                        ],
+                    )
+
+                else:
+                    await self._api.send_message(
+                        chat_id=chat_id,
+                        text=f"ℹ️ Статус платежа: {status}.\n"
+                             "Попробуйте проверить позже.",
+                        attachments=[
+                            MaxKeyboardManager.get_subscription_keyboard(),
+                        ],
+                    )
+
+            except Exception as e:
+                logger.error(
+                    "MAX: ошибка проверки платежа: %s",
+                    e, exc_info=True,
+                )
+                await self._api.send_message(
+                    chat_id=chat_id,
+                    text="❌ Произошла ошибка при проверке платежа.\n"
+                         "Попробуйте позже.",
+                )
+
+    async def _callback_cancel_subscription(self, chat_id: int) -> None:
+        """Callback: запрос подтверждения отмены автопродления."""
+        await self._api.send_message(
+            chat_id=chat_id,
+            text="⚠️ Вы уверены, что хотите отменить подписку?\n\n"
+                 "Автопродление будет отключено, а доступ сохранится "
+                 "до конца оплаченного периода.",
+            attachments=[
+                MaxKeyboardManager.get_cancel_subscription_confirmation(),
+            ],
+        )
+
+    async def _callback_confirm_cancel_sub(
+        self,
+        user: MaxUser,
+        chat_id: int,
+    ) -> None:
+        """Callback: подтверждённая отмена автопродления."""
+        try:
+            async for session in db_manager.get_session():
+                user_repo = UserRepository(session)
+                sub_repo = SubscriptionRepository(session)
+
+                db_user = await user_repo.get_user_by_telegram_id(
+                    user.user_id, source=_SOURCE,
+                )
+                if not db_user:
+                    await self._api.send_message(
+                        chat_id=chat_id,
+                        text="Пользователь не найден. Используйте /start",
+                    )
+                    return
+
+                await sub_repo.disable_recurring_payment(db_user.id)
+
+                status = await sub_repo.get_subscription_status(db_user.id)
+                until = (
+                    status.get("until", "")[:10]
+                    if status.get("until")
+                    else ""
+                )
+
+            until_text = f"\n📅 Доступ сохранится до: {until}" if until else ""
+
+            await self._api.send_message(
+                chat_id=chat_id,
+                text=(
+                    "✅ Автопродление отключено\n\n"
+                    "Премиум-функции останутся доступны до конца "
+                    f"оплаченного периода.{until_text}\n\n"
+                    "Вы всегда можете оформить подписку снова. ☕"
+                ),
+                attachments=[
+                    MaxKeyboardManager.get_subscription_status_keyboard(
+                        has_active_subscription=bool(until),
+                        is_vip=False,
+                        recurring_enabled=False,
+                    ),
+                ],
+            )
+
+        except Exception as e:
+            logger.error("MAX: ошибка отмены подписки: %s", e, exc_info=True)
+            await self._api.send_message(
+                chat_id=chat_id,
+                text="❌ Произошла ошибка при отмене подписки.\n"
+                     "Попробуйте позже или обратитесь в поддержку.",
+            )
+
+    # ────────────────────────────────────────────
+    #  Callback: прочие
+    # ────────────────────────────────────────────
 
     async def _callback_show_history(self, callback: MaxCallback, chat_id: int) -> None:
         """Callback: показать историю предсказаний."""
@@ -833,7 +1710,7 @@ class MaxBotHandlers:
         await self._api.send_message(
             chat_id=chat_id,
             text="📋 Главное меню Кофейного Оракула\n\nВыберите действие:",
-            attachments=[MaxKeyboardManager.get_main_menu()],
+            attachments=[MaxKeyboardManager.get_main_menu_with_subscription()],
         )
 
     async def _callback_cancel(self, callback: MaxCallback, chat_id: int) -> None:
@@ -842,7 +1719,7 @@ class MaxBotHandlers:
             chat_id=chat_id,
             text="❌ Действие отменено\n\n"
                  "Используйте кнопки меню для выбора других действий.",
-            attachments=[MaxKeyboardManager.get_main_menu()],
+            attachments=[MaxKeyboardManager.get_main_menu_with_subscription()],
         )
 
     async def _callback_confirm(
@@ -886,7 +1763,7 @@ class MaxBotHandlers:
                     text="✅ История предсказаний очищена!\n\n"
                          "Теперь вы можете начать с чистого листа. "
                          "Отправьте фото кофейной чашки для нового предсказания! 🔮",
-                    attachments=[MaxKeyboardManager.get_main_menu()],
+                    attachments=[MaxKeyboardManager.get_main_menu_with_subscription()],
                 )
 
             except Exception as e:
@@ -979,8 +1856,7 @@ class MaxBotHandlers:
         Args:
             message_id: ID сообщения для редактирования.
             text: Новый текст.
-            format_type: Формат текста ('markdown' или 'html'). По умолчанию
-                         None — отправляется как plain text.
+            format_type: Формат текста ('markdown' или 'html').
         """
         if not message_id:
             return

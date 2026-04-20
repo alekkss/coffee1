@@ -70,7 +70,8 @@
 - Telegram Bot — если задан BOT_TOKEN
 - MAX Bot — если задан MAX_BOT_TOKEN
 - Admin Panel — запускается всегда
-- Subscription Scheduler — привязан к Telegram-боту
+- Subscription Scheduler — запускается при наличии хотя бы одного бота (Telegram и/или MAX)
+- WebhookHandler YooKassa — инициализируется при наличии хотя бы одного бота
 ```
 
 ### Поток обработки предсказания
@@ -108,7 +109,9 @@ Markdown → Telegram HTML конвертация
 Пользователь нажимает "Подписка"
         │
         ▼
-Запрос email (FSM: PaymentStates.waiting_for_email)
+Запрос email
+  ├── Telegram: FSM (PaymentStates.waiting_for_email)
+  └── MAX: in-memory state (_UserStateManager.waiting_for_email)
         │
         ▼
 PaymentService.create_first_payment() → YooKassa API
@@ -140,12 +143,28 @@ PaymentService.create_first_payment() → YooKassa API
 | `max`  | MAX       | MaxOracleBot (aiohttp)    | MAX user_id      |
 
 Составной unique constraint `(telegram_id, source)` исключает коллизии ID между платформами.
-Все предсказания, фото и платежи привязаны к внутреннему `users.id`, не зависящему от платформы.
+Все предсказания, фото и платежи привязаны к внутреннему `users.id`, не зависящему от платформы. При создании платежа в metadata YooKassa передаётся поле `source` (`tg` или `max`), чтобы вебхук мог однозначно идентифицировать платформу пользователя.
 
 ## MAX-бот
 
-Параллельный бот для мессенджера MAX (platform-api.max.ru). Функционально повторяет Telegram-бота
-(предсказания по фото, история, случайные предсказания), но без системы подписок и платежей.
+Параллельный бот для мессенджера MAX (platform-api.max.ru). Функционально повторяет Telegram-бота: предсказания по фото, история, случайные предсказания, система подписок с оплатой через YooKassa и автопродлением. Проверка лимитов бесплатных предсказаний, paywall, управление подпиской — идентичны Telegram-боту.
+
+### Кнопки главного меню (InlineKeyboard)
+
+- 🔮 Получить предсказание
+- 📜 Моя история / 🎯 Случайное
+- 💎 Подписка / 📚 Как гадать
+- ℹ️ О боте / 📞 Поддержка
+- 🗑️ Очистить историю
+
+### Кнопки подписки
+
+- ⭐ Оформить подписку (для free-пользователей)
+- 💳 Перейти к оплате (ссылка на YooKassa)
+- ✅ Я оплатил — проверить
+- 🔄 Отменить автопродление (для premium с recurring)
+- 🔄 Обновить статус
+
 
 ### Компоненты
 
@@ -155,7 +174,7 @@ PaymentService.create_first_payment() → YooKassa API
 | MaxApiClient | `max_bot/api_client.py` | HTTP-клиент для MAX Bot API (aiohttp). Отправка/редактирование сообщений, callback-ответы, скачивание файлов |
 | MaxBotHandlers | `max_bot/handlers.py` | Маршрутизация обновлений: bot_started, message_created, message_callback |
 | MaxPhotoProcessor | `max_bot/photo_processor.py` | Скачивание фото через MAX API, ресайз (≤800×800), сохранение, анализ через LLM |
-| MaxKeyboardManager | `max_bot/keyboards.py` | Формирование inline-клавиатур в формате MAX API |
+| MaxKeyboardManager | `max_bot/keyboards.py` | Формирование inline-клавиатур в формате MAX API, включая клавиатуры подписки и оплаты |
 
 ### Особенности MAX API
 
@@ -173,10 +192,9 @@ PaymentService.create_first_payment() → YooKassa API
 
 ### Ограничения MAX-бота
 
-- Нет системы подписок и платежей (нет аналога YooKassa для MAX)
 - Нет MediaGroupMiddleware — MAX отправляет все фото в одном сообщении
-- Нет FSM-состояний
-- Нет форматирования текста (Markdown/HTML) — отправляется plain text
+- FSM реализован через in-memory словарь (_UserStateManager) — при перезапуске бота состояния сбрасываются
+- Нет форматирования текста (Markdown/HTML) в сообщениях подписки — отправляется plain text (предсказания отправляются с format='markdown')
 
 ---
 
@@ -201,6 +219,7 @@ PaymentService.create_first_payment() → YooKassa API
 | Markdown | marked.js (CDN) | Рендеринг предсказаний в админке |
 | MAX Bot API       | aiohttp            | Long polling, отправка сообщений в MAX   |
 | MAX Bot Platform  | platform-api.max.ru | REST API мессенджера MAX                |
+| FSM (MAX) |	in-memory dict |	Управление состояниями пользователей MAX-бота (ожидание email) |
 
 ---
 
@@ -361,6 +380,7 @@ docker run -d \
 | `SECURE_COOKIES` | `true` | HTTPS-only cookies |
 | `MAX_BOT_TOKEN` | — | Токен MAX-бота (если не задан, MAX-бот не запускается) |
 | `BOT_USERNAME`| — |	Имя Telegram-бота без @ (для реферальных ссылок партнёров) |
+| `MAX_BOT_ID`|	— |	Идентификатор MAX-бота для return_url при оплате (например, id9728167964_bot) |
 
 
 ### Пример .env
@@ -415,9 +435,12 @@ MAX_BOT_TOKEN=your-max-bot-token-here
 
 ### FSM-состояния
 
-| Состояние | Назначение |
-|-----------|-----------|
-| `PaymentStates.waiting_for_email` | Ожидание ввода email для чека 54-ФЗ |
+| Состояние | Платформа | Реализация | Назначение |
+|-----------|-----------|------------|-----------|
+| `PaymentStates.waiting_for_email` | Telegram | aiogram FSM (StatesGroup) | Ожидание ввода email для чека 54-ФЗ |
+| `waiting_for_email` | MAX | in-memory `_UserStateManager` | Ожидание ввода email для чека 54-ФЗ |
+
+В MAX-боте FSM реализован через in-memory словарь `_user_states: dict[int, dict]`. Состояние сбрасывается при: перезапуске бота, нажатии «Назад в меню», отправке фото, команде `/start`. При перезапуске бота пользователь просто начинает процесс оплаты заново.
 
 ### Настраиваемые тексты
 
@@ -451,7 +474,11 @@ In-memory хранение pending-платежей: `_pending_payments: dict[in
 
 ### WebhookHandler (webhook_handler.py)
 
-Обрабатывает POST-запросы от YooKassa на `/api/yookassa/webhook`. Проверяет IP-адрес отправителя по белому списку YooKassa.
+Обрабатывает POST-запросы от YooKassa на `/api/yookassa/webhook`. Проверяет IP-адрес отправителя по белому списку YooKassa. Поддерживает мультиплатформенные уведомления: определяет платформу пользователя по полю `source` в metadata платежа (или из записи пользователя в БД) и отправляет уведомление через соответствующий мессенджер — Telegram Bot API или MAX Bot API.
+
+Принимает два опциональных транспорта при инициализации:
+- `bot` (aiogram Bot) — для уведомлений Telegram-пользователей
+- `max_api_client` (MaxApiClient) — для уведомлений MAX-пользователей
 
 Обрабатываемые события:
 
@@ -465,7 +492,13 @@ In-memory хранение pending-платежей: `_pending_payments: dict[in
 
 ### SubscriptionScheduler (subscription_scheduler.py)
 
-Фоновая задача, запускаемая через `asyncio.create_task`. Интервал проверки — 6 часов. Начальная задержка — 30 секунд после старта приложения.
+Фоновая задача, запускаемая через `asyncio.create_task`. Интервал проверки — 6 часов. Начальная задержка — 30 секунд после старта приложения. Запускается при наличии хотя бы одного бота (Telegram и/или MAX).
+
+Поддерживает мультиплатформенные уведомления: определяет платформу пользователя по полю `user.source` и отправляет уведомления (напоминания об истечении, подтверждения продления, ошибки списания) через соответствующий мессенджер.
+
+Принимает два опциональных транспорта при инициализации:
+- `bot` (aiogram Bot) — для уведомлений Telegram-пользователей
+- `max_api_client` (MaxApiClient) — для уведомлений MAX-пользователей
 
 Логика:
 
@@ -1050,7 +1083,7 @@ grep MAX_BOT_TOKEN /opt/oracle-bot/app/.env
 - Фото хранятся на локальном диске. Для масштабирования — S3-совместимое хранилище.
 - Pending-платежи хранятся in-memory (`_pending_payments`) — при перезапуске теряются. Вебхук YooKassa компенсирует это.
 - Кэш настроек LLM не имеет TTL — очищается только вручную или при сохранении настроек.
-- Подписки и платежи работают только в Telegram-боте. MAX-бот не поддерживает платежи — все пользователи MAX имеют бесплатный тариф без лимитов (проверка подписки в MAX-обработчиках не реализована).
+- Pending-платежи хранятся in-memory (`_pending_payments`) — при перезапуске теряются. Вебхук YooKassa компенсирует это. Аналогично, FSM-состояния MAX-бота (ожидание email) хранятся in-memory и сбрасываются при перезапуске.
 - Поле `subscription_type` в предсказаниях автоматически подтягивается из текущего статуса пользователя в момент создания предсказания (`PredictionRepository.create_prediction`). Если статус был изменён после создания предсказания, ранее записанные предсказания сохраняют старый тип.
 
 ---

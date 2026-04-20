@@ -156,14 +156,24 @@ class ApplicationOrchestrator:
             )
         )
 
-        # Инициализация webhook-обработчика YooKassa (привязан к Telegram-боту)
-        if self.telegram_bot:
+        # Инициализация webhook-обработчика YooKassa
+        # Работает при наличии хотя бы одного бота — определяет платформу
+        # пользователя по полю source и шлёт уведомление в правильный мессенджер
+        if self.telegram_bot or self.max_bot:
             from coffee_oracle.admin.app import init_webhook_handler
-            init_webhook_handler(self.telegram_bot.bot)
+            init_webhook_handler(
+                bot=self.telegram_bot.bot if self.telegram_bot else None,
+                max_api_client=self.max_bot.api_client if self.max_bot else None,
+            )
 
-        # Запуск планировщика подписок (привязан к Telegram-боту)
-        if self.telegram_bot:
-            self.scheduler = SubscriptionScheduler(self.telegram_bot.bot)
+        # Запуск планировщика подписок
+        # Работает при наличии хотя бы одного бота — отправляет уведомления
+        # через Telegram и/или MAX в зависимости от платформы пользователя
+        if self.telegram_bot or self.max_bot:
+            self.scheduler = SubscriptionScheduler(
+                bot=self.telegram_bot.bot if self.telegram_bot else None,
+                max_api_client=self.max_bot.api_client if self.max_bot else None,
+            )
             await self.scheduler.start()
 
         # Логируем итоговый состав запущенных компонентов

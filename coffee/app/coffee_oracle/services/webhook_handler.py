@@ -1,23 +1,23 @@
-"""YooKassa webhook handler.
+"""Обработчик вебхуков YooKassa.
 
-Processes payment notifications from YooKassa and activates/deactivates
-subscriptions accordingly. This replaces the need for polling in most cases.
-
-YooKassa sends POST requests with JSON body containing payment events.
-Docs: https://yookassa.ru/developers/using-api/webhooks
+Обрабатывает уведомления об оплате и активирует/деактивирует
+подписки. Поддерживает отправку уведомлений пользователям
+обеих платформ: Telegram и MAX.
 """
 
 import logging
-from typing import Optional
+from typing import Optional, TYPE_CHECKING
 
-from aiogram import Bot
+if TYPE_CHECKING:
+    from aiogram import Bot
+    from coffee_oracle.max_bot.api_client import MaxApiClient
 
 from coffee_oracle.database.connection import db_manager
 from coffee_oracle.database.repositories import SubscriptionRepository, UserRepository
 
 logger = logging.getLogger(__name__)
 
-# YooKassa sends webhooks from these IP ranges
+# IP-диапазоны YooKassa для валидации вебхуков
 # https://yookassa.ru/developers/using-api/webhooks#ip
 YOOKASSA_IP_RANGES = [
     "185.71.76.",
@@ -27,12 +27,19 @@ YOOKASSA_IP_RANGES = [
     "77.75.157.",
     "77.75.158.",
     "77.75.159.",
-    "2a02:5180::",  # IPv6 range
+    "2a02:5180::",  # IPv6
 ]
 
 
 def is_yookassa_ip(ip: str) -> bool:
-    """Check if the request IP belongs to YooKassa."""
+    """Проверка принадлежности IP-адреса к диапазонам YooKassa.
+
+    Args:
+        ip: IP-адрес отправителя вебхука.
+
+    Returns:
+        True, если IP принадлежит YooKassa.
+    """
     if not ip:
         return False
     for prefix in YOOKASSA_IP_RANGES:
@@ -42,20 +49,34 @@ def is_yookassa_ip(ip: str) -> bool:
 
 
 class WebhookHandler:
-    """Handles YooKassa webhook notifications."""
+    """Обработчик вебхуков YooKassa с мультиплатформенными уведомлениями.
 
-    def __init__(self, bot: Bot):
-        self.bot = bot
+    Определяет платформу пользователя (Telegram или MAX) по полю source
+    в метаданных платежа или в записи пользователя в БД, и отправляет
+    уведомления через соответствующий транспорт.
+
+    Args:
+        bot: Экземпляр aiogram Bot для Telegram (опционально).
+        max_api_client: HTTP-клиент MAX API (опционально).
+    """
+
+    def __init__(
+        self,
+        bot: Optional["Bot"] = None,
+        max_api_client: Optional["MaxApiClient"] = None,
+    ):
+        self._bot = bot
+        self._max_api_client = max_api_client
 
     async def handle_notification(self, event_type: str, payload: dict) -> dict:
-        """Route webhook notification to the appropriate handler.
+        """Маршрутизация вебхука к соответствующему обработчику.
 
         Args:
-            event_type: YooKassa event type (e.g. 'payment.succeeded').
-            payload: The 'object' field from the webhook body.
+            event_type: Тип события YooKassa (например, 'payment.succeeded').
+            payload: Объект 'object' из тела вебхука.
 
         Returns:
-            dict with 'ok' and optional 'message'.
+            Словарь с результатом обработки.
         """
         handlers = {
             "payment.succeeded": self._handle_payment_succeeded,
@@ -65,29 +86,46 @@ class WebhookHandler:
 
         handler = handlers.get(event_type)
         if not handler:
-            logger.info("Ignoring unhandled webhook event: %s", event_type)
+            logger.info("Игнорируем необработанное событие вебхука: %s", event_type)
             return {"ok": True, "message": f"Event {event_type} ignored"}
 
         try:
             return await handler(payload)
         except Exception as e:
-            logger.error("Webhook handler error for %s: %s", event_type, e, exc_info=True)
+            logger.error(
+                "Ошибка обработчика вебхука для %s: %s",
+                event_type, e, exc_info=True,
+            )
             return {"ok": False, "message": str(e)}
 
     async def _handle_payment_succeeded(self, payment: dict) -> dict:
-        """Process a successful payment — activate subscription."""
+        """Обработка успешного платежа — активация подписки.
+
+        Определяет платформу пользователя из metadata.source,
+        находит пользователя в БД и активирует premium-подписку.
+        Уведомление отправляется через соответствующий мессенджер.
+
+        Args:
+            payment: Объект платежа из вебхука YooKassa.
+
+        Returns:
+            Результат обработки.
+        """
         payment_id = payment.get("id")
         metadata = payment.get("metadata", {})
         user_id_str = metadata.get("user_id")
-        payment_type = metadata.get("type", "")
+        source = metadata.get("source", "tg")
 
         if not payment_id or not user_id_str:
-            logger.warning("Webhook payment.succeeded missing id or user_id: %s", payment)
+            logger.warning(
+                "Вебхук payment.succeeded: отсутствует id или user_id: %s",
+                payment,
+            )
             return {"ok": False, "message": "Missing payment_id or user_id in metadata"}
 
-        telegram_user_id = int(user_id_str)
+        platform_user_id = int(user_id_str)
 
-        # Check if payment method was saved (for recurring)
+        # Проверяем, сохранён ли метод оплаты (для рекуррентов)
         payment_method = payment.get("payment_method", {})
         method_saved = payment_method.get("saved", False)
         method_id = payment_method.get("id")
@@ -96,56 +134,79 @@ class WebhookHandler:
             user_repo = UserRepository(session)
             sub_repo = SubscriptionRepository(session)
 
-            db_user = await user_repo.get_user_by_telegram_id(telegram_user_id)
+            db_user = await user_repo.get_user_by_telegram_id(
+                platform_user_id, source=source,
+            )
             if not db_user:
-                logger.warning("Webhook: user not found for telegram_id=%s", telegram_user_id)
+                logger.warning(
+                    "Вебхук: пользователь не найден: platform_id=%s, source=%s",
+                    user_id_str, source,
+                )
                 return {"ok": False, "message": "User not found"}
 
-            # Idempotency: check if already processed
+            # Идемпотентность: проверяем, не обработан ли уже этот платёж
             existing = await sub_repo.get_payment_by_payment_id(payment_id)
             if existing and existing.status in ("completed", "succeeded"):
-                logger.info("Webhook: payment %s already processed, skipping", payment_id)
+                logger.info(
+                    "Вебхук: платёж %s уже обработан, пропускаем",
+                    payment_id,
+                )
                 return {"ok": True, "message": "Already processed"}
 
-            # Activate premium
+            # Активация premium
             await sub_repo.activate_premium(db_user.id, months=1)
 
-            # Update payment record status
+            # Обновление статуса платежа в БД
             await sub_repo.update_payment_status(payment_id, "succeeded")
 
-            # Enable recurring if payment method was saved
+            # Включение автопродления, если метод оплаты сохранён
             if method_saved and method_id:
                 await sub_repo.enable_recurring_payment(db_user.id, method_id)
 
-            # Clear in-memory pending payment
+            # Очистка in-memory pending-платежа
             from coffee_oracle.services.payment_service import get_payment_service
             ps = get_payment_service()
             if ps:
-                ps.clear_pending_payment(telegram_user_id)
+                ps.clear_pending_payment(platform_user_id)
 
-            # Notify user
+            # Формируем текст уведомления
             recurring_msg = ""
             if method_saved:
                 recurring_msg = "\n🔄 Автопродление включено."
 
-            await self._notify_user(
-                telegram_user_id,
+            notification_text = (
                 "✅ Оплата прошла успешно!\n\n"
                 "Премиум-подписка активирована на 1 месяц.\n"
-                f"Спасибо за поддержку! ☕{recurring_msg}",
+                f"Спасибо за поддержку! ☕{recurring_msg}"
+            )
+
+            # Отправляем уведомление через правильный мессенджер
+            await self._notify_user_by_source(
+                platform_user_id=platform_user_id,
+                source=source,
+                text=notification_text,
             )
 
             logger.info(
-                "Webhook: activated premium for user %d (payment %s)",
-                db_user.id, payment_id,
+                "Вебхук: premium активирован для пользователя %d "
+                "(source=%s, payment=%s)",
+                db_user.id, source, payment_id,
             )
             return {"ok": True, "message": "Subscription activated"}
 
     async def _handle_payment_canceled(self, payment: dict) -> dict:
-        """Process a canceled payment."""
+        """Обработка отменённого платежа.
+
+        Args:
+            payment: Объект платежа из вебхука YooKassa.
+
+        Returns:
+            Результат обработки.
+        """
         payment_id = payment.get("id")
         metadata = payment.get("metadata", {})
         user_id_str = metadata.get("user_id")
+        source = metadata.get("source", "tg")
 
         if not payment_id:
             return {"ok": False, "message": "Missing payment_id"}
@@ -154,33 +215,123 @@ class WebhookHandler:
             sub_repo = SubscriptionRepository(session)
             await sub_repo.update_payment_status(payment_id, "canceled")
 
-        # Clear in-memory pending payment
+        # Очистка pending-платежа и уведомление
         if user_id_str:
+            platform_user_id = int(user_id_str)
+
             from coffee_oracle.services.payment_service import get_payment_service
             ps = get_payment_service()
             if ps:
-                ps.clear_pending_payment(int(user_id_str))
+                ps.clear_pending_payment(platform_user_id)
 
-            await self._notify_user(
-                int(user_id_str),
-                "❌ Платёж отменён.\n"
-                "Если хотите оформить подписку, используйте /subscribe",
+            await self._notify_user_by_source(
+                platform_user_id=platform_user_id,
+                source=source,
+                text=(
+                    "❌ Платёж отменён.\n"
+                    "Если хотите оформить подписку, используйте /subscribe"
+                ),
             )
 
-        logger.info("Webhook: payment %s canceled", payment_id)
+        logger.info("Вебхук: платёж %s отменён", payment_id)
         return {"ok": True, "message": "Payment canceled"}
 
     async def _handle_refund_succeeded(self, refund: dict) -> dict:
-        """Process a successful refund — log it."""
+        """Обработка успешного возврата — логирование.
+
+        Args:
+            refund: Объект возврата из вебхука YooKassa.
+
+        Returns:
+            Результат обработки.
+        """
         refund_id = refund.get("id")
         payment_id = refund.get("payment_id")
-        logger.info("Webhook: refund %s succeeded for payment %s", refund_id, payment_id)
-        # Refund handling is typically manual; just log for now
+        logger.info(
+            "Вебхук: возврат %s выполнен для платежа %s",
+            refund_id, payment_id,
+        )
         return {"ok": True, "message": "Refund noted"}
 
-    async def _notify_user(self, telegram_id: int, text: str) -> None:
-        """Send a notification to the user via Telegram."""
+    # ────────────────────────────────────────────
+    #  Мультиплатформенная отправка уведомлений
+    # ────────────────────────────────────────────
+
+    async def _notify_user_by_source(
+        self,
+        platform_user_id: int,
+        source: str,
+        text: str,
+    ) -> None:
+        """Отправка уведомления пользователю через правильный мессенджер.
+
+        Определяет транспорт по значению source:
+        - 'tg' → Telegram Bot API (aiogram)
+        - 'max' → MAX Bot API (aiohttp)
+
+        Args:
+            platform_user_id: ID пользователя на платформе.
+            source: Платформа ('tg' или 'max').
+            text: Текст уведомления.
+        """
+        if source == "max":
+            await self._notify_via_max(platform_user_id, text)
+        else:
+            await self._notify_via_telegram(platform_user_id, text)
+
+    async def _notify_via_telegram(self, telegram_id: int, text: str) -> None:
+        """Отправка уведомления через Telegram.
+
+        Args:
+            telegram_id: Telegram user ID.
+            text: Текст уведомления.
+        """
+        if not self._bot:
+            logger.warning(
+                "Не удалось уведомить пользователя TG %d: "
+                "Telegram-бот не инициализирован",
+                telegram_id,
+            )
+            return
+
         try:
-            await self.bot.send_message(chat_id=telegram_id, text=text)
+            await self._bot.send_message(chat_id=telegram_id, text=text)
+            logger.info(
+                "Уведомление отправлено пользователю TG %d через Telegram",
+                telegram_id,
+            )
         except Exception as e:
-            logger.warning("Failed to notify user %d via webhook: %s", telegram_id, e)
+            logger.warning(
+                "Не удалось уведомить пользователя TG %d: %s",
+                telegram_id, e,
+            )
+
+    async def _notify_via_max(self, max_user_id: int, text: str) -> None:
+        """Отправка уведомления через MAX.
+
+        Args:
+            max_user_id: MAX user ID.
+            text: Текст уведомления.
+        """
+        if not self._max_api_client:
+            logger.warning(
+                "Не удалось уведомить пользователя MAX %d: "
+                "MAX-бот не инициализирован",
+                max_user_id,
+            )
+            return
+
+        try:
+            await self._max_api_client.send_message(
+                user_id=max_user_id,
+                text=text,
+            )
+            logger.info(
+                "Уведомление отправлено пользователю MAX %d через MAX API",
+                max_user_id,
+            )
+        except Exception as e:
+            logger.warning(
+                "Не удалось уведомить пользователя MAX %d: %s",
+                max_user_id, e,
+            )

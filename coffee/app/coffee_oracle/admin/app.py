@@ -972,12 +972,21 @@ async def get_user_subscription(
 _webhook_handler = None
 
 
-def init_webhook_handler(bot) -> None:
-    """Инициализация обработчика вебхуков YooKassa. Вызывается из main.py."""
+def init_webhook_handler(bot=None, max_api_client=None) -> None:
+    """Инициализация обработчика вебхуков YooKassa.
+
+    Вызывается из main.py. Принимает транспорты для обеих платформ.
+    При получении вебхука обработчик определяет платформу пользователя
+    и отправляет уведомление через соответствующий мессенджер.
+
+    Args:
+        bot: Экземпляр aiogram Bot для Telegram (опционально).
+        max_api_client: HTTP-клиент MAX API (опционально).
+    """
     global _webhook_handler
     from coffee_oracle.services.webhook_handler import WebhookHandler
 
-    _webhook_handler = WebhookHandler(bot)
+    _webhook_handler = WebhookHandler(bot=bot, max_api_client=max_api_client)
     logger.info("Обработчик вебхуков YooKassa инициализирован")
 
 

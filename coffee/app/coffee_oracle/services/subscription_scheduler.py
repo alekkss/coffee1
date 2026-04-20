@@ -1,45 +1,68 @@
-"""Subscription renewal scheduler.
+"""Планировщик автопродления подписок.
 
-Runs a background task that periodically checks for expiring subscriptions
-and either auto-renews them via YooKassa API or notifies users.
+Запускает фоновую задачу, которая периодически проверяет
+истекающие подписки и либо автопродляет их через YooKassa API,
+либо уведомляет пользователей. Поддерживает отправку уведомлений
+на обе платформы: Telegram и MAX.
 """
 
 import asyncio
 import logging
-from typing import Optional
+from typing import Optional, TYPE_CHECKING
 
-from aiogram import Bot
+if TYPE_CHECKING:
+    from aiogram import Bot
+    from coffee_oracle.max_bot.api_client import MaxApiClient
 
 from coffee_oracle.database.connection import db_manager
 from coffee_oracle.database.repositories import SubscriptionRepository, SettingsRepository
 
 logger = logging.getLogger(__name__)
 
-# Check interval: every 6 hours
+# Интервал проверки: каждые 6 часов
 CHECK_INTERVAL_SECONDS = 6 * 60 * 60
 
-# How many days before expiration to attempt renewal
+# За сколько дней до истечения пытаться продлить
 RENEWAL_DAYS_BEFORE = 1
 
 
 class SubscriptionScheduler:
-    """Background scheduler for subscription renewals and notifications."""
+    """Фоновый планировщик автопродления и уведомлений о подписках.
 
-    def __init__(self, bot: Bot):
-        self.bot = bot
+    Поддерживает отправку уведомлений пользователям обеих платформ
+    (Telegram и MAX), определяя транспорт по полю source в записи
+    пользователя.
+
+    Args:
+        bot: Экземпляр aiogram Bot для Telegram (опционально).
+        max_api_client: HTTP-клиент MAX API (опционально).
+    """
+
+    def __init__(
+        self,
+        bot: Optional["Bot"] = None,
+        max_api_client: Optional["MaxApiClient"] = None,
+    ):
+        self._bot = bot
+        self._max_api_client = max_api_client
         self._task: Optional[asyncio.Task] = None
         self._running = False
 
     async def start(self) -> None:
-        """Start the scheduler loop."""
+        """Запуск цикла планировщика."""
         if self._running:
             return
         self._running = True
-        self._task = asyncio.create_task(self._run_loop(), name="subscription_scheduler")
-        logger.info("Subscription scheduler started (interval: %ds)", CHECK_INTERVAL_SECONDS)
+        self._task = asyncio.create_task(
+            self._run_loop(), name="subscription_scheduler",
+        )
+        logger.info(
+            "Планировщик подписок запущен (интервал: %dс)",
+            CHECK_INTERVAL_SECONDS,
+        )
 
     async def stop(self) -> None:
-        """Stop the scheduler loop."""
+        """Остановка цикла планировщика."""
         self._running = False
         if self._task and not self._task.done():
             self._task.cancel()
@@ -47,18 +70,20 @@ class SubscriptionScheduler:
                 await self._task
             except asyncio.CancelledError:
                 pass
-        logger.info("Subscription scheduler stopped")
+        logger.info("Планировщик подписок остановлен")
 
     async def _run_loop(self) -> None:
-        """Main scheduler loop."""
-        # Small initial delay to let the app fully start
+        """Основной цикл планировщика."""
+        # Начальная задержка для полной инициализации приложения
         await asyncio.sleep(30)
 
         while self._running:
             try:
                 await self._check_expiring_subscriptions()
             except Exception as e:
-                logger.error("Subscription scheduler error: %s", e, exc_info=True)
+                logger.error(
+                    "Ошибка планировщика подписок: %s", e, exc_info=True,
+                )
 
             try:
                 await asyncio.sleep(CHECK_INTERVAL_SECONDS)
@@ -66,90 +91,104 @@ class SubscriptionScheduler:
                 break
 
     async def _check_expiring_subscriptions(self) -> None:
-        """Find expiring subscriptions and process them."""
-        logger.info("Checking for expiring subscriptions...")
+        """Поиск истекающих подписок и их обработка."""
+        logger.info("Проверка истекающих подписок...")
 
         async for session in db_manager.get_session():
             sub_repo = SubscriptionRepository(session)
             settings_repo = SettingsRepository(session)
 
-            # Get subscription price for renewal
+            # Получаем цену подписки для продления
             price_str = await settings_repo.get_setting("subscription_price")
             price = float(price_str) if price_str else 300.0
 
-            # Find users whose premium expires within RENEWAL_DAYS_BEFORE days
+            # Находим пользователей с истекающими подписками
             expiring_users = await sub_repo.get_expiring_premium_users(
-                days=RENEWAL_DAYS_BEFORE
+                days=RENEWAL_DAYS_BEFORE,
             )
 
             if not expiring_users:
-                logger.info("No expiring subscriptions found")
+                logger.info("Истекающих подписок не найдено")
                 return
 
-            logger.info("Found %d expiring subscriptions", len(expiring_users))
+            logger.info(
+                "Найдено %d истекающих подписок", len(expiring_users),
+            )
 
             for user in expiring_users:
                 try:
                     await self._process_expiring_user(
-                        sub_repo, user, price
+                        sub_repo, user, price,
                     )
                 except Exception as e:
                     logger.error(
-                        "Error processing expiring user %d: %s",
-                        user.id, e, exc_info=True
+                        "Ошибка обработки истекающей подписки пользователя %d: %s",
+                        user.id, e, exc_info=True,
                     )
 
     async def _process_expiring_user(
-        self, sub_repo: SubscriptionRepository, user, price: float
+        self,
+        sub_repo: SubscriptionRepository,
+        user,
+        price: float,
     ) -> None:
-        """Process a single expiring user: try auto-renew or notify."""
+        """Обработка пользователя с истекающей подпиской.
+
+        Если автопродление включено и есть сохранённый метод оплаты —
+        пытается автосписание. Иначе — уведомляет о скором истечении.
+
+        Args:
+            sub_repo: Репозиторий подписок.
+            user: Объект User из БД.
+            price: Цена подписки в рублях.
+        """
         recurring_enabled, charge_id = await sub_repo.is_recurring_enabled(user.id)
 
         if recurring_enabled and charge_id:
-            # Attempt auto-renewal via YooKassa
+            # Попытка автопродления через YooKassa
             renewal_result = await self._attempt_auto_renewal(
-                sub_repo, user, price, charge_id
+                sub_repo, user, price, charge_id,
             )
             if renewal_result == "success":
-                await self._notify_user(
-                    user.telegram_id,
-                    "🔄 Подписка автоматически продлена!\n\n"
-                    f"✅ Списано {price:.0f}₽ за следующий месяц.\n"
-                    "Безлимитные предсказания продолжаются! ☕✨"
+                await self._notify_user_by_source(
+                    user,
+                    "✅ Подписка успешно продлена!\n\n"
+                    f"Списано {price:.0f} ₽ за 1 месяц.\n"
+                    "Спасибо за поддержку! ☕",
                 )
                 return
             elif renewal_result == "api_error":
-                # Transient error — do NOT disable recurring, will retry next cycle
+                # Transient-ошибка — НЕ отключаем автопродление, повторим
                 logger.warning(
-                    "Transient API error during auto-renewal for user %d; "
-                    "will retry next cycle",
+                    "Transient API ошибка при автопродлении для пользователя %d; "
+                    "повторим в следующем цикле",
                     user.id,
                 )
                 return
             else:
-                # payment_declined — disable recurring and notify user
+                # payment_declined — отключаем автопродление, уведомляем
                 await sub_repo.disable_recurring_payment(user.id)
-                await self._notify_user(
-                    user.telegram_id,
-                    "⚠️ Не удалось автоматически продлить подписку.\n\n"
-                    "Возможно, карта заблокирована или недостаточно средств.\n"
+                await self._notify_user_by_source(
+                    user,
+                    "❌ Не удалось продлить подписку автоматически.\n\n"
+                    "Возможно, на карте недостаточно средств.\n"
                     "Автопродление отключено.\n\n"
-                    "💳 Чтобы продлить подписку, используйте /subscribe"
+                    "Чтобы продлить вручную, используйте /subscribe",
                 )
                 return
 
-        # No recurring — just notify about upcoming expiration
+        # Нет автопродления — просто уведомляем об истечении
         if user.subscription_until:
             until_str = user.subscription_until.strftime("%d.%m.%Y")
         else:
             until_str = "скоро"
 
-        await self._notify_user(
-            user.telegram_id,
-            f"⏰ Ваша подписка истекает {until_str}!\n\n"
-            "Чтобы продолжить пользоваться безлимитными предсказаниями, "
+        await self._notify_user_by_source(
+            user,
+            f"⏳ Ваша подписка истекает {until_str}!\n\n"
+            "Чтобы продолжить пользоваться безлимитными гаданиями, "
             "продлите подписку.\n\n"
-            "💎 Нажмите /subscribe для продления"
+            "Используйте /subscribe для продления",
         )
 
     async def _attempt_auto_renewal(
@@ -159,21 +198,23 @@ class SubscriptionScheduler:
         price: float,
         charge_id: str,
     ) -> str:
-        """Attempt to auto-renew subscription via YooKassa saved payment method.
+        """Попытка автопродления через сохранённый метод оплаты YooKassa.
 
         Returns:
-            "success" – payment succeeded, subscription extended.
-            "api_error" – transient API error (5xx / timeout / network);
-                          recurring should NOT be disabled.
-            "payment_declined" – payment was declined or canceled;
-                                 recurring should be disabled.
+            "success" — платёж прошёл, подписка продлена.
+            "api_error" — transient-ошибка (5xx / timeout / сеть);
+                          автопродление НЕ отключается.
+            "payment_declined" — платёж отклонён или отменён;
+                                  автопродление нужно отключить.
         """
         from coffee_oracle.services.payment_service import get_payment_service
 
         payment_service = get_payment_service()
         if not payment_service:
             logger.warning(
-                "Cannot auto-renew for user %d: YooKassa not configured", user.id
+                "Невозможно автопродлить для пользователя %d: "
+                "YooKassa не настроена",
+                user.id,
             )
             return "api_error"
 
@@ -192,22 +233,22 @@ class SubscriptionScheduler:
             if not result.get("success"):
                 error_msg = result.get("error", "")
                 logger.error(
-                    "Auto-renewal payment failed for user %d: %s",
-                    user.id, error_msg
+                    "Ошибка автопродления для пользователя %d: %s",
+                    user.id, error_msg,
                 )
-                # Transient API errors: 5xx, timeout, network issues
                 if self._is_transient_api_error(result):
                     return "api_error"
-                # 4xx or other non-transient errors → treat as decline
                 return "payment_declined"
 
             payment_id = result["payment_id"]
 
-            # Poll with exponential backoff
-            completed = await payment_service.wait_for_payment_completion(payment_id)
+            # Polling с экспоненциальным backoff
+            completed = await payment_service.wait_for_payment_completion(
+                payment_id,
+            )
 
             if completed:
-                # Record payment and extend subscription
+                # Записываем платёж и продляем подписку
                 await sub_repo.create_payment(
                     user_id=user.id,
                     amount=price_kopecks,
@@ -218,49 +259,129 @@ class SubscriptionScheduler:
                 )
                 await sub_repo.update_payment_status(payment_id, "succeeded")
                 await sub_repo.activate_premium(user.id, months=1)
-                logger.info("Auto-renewed subscription for user %d", user.id)
+                logger.info(
+                    "Подписка автопродлена для пользователя %d", user.id,
+                )
                 return "success"
             else:
                 logger.warning(
-                    "Auto-renewal payment %s not completed for user %d",
-                    payment_id, user.id
+                    "Платёж автопродления %s не завершён для пользователя %d",
+                    payment_id, user.id,
                 )
                 return "payment_declined"
 
         except Exception as e:
-            logger.error("Auto-renewal error for user %d: %s", user.id, e)
+            logger.error(
+                "Ошибка автопродления для пользователя %d: %s",
+                user.id, e,
+            )
             return "api_error"
 
-    async def _notify_user(self, telegram_id: int, text: str) -> None:
-        """Send notification to user via Telegram."""
+    # ────────────────────────────────────────────
+    #  Мультиплатформенная отправка уведомлений
+    # ────────────────────────────────────────────
+
+    async def _notify_user_by_source(self, user, text: str) -> None:
+        """Отправка уведомления пользователю через правильный мессенджер.
+
+        Определяет транспорт по значению user.source:
+        - 'tg' → Telegram Bot API (aiogram)
+        - 'max' → MAX Bot API (aiohttp)
+
+        Args:
+            user: Объект User из БД (содержит telegram_id и source).
+            text: Текст уведомления.
+        """
+        source = getattr(user, "source", "tg") or "tg"
+        platform_user_id = user.telegram_id
+
+        if source == "max":
+            await self._notify_via_max(platform_user_id, text)
+        else:
+            await self._notify_via_telegram(platform_user_id, text)
+
+    async def _notify_via_telegram(self, telegram_id: int, text: str) -> None:
+        """Отправка уведомления через Telegram.
+
+        Args:
+            telegram_id: Telegram user ID.
+            text: Текст уведомления.
+        """
+        if not self._bot:
+            logger.warning(
+                "Не удалось уведомить пользователя TG %d: "
+                "Telegram-бот не инициализирован",
+                telegram_id,
+            )
+            return
+
         try:
-            await self.bot.send_message(chat_id=telegram_id, text=text)
-            logger.info("Sent subscription notification to user %d", telegram_id)
+            await self._bot.send_message(chat_id=telegram_id, text=text)
+            logger.info(
+                "Уведомление подписки отправлено пользователю TG %d",
+                telegram_id,
+            )
         except Exception as e:
             logger.warning(
-                "Failed to notify user %d: %s", telegram_id, e
+                "Не удалось уведомить пользователя TG %d: %s",
+                telegram_id, e,
+            )
+
+    async def _notify_via_max(self, max_user_id: int, text: str) -> None:
+        """Отправка уведомления через MAX.
+
+        Args:
+            max_user_id: MAX user ID.
+            text: Текст уведомления.
+        """
+        if not self._max_api_client:
+            logger.warning(
+                "Не удалось уведомить пользователя MAX %d: "
+                "MAX-бот не инициализирован",
+                max_user_id,
+            )
+            return
+
+        try:
+            await self._max_api_client.send_message(
+                user_id=max_user_id,
+                text=text,
+            )
+            logger.info(
+                "Уведомление подписки отправлено пользователю MAX %d",
+                max_user_id,
+            )
+        except Exception as e:
+            logger.warning(
+                "Не удалось уведомить пользователя MAX %d: %s",
+                max_user_id, e,
             )
 
     @staticmethod
     def _is_transient_api_error(result: dict) -> bool:
-        """Check if a payment service error is transient (5xx / timeout / network).
+        """Проверка, является ли ошибка временной (5xx / timeout / сеть).
 
-        Transient errors should NOT cause recurring to be disabled — the
-        scheduler will retry on the next cycle.
+        Временные ошибки НЕ приводят к отключению автопродления —
+        планировщик повторит попытку в следующем цикле.
+
+        Args:
+            result: Результат вызова PaymentService.
+
+        Returns:
+            True, если ошибка временная.
         """
         error = result.get("error", "")
-        # 5xx server errors returned by PaymentService
+        # 5xx ошибки сервера
         if error.startswith("Server error"):
             return True
-        # Timeout errors
+        # Ошибки таймаута
         if "timeout" in error.lower():
             return True
-        # Status code in 5xx range
+        # Код статуса в диапазоне 5xx
         status_code = result.get("status_code")
         if status_code is not None and status_code >= 500:
             return True
-        # Network / connection errors (no status_code and not a known 4xx pattern)
+        # Сетевые ошибки (нет status_code и не известный 4xx паттерн)
         if status_code is None and not error.startswith("API error"):
             return True
         return False
-

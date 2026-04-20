@@ -37,6 +37,11 @@ class MaxOracleBot:
     обработчик фото, обработчики событий) и запускает
     цикл long polling для получения обновлений.
 
+    Свойство api_client предоставляет доступ к HTTP-клиенту
+    MAX API для внешних компонентов (WebhookHandler,
+    SubscriptionScheduler), которым нужно отправлять
+    уведомления MAX-пользователям.
+
     Args:
         token: Токен доступа бота MAX.
     """
@@ -56,6 +61,19 @@ class MaxOracleBot:
         )
 
         logger.info("MAX-бот: компоненты инициализированы")
+
+    @property
+    def api_client(self) -> MaxApiClient:
+        """HTTP-клиент MAX API.
+
+        Предоставляет доступ к клиенту для внешних компонентов,
+        которым необходимо отправлять сообщения MAX-пользователям
+        (вебхуки YooKassa, планировщик подписок).
+
+        Returns:
+            Экземпляр MaxApiClient.
+        """
+        return self._api_client
 
     async def start_polling(self) -> None:
         """Запуск цикла long polling.
