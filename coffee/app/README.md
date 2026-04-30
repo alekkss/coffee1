@@ -314,6 +314,58 @@ cp .env.example .env
 python main.py
 ```
 
+### Установка на чистый Ubuntu 22.04 VPS
+
+```bash
+# 1. Обновление системы и установка зависимостей для сборки
+apt update && apt upgrade -y
+apt install -y build-essential zlib1g-dev libncurses5-dev libgdbm-dev \
+  libnss3-dev libssl-dev libreadline-dev libffi-dev libsqlite3-dev \
+  wget curl software-properties-common libbz2-dev liblzma-dev
+
+# 2. Установка Python 3.13
+add-apt-repository ppa:deadsnakes/ppa -y
+apt update
+apt install -y python3.13 python3.13-venv python3.13-dev
+
+# 3. Установка Nginx, Certbot, вспомогательных утилит
+apt install -y nginx certbot python3-certbot-nginx python3-pip sqlite3 tmux
+
+# 4. Создание виртуального окружения и установка зависимостей
+cd /opt/oracle-bot/app
+python3.13 -m venv venv
+source venv/bin/activate
+pip install --upgrade pip
+pip install -r requirements.txt
+
+# 5. Настройка Nginx
+cat > /etc/nginx/sites-available/oracle-bot << 'EOF'
+server {
+    listen 80;
+    server_name oracle.kachestvozhizni.ru;
+
+    location / {
+        proxy_pass http://127.0.0.1:8000;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+}
+EOF
+ln -sf /etc/nginx/sites-available/oracle-bot /etc/nginx/sites-enabled/oracle-bot
+rm -f /etc/nginx/sites-enabled/default
+nginx -t && systemctl restart nginx && systemctl enable nginx
+
+# 6. SSL-сертификат (после настройки DNS A-записи на IP сервера)
+certbot --nginx -d oracle.kachestvozhizni.ru --non-interactive --agree-tos -m admin@kachestvozhizni.ru
+
+# 7. Запуск
+tmux new -s oracle-bot
+cd /opt/oracle-bot/app && source venv/bin/activate && python main.py
+# Ctrl+B, D — отсоединиться
+---
+
 ### Запуск в tmux (продакшн на VPS)
 
 ```bash
@@ -368,7 +420,7 @@ docker run -d \
 | `DB_NAME` | `coffee_oracle.db` | Имя файла базы данных |
 | `DOMAIN` | `localhost` | Домен для ссылок (terms, privacy) |
 | `ADMIN_PORT` | `8000` | Порт админ-панели |
-| `LITELLM_MODEL` | `platto/gpt-5.1` | Основная модель для анализа |
+| `LITELLM_MODEL` | `polza/gpt-5.1` | Основная модель для анализа |
 | `LITELLM_MODEL_FALLBACK` | — | Fallback-модель при ошибке основной |
 | `LITELLM_API_BASE` | `https://api.1bitai.ru/v1` | URL API (прокси) |
 | `LITELLM_TIMEOUT` | `30` | Таймаут запросов к API (секунды) |
@@ -393,8 +445,8 @@ SECRET_KEY=RhTlIJkX3MA8Iub1C83MBxWmPrgHoC_CZphppFlKSIk
 DOMAIN=oracle.kachestvozhizni.ru
 LITELLM_API_KEY=sk-your-key-here
 LITELLM_API_BASE=https://litellm.1bitai.ru
-LITELLM_MODEL=techno/gpt-5.1
-LITELLM_MODEL_FALLBACK=openai/gpt-5.1
+LITELLM_MODEL=polza/gpt-5.1
+LITELLM_MODEL_FALLBACK=gpt-4.1
 LITELLM_TEMPERATURE=0.8
 LITELLM_MAX_TOKENS=1500
 ADMIN_PORT=8000
@@ -933,6 +985,15 @@ CoffeeOracleError (базовый)
 
 ### Текущая инфраструктура (VPS)
 
+### Серверное окружение
+
+- ОС: Ubuntu 22.04
+- Python: 3.13 (через PPA deadsnakes)
+- Nginx: 1.18.0
+- Certbot: автообновление сертификатов Let's Encrypt
+- Домен: oracle.kachestvozhizni.ru
+- IP: 89.125.91.141
+
 ```
 Internet
 │
@@ -950,13 +1011,14 @@ Nginx (:80, :443) ← Let's Encrypt TLS (certbot)
 │   ├── coffee_oracle/      # Основной пакет
 │   ├── main.py             # Точка входа
 │   ├── .env                # Переменные окружения
-│   ├── venv/               # Виртуальное окружение
+│   ├── venv/               # Виртуальное окружение (Python 3.13)
 │   ├── requirements.txt
-│   └── data/
-│       └── coffee_oracle.db  # SQLite база данных (рабочая)
+│   ├── data/
+│   │   └── coffee_oracle.db  # SQLite база данных (рабочая)
+│   └── media/                # Фото пользователей
 ├── data/
-│   └── coffee_oracle.db.old  # Старая копия БД (не используется)
-└── media/                    # Фото пользователей
+│   └── coffee_oracle.db      # Старая копия БД (не используется)
+└── media/                    # Старые фото (скопированы в app/media/)
 ```
 
 ### Nginx конфигурация
@@ -991,6 +1053,16 @@ python main.py
 ---
 
 ## Диагностика проблем
+
+### Миграция на новый сервер
+При переносе на новый VPS необходимо проверить:
+
+1. Захардкоженные пути к медиа — MEDIA_DIR в файлах services/photo_processor.py, max_bot/photo_processor.py, database/repositories.py и StaticFiles в admin/app.py должны указывать на актуальную директорию с фото.
+2. DNS A-запись — переключить на новый IP до получения SSL-сертификата.
+3. Виртуальное окружение — не переносится между серверами, создаётся заново (python3.13 -m venv venv).
+4. Старые фото — если ранее хранились в /opt/oracle-bot/media/, скопировать в /opt/oracle-bot/app/media/.
+5. Один токен — один бот — перед запуском на новом сервере обязательно остановить бота на старом, иначе два инстанса будут конфликтовать.
+6. LLM-модели — проверить доступность моделей у провайдера, при необходимости обновить LITELLM_MODEL и LITELLM_MODEL_FALLBACK в .env.
 
 ### Бот не отвечает
 
