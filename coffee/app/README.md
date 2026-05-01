@@ -339,11 +339,22 @@ pip install --upgrade pip
 pip install -r requirements.txt
 
 # 5. Настройка Nginx
+mkdir -p /var/www/oracle24
 cat > /etc/nginx/sites-available/oracle-bot << 'EOF'
+# Лендинг
 server {
     listen 80;
-    server_name oracle.kachestvozhizni.ru;
-
+    server_name oracle24.ru www.oracle24.ru;
+    root /var/www/oracle24;
+    index index.html;
+    location / {
+        try_files $uri $uri/ =404;
+    }
+}
+# Админ-панель
+server {
+    listen 80;
+    server_name admin.oracle24.ru;
     location / {
         proxy_pass http://127.0.0.1:8000;
         proxy_set_header Host $host;
@@ -353,12 +364,13 @@ server {
     }
 }
 EOF
+
 ln -sf /etc/nginx/sites-available/oracle-bot /etc/nginx/sites-enabled/oracle-bot
 rm -f /etc/nginx/sites-enabled/default
 nginx -t && systemctl restart nginx && systemctl enable nginx
 
 # 6. SSL-сертификат (после настройки DNS A-записи на IP сервера)
-certbot --nginx -d oracle.kachestvozhizni.ru --non-interactive --agree-tos -m admin@kachestvozhizni.ru
+certbot --nginx -d admin.oracle24.ru -d oracle24.ru -d www.oracle24.ru --non-interactive --agree-tos -m admin@oracle24.ru
 
 # 7. Запуск
 tmux new -s oracle-bot
@@ -418,7 +430,7 @@ docker run -d \
 | Переменная | По умолчанию | Описание |
 |-----------|-------------|----------|
 | `DB_NAME` | `coffee_oracle.db` | Имя файла базы данных |
-| `DOMAIN` | `localhost` | Домен для ссылок (terms, privacy) |
+| `DOMAIN` | `localhost` | Домен админ-панели для ссылок (terms, privacy, вебхук YooKassa) |
 | `ADMIN_PORT` | `8000` | Порт админ-панели |
 | `LITELLM_MODEL` | `polza/gpt-5.1` | Основная модель для анализа |
 | `LITELLM_MODEL_FALLBACK` | — | Fallback-модель при ошибке основной |
@@ -442,7 +454,7 @@ BOT_TOKEN=8426845735:AAE2s7gIPoUiXiuwFLGnXXC0ucuYOnsu3Hk
 ADMIN_USERNAME=admin
 ADMIN_PASSWORD=strongpassword123
 SECRET_KEY=RhTlIJkX3MA8Iub1C83MBxWmPrgHoC_CZphppFlKSIk
-DOMAIN=oracle.kachestvozhizni.ru
+DOMAIN=admin.oracle24.ru
 LITELLM_API_KEY=sk-your-key-here
 LITELLM_API_BASE=https://litellm.1bitai.ru
 LITELLM_MODEL=polza/gpt-5.1
@@ -526,7 +538,7 @@ In-memory хранение pending-платежей: `_pending_payments: dict[in
 
 ### WebhookHandler (webhook_handler.py)
 
-Обрабатывает POST-запросы от YooKassa на `/api/yookassa/webhook`. Проверяет IP-адрес отправителя по белому списку YooKassa. Поддерживает мультиплатформенные уведомления: определяет платформу пользователя по полю `source` в metadata платежа (или из записи пользователя в БД) и отправляет уведомление через соответствующий мессенджер — Telegram Bot API или MAX Bot API.
+Обрабатывает POST-запросы от YooKassa на `https://admin.oracle24.ru/api/yookassa/webhook`. Проверяет IP-адрес отправителя по белому списку YooKassa. Поддерживает мультиплатформенные уведомления: определяет платформу пользователя по полю `source` в metadata платежа (или из записи пользователя в БД) и отправляет уведомление через соответствующий мессенджер — Telegram Bot API или MAX Bot API.
 
 Принимает два опциональных транспорта при инициализации:
 - `bot` (aiogram Bot) — для уведомлений Telegram-пользователей
@@ -991,8 +1003,11 @@ CoffeeOracleError (базовый)
 - Python: 3.13 (через PPA deadsnakes)
 - Nginx: 1.18.0
 - Certbot: автообновление сертификатов Let's Encrypt
-- Домен: oracle.kachestvozhizni.ru
+- Домены: admin.oracle24.ru (админ-панель), oracle24.ru (лендинг)
+- Устаревший домен: oracle.kachestvozhizni.ru (не используется)
 - IP: 89.125.91.141
+- DNS-хостинг: AdminVPS (ns1.adminvps.ru, ns2.adminvps.net, ns3.adminvps.ru, ns4.adminvps.net)
+- Регистратор домена: RU-CENTER (nic.ru)
 
 ```
 Internet
@@ -1000,7 +1015,8 @@ Internet
 ▼
 Nginx (:80, :443) ← Let's Encrypt TLS (certbot)
 │
-└──► localhost:8000 → oracle-bot (tmux-сессия)
+├── admin.oracle24.ru → proxy_pass http://127.0.0.1:8000 (админ-панель + API + вебхуки)
+└── oracle24.ru / www.oracle24.ru → /var/www/oracle24/index.html (статический лендинг)
 ```
 
 ### Файловая структура на сервере
@@ -1019,13 +1035,32 @@ Nginx (:80, :443) ← Let's Encrypt TLS (certbot)
 ├── data/
 │   └── coffee_oracle.db      # Старая копия БД (не используется)
 └── media/                    # Старые фото (скопированы в app/media/)
+
+/var/www/oracle24/
+└── index.html              # Лендинг-страница с кнопками Telegram и MAX
 ```
 
 ### Nginx конфигурация
 
 Файл: `/etc/nginx/sites-available/oracle-bot`
 
+Содержит два server-блока:
+- `admin.oracle24.ru` — reverse proxy на localhost:8000 (FastAPI-приложение)
+- `oracle24.ru` / `www.oracle24.ru` — статический лендинг из `/var/www/oracle24/`
+
 Certbot автоматически добавляет HTTPS-конфигурацию и управляет обновлением сертификатов.
+SSL-сертификат общий для всех трёх доменов (admin.oracle24.ru, oracle24.ru, www.oracle24.ru).
+
+### Лендинг (oracle24.ru)
+
+Статическая HTML-страница с информацией о боте и кнопками перехода в Telegram и MAX.
+Расположена в `/var/www/oracle24/index.html`. Обслуживается Nginx напрямую (без proxy).
+
+Содержит:
+- Описание бота и его возможностей
+- Кнопку перехода в Telegram-бот (https://t.me/oracul_coffee_bot)
+- Кнопку перехода в MAX-бот (https://max.ru/id9728167964_bot)
+
 
 ### Управление процессом
 
@@ -1131,7 +1166,7 @@ certbot renew
 ### Health-check
 
 ```bash
-curl https://oracle.kachestvozhizni.ru/health
+curl https://admin.oracle24.ru/health
 ```
 
 ### MAX-бот не отвечает
