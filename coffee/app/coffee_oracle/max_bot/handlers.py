@@ -568,7 +568,7 @@ class MaxBotHandlers:
         if text_lower == "/start":
             await self._handle_start_command(message, chat_id)
         elif text_lower == "/help":
-            await self._handle_help_command(chat_id)
+            await self._handle_faq_command(chat_id)
         elif text_lower == "/predict":
             await self._handle_predict_command(chat_id)
         elif text_lower == "/history":
@@ -646,8 +646,6 @@ class MaxBotHandlers:
         user_email: Optional[str],
     ) -> None:
         """Создание платежа в YooKassa и отправка ссылки на оплату.
-
-        Аналог _create_payment_and_respond из bot/handlers.py.
 
         Args:
             chat_id: ID чата для ответа.
@@ -790,13 +788,10 @@ class MaxBotHandlers:
             attachments=[MaxKeyboardManager.get_main_menu_with_subscription()],
         )
 
-    async def _handle_help_command(self, chat_id: int) -> None:
-        """Обработка команды /help."""
-        await self._api.send_message(
-            chat_id=chat_id,
-            text=texts.HELP_TITLE,
-            attachments=[MaxKeyboardManager.get_help_menu()],
-        )
+    async def _handle_faq_command(self, chat_id: int) -> None:
+        """Обработка команды /help и кнопки «Частые вопросы» — показ FAQ напрямую."""
+        faq_text = texts.HELP_SECTIONS.get("faq", "Информация не найдена")
+        await self._api.send_message(chat_id=chat_id, text=faq_text)
 
     async def _handle_predict_command(self, chat_id: int) -> None:
         """Обработка команды /predict."""
@@ -1224,8 +1219,9 @@ class MaxBotHandlers:
             elif payload == "action_random":
                 await self._handle_random_command(chat_id)
 
-            elif payload == "action_help":
-                await self._handle_help_command(chat_id)
+            elif payload in ("action_faq", "action_help"):
+                # action_faq — новая кнопка, action_help — обратная совместимость
+                await self._handle_faq_command(chat_id)
 
             elif payload == "action_about":
                 await self._handle_about_command(chat_id)
@@ -1271,6 +1267,7 @@ class MaxBotHandlers:
                 await self._callback_confirm(callback, payload, chat_id)
 
             elif payload.startswith("help_"):
+                # Обратная совместимость: старые кнопки help_photo и т.д.
                 await self._callback_help_section(callback, payload, chat_id)
 
             else:
@@ -1342,10 +1339,7 @@ class MaxBotHandlers:
         user: MaxUser,
         chat_id: int,
     ) -> None:
-        """Callback: ручная проверка статуса платежа.
-
-        Аналог check_payment_callback из bot/handlers.py.
-        """
+        """Callback: ручная проверка статуса платежа."""
         from coffee_oracle.services.payment_service import get_payment_service
 
         payment_service = get_payment_service()
@@ -1648,7 +1642,9 @@ class MaxBotHandlers:
         payload: str,
         chat_id: int,
     ) -> None:
-        """Callback: отображение раздела помощи.
+        """Callback: отображение раздела помощи (обратная совместимость).
+
+        Если пользователь нажмёт старую кнопку из кэша — покажем текст раздела.
 
         Args:
             callback: Объект callback.
@@ -1660,7 +1656,6 @@ class MaxBotHandlers:
         await self._api.send_message(
             chat_id=chat_id,
             text=text,
-            attachments=[MaxKeyboardManager.get_help_menu()],
         )
 
     # ────────────────────────────────────────────

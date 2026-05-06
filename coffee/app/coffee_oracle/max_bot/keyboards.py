@@ -37,7 +37,7 @@ class MaxKeyboardManager:
         """Главное меню бота (без кнопки подписки).
 
         Содержит основные действия: предсказание, история,
-        случайное предсказание, помощь, о боте, очистка, поддержка.
+        случайное предсказание, FAQ, о боте, очистка, поддержка.
 
         Returns:
             Вложение inline_keyboard с кнопками главного меню.
@@ -65,8 +65,8 @@ class MaxKeyboardManager:
             [
                 {
                     "type": "callback",
-                    "text": "📚 Как гадать",
-                    "payload": "action_help",
+                    "text": "❓ Частые вопросы",
+                    "payload": "action_faq",
                 },
                 {
                     "type": "callback",
@@ -127,8 +127,8 @@ class MaxKeyboardManager:
                 },
                 {
                     "type": "callback",
-                    "text": "📚 Как гадать",
-                    "payload": "action_help",
+                    "text": "❓ Частые вопросы",
+                    "payload": "action_faq",
                 },
             ],
             [
@@ -361,52 +361,6 @@ class MaxKeyboardManager:
                     "type": "callback",
                     "text": "📜 Моя история",
                     "payload": "action_show_history",
-                },
-            ],
-        ]
-        return cls._build_attachment(buttons)
-
-    @classmethod
-    def get_help_menu(cls) -> Dict[str, Any]:
-        """Меню помощи с разделами.
-
-        Returns:
-            Вложение inline_keyboard с кнопками разделов помощи.
-        """
-        buttons = [
-            [
-                {
-                    "type": "callback",
-                    "text": "📸 Как фотографировать",
-                    "payload": "help_photo",
-                },
-            ],
-            [
-                {
-                    "type": "callback",
-                    "text": "☕ Приготовление кофе",
-                    "payload": "help_coffee",
-                },
-            ],
-            [
-                {
-                    "type": "callback",
-                    "text": "🔮 О гадании",
-                    "payload": "help_divination",
-                },
-            ],
-            [
-                {
-                    "type": "callback",
-                    "text": "❓ Частые вопросы",
-                    "payload": "help_faq",
-                },
-            ],
-            [
-                {
-                    "type": "callback",
-                    "text": "◀️ Назад в меню",
-                    "payload": "action_back_to_menu",
                 },
             ],
         ]

@@ -175,11 +175,9 @@ async def start_handler(message: Message) -> Any:
 
 @router.message(Command("help"))
 async def help_handler(message: Message) -> Any:
-    """Обработка команды /help."""
-    await message.answer(
-        texts.HELP_TITLE,
-        reply_markup=KeyboardManager.get_help_menu()
-    )
+    """Обработка команды /help — показ FAQ."""
+    faq_text = texts.HELP_SECTIONS.get("faq", "Информация не найдена")
+    await message.answer(faq_text)
 
 
 @router.message(F.text == "🔮 Получить предсказание")
@@ -500,13 +498,11 @@ async def random_prediction_handler(message: Message) -> Any:
     )
 
 
-@router.message(F.text == "📚 Как гадать")
-async def how_to_divinate_handler(message: Message) -> Any:
-    """Обработка запроса инструкции по гаданию."""
-    await message.answer(
-        texts.HELP_TITLE,
-        reply_markup=KeyboardManager.get_help_menu()
-    )
+@router.message(F.text == "❓ Частые вопросы")
+async def faq_handler(message: Message) -> Any:
+    """Обработка кнопки «Частые вопросы» — показ FAQ напрямую."""
+    faq_text = texts.HELP_SECTIONS.get("faq", "Информация не найдена")
+    await message.answer(faq_text)
 
 
 @router.message(F.text == "🗑️ Очистить историю")
@@ -597,7 +593,7 @@ async def update_menu_command_handler(message: Message, bot: Bot) -> Any:
     try:
         commands = [
             BotCommand(command="start", description="🔮 Начать работу с ботом"),
-            BotCommand(command="help", description="📚 Как гадать"),
+            BotCommand(command="help", description="❓ Частые вопросы"),
             BotCommand(command="predict", description="🔮 Получить предсказание"),
             BotCommand(command="history", description="📜 Моя история"),
             BotCommand(command="random", description="🎯 Случайное предсказание"),
@@ -693,10 +689,13 @@ async def share_prediction_callback(callback: CallbackQuery) -> Any:
 
 @router.callback_query(F.data.startswith("help_"))
 async def help_callback(callback: CallbackQuery) -> Any:
-    """Обработка callback разделов помощи."""
+    """Обработка callback разделов помощи (обратная совместимость).
+
+    Если пользователь нажмёт старую кнопку из кэша — покажем текст раздела.
+    """
     help_type = callback.data.split("_")[1]
     text = texts.HELP_SECTIONS.get(help_type, "Информация не найдена")
-    await callback.message.edit_text(text, reply_markup=KeyboardManager.get_help_menu())
+    await callback.message.edit_text(text)
     await callback.answer()
 
 
@@ -1294,7 +1293,7 @@ async def check_payment_callback(callback: CallbackQuery) -> Any:
 
 @router.message(F.text & ~F.text.in_([
     "🔮 Получить предсказание", "📜 Моя история", "ℹ️ О боте",
-    "🎯 Случайное предсказание", "📚 Как гадать", "🗑️ Очистить историю",
+    "🎯 Случайное предсказание", "❓ Частые вопросы", "🗑️ Очистить историю",
     "📞 Поддержка", "💎 Подписка"
 ]))
 async def text_handler(message: Message) -> Any:

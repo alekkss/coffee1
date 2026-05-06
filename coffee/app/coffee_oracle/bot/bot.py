@@ -1,4 +1,4 @@
-"""Main bot class."""
+"""Главный класс Telegram-бота."""
 
 import logging
 from typing import Any
@@ -17,26 +17,26 @@ logger = logging.getLogger(__name__)
 
 
 class CoffeeOracleBot:
-    """Main Coffee Oracle Bot class."""
-    
+    """Главный класс Telegram-бота Coffee Oracle."""
+
     def __init__(self):
         self.bot = Bot(
             token=config.bot_token,
             default=DefaultBotProperties(parse_mode=ParseMode.HTML)
         )
         self.dp = Dispatcher()
-        
+
         # Register middleware
         self.dp.message.middleware(MediaGroupMiddleware())
-        
+
         # Include routers
         self.dp.include_router(router)
-    
+
     async def setup_bot_commands(self) -> None:
-        """Set up bot commands menu."""
+        """Установка меню команд бота."""
         commands = [
             BotCommand(command="start", description="🔮 Начать работу с ботом"),
-            BotCommand(command="help", description="📚 Как гадать"),
+            BotCommand(command="help", description="❓ Частые вопросы"),
             BotCommand(command="predict", description="🔮 Получить предсказание"),
             BotCommand(command="history", description="📜 Моя история"),
             BotCommand(command="random", description="🎯 Случайное предсказание"),
@@ -45,38 +45,38 @@ class CoffeeOracleBot:
             BotCommand(command="clear", description="🗑️ Очистить историю"),
             BotCommand(command="support", description="📞 Поддержка"),
         ]
-        
+
         try:
             await self.bot.set_my_commands(commands)
-            logger.info("Bot commands menu set up successfully")
-            
+            logger.info("Меню команд бота установлено успешно")
+
             # Verify commands were set
             current_commands = await self.bot.get_my_commands()
-            logger.info(f"Current bot commands: {[cmd.command for cmd in current_commands]}")
-            
+            logger.info("Текущие команды бота: %s", [cmd.command for cmd in current_commands])
+
         except Exception as e:
-            logger.error(f"Failed to set bot commands: {e}")
+            logger.error("Ошибка установки команд бота: %s", e)
             # Continue anyway, commands are not critical for bot operation
 
     async def start_polling(self) -> None:
-        """Start bot polling."""
-        logger.info("Starting Coffee Oracle Bot...")
-        
+        """Запуск polling бота."""
+        logger.info("Запуск Coffee Oracle Bot...")
+
         try:
             # Set up error notifier (sends errors to Telegram)
             setup_error_notifier(self.bot)
-            
+
             # Set up bot commands
             await self.setup_bot_commands()
-            
+
             await self.dp.start_polling(self.bot)
         except Exception as e:
-            logger.error(f"Error in bot polling: {e}")
+            logger.error("Ошибка в polling бота: %s", e)
             raise
         finally:
             await self.bot.session.close()
-    
+
     async def stop(self) -> None:
-        """Stop bot."""
-        logger.info("Stopping Coffee Oracle Bot...")
+        """Остановка бота."""
+        logger.info("Остановка Coffee Oracle Bot...")
         await self.bot.session.close()
