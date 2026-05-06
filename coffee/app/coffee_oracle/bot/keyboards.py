@@ -32,9 +32,9 @@ class KeyboardManager:
         """Главное меню с кнопкой подписки."""
         keyboard = [
             [KeyboardButton(text="🔮 Получить предсказание")],
-            [KeyboardButton(text="📜 Моя история"), KeyboardButton(text="🎯 Случайное предсказание")],
-            [KeyboardButton(text="💎 Подписка"), KeyboardButton(text="❓ Частые вопросы")],
-            [KeyboardButton(text="ℹ️ О боте"), KeyboardButton(text="📞 Поддержка")]
+            [KeyboardButton(text="💎 Подписка"), KeyboardButton(text="🎯 Случайное предсказание")],
+            [KeyboardButton(text="📜 Моя история"), KeyboardButton(text="❓ Частые вопросы")],
+            [KeyboardButton(text="ℹ️ Об Оракуле"), KeyboardButton(text="📞 Поддержка")]
         ]
 
         return ReplyKeyboardMarkup(

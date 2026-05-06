@@ -234,7 +234,7 @@ async def history_handler(message: Message) -> Any:
             await message.answer(chunk, parse_mode="HTML")
 
 
-@router.message(F.text == "ℹ️ О боте")
+@router.message(F.text == "ℹ️ Об Оракуле")
 async def about_handler(message: Message) -> Any:
     """Обработка запроса информации о боте."""
     about_text = await get_bot_text("about_text", texts.ABOUT_TEXT_FALLBACK)
@@ -597,7 +597,7 @@ async def update_menu_command_handler(message: Message, bot: Bot) -> Any:
             BotCommand(command="predict", description="🔮 Получить предсказание"),
             BotCommand(command="history", description="📜 Моя история"),
             BotCommand(command="random", description="🎯 Случайное предсказание"),
-            BotCommand(command="about", description="ℹ️ О боте"),
+            BotCommand(command="about", description="ℹ️ Об Оракуле"),
             BotCommand(command="clear", description="🗑️ Очистить историю"),
             BotCommand(command="support", description="📞 Поддержка"),
         ]
@@ -1292,7 +1292,7 @@ async def check_payment_callback(callback: CallbackQuery) -> Any:
 
 
 @router.message(F.text & ~F.text.in_([
-    "🔮 Получить предсказание", "📜 Моя история", "ℹ️ О боте",
+    "🔮 Получить предсказание", "📜 Моя история", "ℹ️ Об Оракуле",
     "🎯 Случайное предсказание", "❓ Частые вопросы", "🗑️ Очистить историю",
     "📞 Поддержка", "💎 Подписка"
 ]))

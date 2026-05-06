@@ -70,7 +70,7 @@ class MaxKeyboardManager:
                 },
                 {
                     "type": "callback",
-                    "text": "ℹ️ О боте",
+                    "text": "ℹ️ Об Оракуле",
                     "payload": "action_about",
                 },
             ],
@@ -107,12 +107,12 @@ class MaxKeyboardManager:
                     "payload": "action_predict",
                 },
             ],
-            [
+            [   
                 {
                     "type": "callback",
-                    "text": "📜 Моя история",
-                    "payload": "action_history",
-                },
+                    "text": "💎 Подписка",
+                    "payload": "action_subscription",
+                },                
                 {
                     "type": "callback",
                     "text": "🎯 Случайное",
@@ -122,8 +122,8 @@ class MaxKeyboardManager:
             [
                 {
                     "type": "callback",
-                    "text": "💎 Подписка",
-                    "payload": "action_subscription",
+                    "text": "📜 Моя история",
+                    "payload": "action_history",
                 },
                 {
                     "type": "callback",
@@ -134,7 +134,7 @@ class MaxKeyboardManager:
             [
                 {
                     "type": "callback",
-                    "text": "ℹ️ О боте",
+                    "text": "ℹ️ Об Оракуле",
                     "payload": "action_about",
                 },
                 {
