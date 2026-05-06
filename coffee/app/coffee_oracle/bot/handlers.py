@@ -19,6 +19,7 @@ from aiogram.enums import ChatAction
 import random
 
 from coffee_oracle.bot.keyboards import KeyboardManager
+from coffee_oracle.bot import texts
 from coffee_oracle.config import config
 from coffee_oracle.database.connection import db_manager
 from coffee_oracle.database.repositories import (
@@ -47,7 +48,15 @@ class PaymentStates(StatesGroup):
 
 
 async def get_bot_text(key: str, default: str) -> str:
-    """Get text from settings or return default."""
+    """Получение текста из настроек БД или значения по умолчанию.
+
+    Args:
+        key: Ключ настройки в таблице bot_settings.
+        default: Значение по умолчанию.
+
+    Returns:
+        Текст из настроек или default.
+    """
     try:
         async for session in db_manager.get_session():
             settings_repo = SettingsRepository(session)
@@ -122,16 +131,7 @@ async def start_with_referral_handler(message: Message) -> Any:
         # Стандартное приветствие
         welcome_template = await settings_repo.get_setting("welcome_message")
         if not welcome_template:
-            welcome_template = """🔮 Добро пожаловать в мир Кофейного Оракула, {name}!
-
-Я — добрый мистический дух, живущий в узорах кофейной гущи. Присылай фото дна чашки после утреннего кофе, и я поделюсь с тобой своей мудростью ✨
-
-☕ Первые гадания — мои подарок тебе!
-Потом, если захочешь продолжить наше магическое путешествие, можно оформить подписку.
-
-🌟 Мои предсказания всегда несут свет и вдохновение!
-
-Выбери действие в меню:"""
+            welcome_template = texts.WELCOME_MESSAGE_FALLBACK
 
         welcome_text = welcome_template.replace("{name}", db_user.full_name)
 
@@ -163,16 +163,7 @@ async def start_handler(message: Message) -> Any:
         # Get welcome message from settings
         welcome_template = await settings_repo.get_setting("welcome_message")
         if not welcome_template:
-            welcome_template = """🔮 Добро пожаловать в мир Кофейного Оракула, {name}!
-
-Я — добрый мистический дух, живущий в узорах кофейной гущи. Присылай фото дна чашки после утреннего кофе, и я поделюсь с тобой своей мудростью ✨
-
-☕ Первые гадания — мои подарок тебе!
-Потом, если захочешь продолжить наше магическое путешествие, можно оформить подписку.
-
-🌟 Мои предсказания всегда несут свет и вдохновение!
-
-Выбери действие в меню:"""
+            welcome_template = texts.WELCOME_MESSAGE_FALLBACK
 
         welcome_text = welcome_template.replace("{name}", db_user.full_name)
 
@@ -184,31 +175,25 @@ async def start_handler(message: Message) -> Any:
 
 @router.message(Command("help"))
 async def help_handler(message: Message) -> Any:
-    """Handle /help command."""
+    """Обработка команды /help."""
     await message.answer(
-        "📚 Искусство гадания на кофейной гуще",
+        texts.HELP_TITLE,
         reply_markup=KeyboardManager.get_help_menu()
     )
 
 
 @router.message(F.text == "🔮 Получить предсказание")
 async def prediction_request_handler(message: Message) -> Any:
-    """Handle prediction request."""
-    instruction_text = await get_bot_text("photo_instruction", """📸 Отправьте мне фотографию дна вашей кофейной чашки!
-
-Убедитесь, что:
-• Узоры кофейной гущи хорошо видны
-• Освещение достаточное
-• Фото сделано сверху
-
-Я внимательно изучу узоры и расскажу, что они предвещают! ✨""")
-
+    """Обработка запроса на предсказание."""
+    instruction_text = await get_bot_text(
+        "photo_instruction", texts.PHOTO_INSTRUCTION_FALLBACK,
+    )
     await message.answer(instruction_text)
 
 
 @router.message(F.text == "📜 Моя история")
 async def history_handler(message: Message) -> Any:
-    """Handle history request."""
+    """Обработка запроса истории предсказаний."""
     user = message.from_user
     if not user:
         return
@@ -220,22 +205,14 @@ async def history_handler(message: Message) -> Any:
         # Get user
         db_user = await user_repo.get_user_by_telegram_id(user.id, source=_SOURCE)
         if not db_user:
-            await message.answer(
-                "Сначала получите ваше первое предсказание! 🔮\n\n"
-                "Отправьте фото кофейной чашки, и я расскажу, "
-                "что говорят узоры гущи о вашем будущем!"
-            )
+            await message.answer(texts.NO_USER_FOR_HISTORY)
             return
 
         # Get user's predictions (limit to 5 as per requirements)
         predictions = await prediction_repo.get_user_predictions(db_user.id, limit=5)
 
         if not predictions:
-            await message.answer(
-                "📜 У вас пока нет предсказаний в истории.\n\n"
-                "Отправьте фото кофейной чашки с гущей, "
-                "чтобы получить первое магическое предсказание! ☕✨"
-            )
+            await message.answer(texts.EMPTY_HISTORY)
             return
 
         # Format history with proper numbering and dates
@@ -261,21 +238,8 @@ async def history_handler(message: Message) -> Any:
 
 @router.message(F.text == "ℹ️ О боте")
 async def about_handler(message: Message) -> Any:
-    """Handle about request."""
-    about_text = await get_bot_text("about_text", """🔮 Кофейный Оракул
-
-Я — добрый магический дух, живущий в узорах кофейной гущи. С древних времён люди находили в кофе ответы на сокровенные вопросы, и я продолжаю эту прекрасную традицию.
-
-✨ Как я работаю:
-Присылай фото дна кофейной чашки — я внимательно изучу узоры и поделюсь тем, что вижу. Мои слова всегда несут свет, тепло и вдохновение!
-
-☕ Начни знакомство:
-Первые гадания — мой дар тебе. Если мои предсказания тронут твоё сердце, ты сможешь оформить подписку для безлимитных сеансов магии.
-
-🌟 Помни: будущее создаёшь ты сам, а я лишь помогаю увидеть возможности!
-
-С любовью, твой Кофейный Оракул ☕✨""")
-
+    """Обработка запроса информации о боте."""
+    about_text = await get_bot_text("about_text", texts.ABOUT_TEXT_FALLBACK)
     await message.answer(about_text)
 
 
@@ -287,7 +251,7 @@ async def photo_handler(
     is_media_group: bool = False,
     media_group_caption: str = None,
 ) -> Any:
-    """Handle photo messages for prediction."""
+    """Обработка фотографий для предсказания."""
     user = message.from_user
     if not user or not message.photo:
         return
@@ -318,27 +282,19 @@ async def photo_handler(
                 price_str = await settings_repo.get_setting("subscription_price")
                 price = int(float(price_str)) if price_str else 300
 
-                paywall_text = (
-                    f"{reason}\n\n"
-                    "✨ Хочешь продолжить наше магическое путешествие?\n\n"
-                    "Оформи подписку и получи:\n"
-                    "• Безлимитные сеансы магии\n"
-                    "• Безграничную мудрость Оракула\n"
-                    "• Поддержку проекта ❤️\n\n"
-                    f"💰 Стоимость: {price}₽/мес"
-                )
                 keyboard = InlineKeyboardMarkup(inline_keyboard=[
                     [InlineKeyboardButton(text="⭐ Оформить подписку", callback_data="start_payment")],
                     [InlineKeyboardButton(text="◀️ Назад в меню", callback_data="back_to_menu")],
                 ])
-                await message.answer(paywall_text, reply_markup=keyboard)
+                await message.answer(
+                    texts.paywall_text(reason, price),
+                    reply_markup=keyboard,
+                )
 
             except Exception as e:
-                logger.error("Error showing paywall: %s", e)
+                logger.error("Ошибка отображения paywall: %s", e)
                 await message.answer(
-                    f"{reason}\n\n"
-                    "⚠️ Временно недоступна оплата. "
-                    "Попробуйте /subscribe позже."
+                    f"{reason}\n\n{texts.PAYWALL_PAYMENT_UNAVAILABLE}"
                 )
             return
 
@@ -349,11 +305,13 @@ async def photo_handler(
     await bot.send_chat_action(chat_id=message.chat.id, action=ChatAction.TYPING)
 
     # Get processing message from settings
-    processing_text = await get_bot_text("processing_message", "🔮 Смотрю в чашку... Звезды открывают свои тайны... ✨")
+    processing_text = await get_bot_text(
+        "processing_message", texts.PROCESSING_MESSAGE_FALLBACK,
+    )
 
     # Adjust message for multiple photos
     if is_media_group and len(photos_to_process) > 1:
-        processing_text = f"🔮 Получено {len(photos_to_process)} фото. Изучаю узоры... ✨"
+        processing_text = texts.processing_message_multiple(len(photos_to_process))
 
     processing_msg = await message.answer(processing_text)
 
@@ -377,9 +335,7 @@ async def photo_handler(
                     valid_photos.append(photo_processor.get_best_photo_size(photo_msg.photo))
 
             if not valid_photos:
-                await processing_msg.edit_text(
-                    "📸 Все фото слишком большие или повреждены. Попробуйте отправить другие фото."
-                )
+                await processing_msg.edit_text(texts.ALL_PHOTOS_INVALID)
                 return
 
             # Process multiple photos
@@ -397,9 +353,7 @@ async def photo_handler(
             first_photo_msg = photos_to_process[0]
 
             if not photo_processor.is_valid_photo(first_photo_msg.photo):
-                await processing_msg.edit_text(
-                    "📸 Фото слишком большое или повреждено. Попробуйте отправить другое фото."
-                )
+                await processing_msg.edit_text(texts.PHOTO_TOO_LARGE)
                 return
 
             best_photo = photo_processor.get_best_photo_size(first_photo_msg.photo)
@@ -422,9 +376,7 @@ async def photo_handler(
                 return
 
         if not prediction_text:
-            await processing_msg.edit_text(
-                "🔮 Не удалось получить предсказание. Попробуйте еще раз."
-            )
+            await processing_msg.edit_text(texts.PREDICTION_FAILED)
             return
 
         # Get photo file_id for saving (use first valid photo)
@@ -458,10 +410,10 @@ async def photo_handler(
                     subscription_type=db_user.subscription_type
                 )
         except Exception as e:
-            logger.error("Database error saving prediction: %s", e)
+            logger.error("Ошибка сохранения предсказания в БД: %s", e)
             # Still send prediction to user even if saving fails
             await processing_msg.edit_text(
-                f"{prediction_text}\n\n⚠️ Предсказание не сохранено в истории из-за технической ошибки."
+                f"{prediction_text}{texts.PREDICTION_NOT_SAVED}"
             )
             return
 
@@ -473,13 +425,13 @@ async def photo_handler(
         chunks = split_message(formatted_prediction)
 
         async def send_with_fallback(msg_func, text, **kwargs):
-            """Try to send with HTML, fallback to plain text on error."""
+            """Отправка с HTML, fallback на plain text при ошибке парсинга."""
             try:
                 return await msg_func(text, **kwargs)
             except Exception as e:
                 if "parse entities" in str(e).lower() or "can't parse" in str(e).lower():
                     # HTML parsing failed, send as plain text
-                    logger.warning("HTML parsing failed, sending as plain text: %s", e)
+                    logger.warning("Ошибка парсинга HTML, отправка plain text: %s", e)
                     plain_text = strip_html_tags(text)
                     kwargs.pop('parse_mode', None)
                     return await msg_func(plain_text, **kwargs)
@@ -506,20 +458,20 @@ async def photo_handler(
                 )
         except Exception as e:
             # Final fallback - send completely plain text
-            logger.error("Failed to send formatted prediction: %s", e)
+            logger.error("Не удалось отправить форматированное предсказание: %s", e)
             plain_text = strip_html_tags(formatted_prediction)
             chunks = split_message(plain_text)
             await processing_msg.edit_text(chunks[0])
             for chunk in chunks[1:]:
                 await message.answer(chunk)
             await message.answer(
-                "👆 Ваше предсказание выше!",
+                texts.PREDICTION_ABOVE,
                 reply_markup=KeyboardManager.get_prediction_actions()
             )
 
     except Exception as e:
         logger.error(
-            "Error in photo_handler: user_id=%s, username=%s, chat_id=%s, "
+            "Ошибка в photo_handler: user_id=%s, username=%s, chat_id=%s, "
             "is_media_group=%s, error_type=%s, error=%s",
             user.id if user else "unknown",
             user.username if user else "unknown",
@@ -529,104 +481,67 @@ async def photo_handler(
             e,
             exc_info=True,
         )
-        await processing_msg.edit_text(
-            "🔮 Произошла магическая помеха. Попробуйте еще раз через несколько минут."
-        )
+        await processing_msg.edit_text(texts.PHOTO_PROCESSING_ERROR)
 
 
 @router.message(F.content_type.in_({"document", "video", "audio", "voice", "sticker"}))
 async def non_photo_handler(message: Message) -> Any:
-    """Handle non-photo content when user should send photo."""
-    await message.answer(
-        "📸 Пожалуйста, отправьте именно фотографию кофейной чашки с гущей.\n\n"
-        "Я не могу анализировать другие типы файлов. Сделайте фото дна чашки и отправьте его как изображение! ☕"
-    )
+    """Обработка нефото контента."""
+    await message.answer(texts.NON_PHOTO_CONTENT)
 
 
 @router.message(F.text == "🎯 Случайное предсказание")
 async def random_prediction_handler(message: Message) -> Any:
-    """Handle random prediction request."""
-    random_predictions = [
-        "🌟 Сегодня звезды благоволят вашим начинаниям! Смело идите к своим целям, удача на вашей стороне.",
-        "💫 Впереди вас ждет приятная встреча, которая может изменить ваш взгляд на многие вещи к лучшему.",
-        "🍀 Ваша интуиция сегодня особенно сильна. Доверьтесь внутреннему голосу - он не подведет.",
-        "✨ Скоро в вашу жизнь войдет что-то новое и прекрасное. Будьте открыты для перемен!",
-        "🌈 После небольших трудностей вас ждет период гармонии и процветания. Не сдавайтесь!",
-        "🎭 Ваши творческие способности сейчас на пике. Время воплощать смелые идеи в жизнь!",
-        "🌸 Любовь и дружба окружат вас теплом. Цените близких людей - они ваша главная сила.",
-        "🚀 Впереди открываются новые возможности для роста. Не бойтесь выходить из зоны комфорта!"
-    ]
-
-    prediction = random.choice(random_predictions)
+    """Обработка запроса случайного предсказания."""
+    prediction = random.choice(texts.RANDOM_PREDICTIONS)
     await message.answer(
-        f"🔮 Случайное предсказание от Кофейного Оракула:\n\n{prediction}",
+        f"{texts.RANDOM_PREDICTION_HEADER}{prediction}",
         reply_markup=KeyboardManager.get_prediction_actions()
     )
 
 
 @router.message(F.text == "📚 Как гадать")
 async def how_to_divinate_handler(message: Message) -> Any:
-    """Handle how to divinate request."""
+    """Обработка запроса инструкции по гаданию."""
     await message.answer(
-        "📚 Искусство гадания на кофейной гуще",
+        texts.HELP_TITLE,
         reply_markup=KeyboardManager.get_help_menu()
     )
 
 
 @router.message(F.text == "🗑️ Очистить историю")
 async def clear_history_handler(message: Message) -> Any:
-    """Handle clear history request."""
+    """Обработка запроса очистки истории."""
     await message.answer(
-        "🗑️ Очистить историю предсказаний\n\n"
-        "⚠️ Это действие нельзя отменить!\n"
-        "Все ваши предсказания будут удалены навсегда.\n\n"
-        "Вы уверены?",
+        texts.CLEAR_HISTORY_CONFIRM,
         reply_markup=KeyboardManager.get_confirmation_keyboard("clear_history")
     )
 
 
 @router.message(F.text == "📞 Поддержка")
 async def support_handler(message: Message) -> Any:
-    """Handle support request."""
-    support_text = """📞 Поддержка Кофейного Оракула
-
-🔮 Если у вас возникли вопросы или проблемы:
-
-• Убедитесь, что отправляете именно фото (не файл)
-• Проверьте качество освещения на фото
-• Убедитесь, что гуща хорошо видна
-
-❓ Частые вопросы:
-• Бот не отвечает → Попробуйте команду /start
-• Плохое предсказание → Все предсказания позитивные!
-• Нет истории → Сначала получите предсказание
-
-🛠️ Технические проблемы:
-Если бот не работает, попробуйте перезапустить диалог командой /start
-
-✨ Помните: магия требует терпения!"""
-
-    await message.answer(support_text)
+    """Обработка запроса поддержки."""
+    await message.answer(texts.SUPPORT_TEXT)
 
 
 @router.message(Command("menu"))
 async def menu_handler(message: Message) -> Any:
-    """Handle /menu command."""
+    """Обработка команды /menu."""
     await message.answer(
-        "📋 Главное меню Кофейного Оракула:",
+        texts.MAIN_MENU_TEXT,
         reply_markup=KeyboardManager.get_main_menu()
     )
 
 
 @router.message(Command("random"))
 async def random_command_handler(message: Message) -> Any:
-    """Handle /random command."""
+    """Обработка команды /random."""
     await random_prediction_handler(message)
 
 
 @router.message(Command("stats"))
 async def stats_command_handler(message: Message) -> Any:
-    """Handle /stats command (hidden)."""
+    """Обработка команды /stats (скрытая)."""
     async for session in db_manager.get_session():
         prediction_repo = PredictionRepository(session)
 
@@ -642,43 +557,43 @@ async def stats_command_handler(message: Message) -> Any:
 
 @router.message(Command("clear"))
 async def clear_command_handler(message: Message) -> Any:
-    """Handle /clear command."""
+    """Обработка команды /clear."""
     await clear_history_handler(message)
 
 
 @router.message(Command("predict"))
 async def predict_command_handler(message: Message) -> Any:
-    """Handle /predict command."""
+    """Обработка команды /predict."""
     await prediction_request_handler(message)
 
 
 @router.message(Command("history"))
 async def history_command_handler(message: Message) -> Any:
-    """Handle /history command."""
+    """Обработка команды /history."""
     await history_handler(message)
 
 
 @router.message(Command("about"))
 async def about_command_handler(message: Message) -> Any:
-    """Handle /about command."""
+    """Обработка команды /about."""
     await about_handler(message)
 
 
 @router.message(Command("support"))
 async def support_command_handler(message: Message) -> Any:
-    """Handle /support command."""
+    """Обработка команды /support."""
     await support_handler(message)
 
 
 @router.message(Command("subscribe"))
 async def subscribe_command_handler(message: Message) -> Any:
-    """Handle /subscribe command."""
+    """Обработка команды /subscribe."""
     await subscription_handler(message)
 
 
 @router.message(Command("update_menu"))
 async def update_menu_command_handler(message: Message, bot: Bot) -> Any:
-    """Handle /update_menu command - force update bot commands."""
+    """Обработка команды /update_menu — принудительное обновление меню."""
     try:
         commands = [
             BotCommand(command="start", description="🔮 Начать работу с ботом"),
@@ -692,38 +607,33 @@ async def update_menu_command_handler(message: Message, bot: Bot) -> Any:
         ]
 
         await bot.set_my_commands(commands)
-        await message.answer("✅ Меню команд обновлено! Перезапустите чат или нажмите на кнопку меню рядом с полем ввода.")
+        await message.answer(texts.BOT_COMMANDS_UPDATED)
 
     except Exception as e:
-        logger.error(f"Failed to update commands: {e}")
-        await message.answer("❌ Ошибка при обновлении меню команд.")
+        logger.error("Ошибка обновления команд меню: %s", e)
+        await message.answer(texts.BOT_COMMANDS_UPDATE_ERROR)
 
 
 # Callback handlers
 @router.callback_query(F.data == "back_to_menu")
 async def back_to_menu_callback(callback: CallbackQuery, state: FSMContext) -> Any:
-    """Handle back to menu callback."""
+    """Обработка callback возврата в меню."""
     await state.clear()
-    await callback.message.edit_text(
-        "📋 Главное меню Кофейного Оракула\n\nВыберите действие из меню ниже:"
-    )
+    await callback.message.edit_text(texts.MAIN_MENU_EDIT_TEXT)
     await callback.answer()
 
 
 @router.callback_query(F.data == "new_prediction")
 async def new_prediction_callback(callback: CallbackQuery) -> Any:
-    """Handle new prediction callback."""
+    """Обработка callback нового предсказания."""
     # Send as a new message to keep the prediction visible
-    await callback.message.answer(
-        "📸 Отправьте мне фотографию дна вашей кофейной чашки!\n\n"
-        "Убедитесь, что узоры кофейной гущи хорошо видны и освещение достаточное. ✨"
-    )
+    await callback.message.answer(texts.NEW_PREDICTION_INSTRUCTION)
     await callback.answer()
 
 
 @router.callback_query(F.data == "show_history")
 async def show_history_callback(callback: CallbackQuery) -> Any:
-    """Handle show history callback."""
+    """Обработка callback показа истории."""
     user = callback.from_user
     if not user:
         await callback.answer()
@@ -736,11 +646,7 @@ async def show_history_callback(callback: CallbackQuery) -> Any:
         # Get user
         db_user = await user_repo.get_user_by_telegram_id(user.id, source=_SOURCE)
         if not db_user:
-            await callback.message.answer(
-                "Сначала получите ваше первое предсказание! 🔮\n\n"
-                "Отправьте фото кофейной чашки, и я расскажу, "
-                "что говорят узоры гущи о вашем будущем!"
-            )
+            await callback.message.answer(texts.NO_USER_FOR_HISTORY)
             await callback.answer()
             return
 
@@ -748,11 +654,7 @@ async def show_history_callback(callback: CallbackQuery) -> Any:
         predictions = await prediction_repo.get_user_predictions(db_user.id, limit=5)
 
         if not predictions:
-            await callback.message.answer(
-                "📜 У вас пока нет предсказаний в истории.\n\n"
-                "Отправьте фото кофейной чашки с гущей, "
-                "чтобы получить первое магическое предсказание! ☕✨"
-            )
+            await callback.message.answer(texts.EMPTY_HISTORY)
             await callback.answer()
             return
 
@@ -783,103 +685,38 @@ async def show_history_callback(callback: CallbackQuery) -> Any:
 
 @router.callback_query(F.data == "share_prediction")
 async def share_prediction_callback(callback: CallbackQuery) -> Any:
-    """Handle share prediction callback."""
+    """Обработка callback «Поделиться предсказанием»."""
     # Send instructions as a separate message, keeping the prediction visible
-    await callback.message.answer(
-        "📤 Поделиться предсказанием\n\n"
-        "Скопируйте текст предсказания и поделитесь им с друзьями!\n\n"
-        "🔮 Пусть магия кофейной гущи принесет радость и вашим близким!"
-    )
+    await callback.message.answer(texts.SHARE_PREDICTION)
     await callback.answer()
 
 
 @router.callback_query(F.data.startswith("help_"))
 async def help_callback(callback: CallbackQuery) -> Any:
-    """Handle help callbacks."""
+    """Обработка callback разделов помощи."""
     help_type = callback.data.split("_")[1]
-
-    help_texts = {
-        "photo": """📸 Как правильно сфотографировать чашку:
-
-1. ☕ Выпейте кофе, оставив немного гущи на дне
-2. 🔄 Слегка покрутите чашку, чтобы гуща распределилась
-3. 📱 Сделайте фото сверху при хорошем освещении
-4. 🔍 Убедитесь, что узоры четко видны
-5. 📤 Отправьте фото как изображение (не файл)
-
-💡 Совет: лучше всего фотографировать при дневном свете!""",
-
-        "coffee": """☕ Приготовление кофе для гадания:
-
-1. ☕ Используйте молотый кофе среднего помола
-2. 🔥 Заварите крепкий кофе (турка или френч-пресс)
-3. 🥄 Не добавляйте сахар и молоко
-4. 🍵 Выпейте, оставив 1-2 глотка с гущей
-5. 🔄 Покрутите чашку 3 раза по часовой стрелке
-6. ⏰ Подождите 2-3 минуты, пока гуща осядет
-
-✨ Чем крепче кофе, тем четче узоры!""",
-
-        "divination": """🔮 О гадании на кофейной гуще:
-
-📜 Древнее искусство, пришедшее с Востока
-🎨 Узоры гущи - это язык подсознания
-✨ Каждый символ имеет свое значение
-🌟 Гадание помогает увидеть возможности
-
-🔍 Основные символы:
-• Круги - гармония, завершение дел
-• Линии - путешествия, перемены
-• Звезды - исполнение желаний
-• Цветы - любовь и радость
-• Птицы - хорошие новости
-
-💫 Помните: будущее в ваших руках!""",
-
-        "faq": """❓ Частые вопросы:
-
-Q: Почему бот не отвечает на фото?
-A: Проверьте качество фото и освещение
-
-Q: Можно ли гадать на растворимом кофе?
-A: Лучше использовать молотый кофе
-
-Q: Сколько раз в день можно гадать?
-A: Рекомендуется не чаще 2-3 раз
-
-Q: Почему все предсказания позитивные?
-A: Мы верим в силу позитивного мышления!
-
-Q: Как очистить историю предсказаний?
-A: Используйте настройки → Очистить историю
-
-Q: Бот не работает, что делать?
-A: Попробуйте команду /start"""
-    }
-
-    text = help_texts.get(help_type, "Информация не найдена")
+    text = texts.HELP_SECTIONS.get(help_type, "Информация не найдена")
     await callback.message.edit_text(text, reply_markup=KeyboardManager.get_help_menu())
     await callback.answer()
 
 
 @router.callback_query(F.data == "cancel_subscription")
 async def cancel_subscription_callback(callback: CallbackQuery) -> Any:
-    """Show confirmation before cancelling subscription."""
+    """Запрос подтверждения отмены подписки."""
     keyboard = InlineKeyboardMarkup(inline_keyboard=[
         [InlineKeyboardButton(text="✅ Да, отменить подписку", callback_data="confirm_cancel_sub")],
         [InlineKeyboardButton(text="◀️ Нет, вернуться", callback_data="subscription_status")]
     ])
     await callback.message.edit_text(
-        "⚠️ Вы уверены, что хотите отменить подписку?\n\n"
-        "Автопродление будет отключено, а доступ сохранится до конца оплаченного периода.",
-        reply_markup=keyboard
+        texts.CANCEL_SUBSCRIPTION_CONFIRM,
+        reply_markup=keyboard,
     )
     await callback.answer()
 
 
 @router.callback_query(F.data == "confirm_cancel_sub")
 async def confirm_cancel_subscription_callback(callback: CallbackQuery) -> Any:
-    """Handle confirmed subscription cancellation."""
+    """Обработка подтверждённой отмены подписки."""
     user = callback.from_user
     if not user:
         await callback.answer()
@@ -892,7 +729,7 @@ async def confirm_cancel_subscription_callback(callback: CallbackQuery) -> Any:
 
             db_user = await user_repo.get_user_by_telegram_id(user.id, source=_SOURCE)
             if not db_user:
-                await callback.message.edit_text("Пользователь не найден. Используйте /start")
+                await callback.message.edit_text(texts.USER_NOT_FOUND)
                 await callback.answer()
                 return
 
@@ -901,11 +738,8 @@ async def confirm_cancel_subscription_callback(callback: CallbackQuery) -> Any:
             status = await subscription_repo.get_subscription_status(db_user.id)
             until = status.get("until", "")[:10] if status.get("until") else ""
 
-        until_text = f"\n📅 Доступ сохранится до: {until}" if until else ""
         await callback.message.edit_text(
-            "✅ Автопродление отключено\n\n"
-            f"Премиум-функции останутся доступны до конца оплаченного периода.{until_text}\n\n"
-            "Вы всегда можете оформить подписку снова. ☕",
+            texts.cancel_subscription_success(until),
             reply_markup=KeyboardManager.get_subscription_status_keyboard(
                 has_active_subscription=bool(until),
                 is_vip=False,
@@ -915,10 +749,9 @@ async def confirm_cancel_subscription_callback(callback: CallbackQuery) -> Any:
         await callback.answer("Автопродление отключено", show_alert=False)
         return
     except Exception as e:
-        logger.error(f"Error cancelling subscription: {e}")
+        logger.error("Ошибка отмены подписки: %s", e)
         await callback.message.edit_text(
-            "❌ Произошла ошибка при отмене подписки.\n\n"
-            "Попробуйте позже или обратитесь в поддержку.",
+            texts.CANCEL_SUBSCRIPTION_ERROR,
             reply_markup=InlineKeyboardMarkup(inline_keyboard=[
                 [InlineKeyboardButton(text="🔄 Попробовать снова", callback_data="cancel_subscription")],
                 [InlineKeyboardButton(text="◀️ В меню", callback_data="back_to_menu")]
@@ -930,7 +763,7 @@ async def confirm_cancel_subscription_callback(callback: CallbackQuery) -> Any:
 
 @router.callback_query(F.data.startswith("confirm_"))
 async def confirm_callback(callback: CallbackQuery) -> Any:
-    """Handle confirmation callbacks."""
+    """Обработка callback подтверждения действий."""
     action = callback.data.split("_")[1]
 
     if action == "clear_history":
@@ -951,28 +784,18 @@ async def confirm_callback(callback: CallbackQuery) -> Any:
                         )
                         await session.commit()
 
-                await callback.message.edit_text(
-                    "✅ История предсказаний очищена!\n\n"
-                    "Теперь вы можете начать с чистого листа. "
-                    "Отправьте фото кофейной чашки для нового предсказания! 🔮"
-                )
+                await callback.message.edit_text(texts.CLEAR_HISTORY_SUCCESS)
             except Exception as e:
-                logger.error(f"Error clearing history: {e}")
-                await callback.message.edit_text(
-                    "❌ Произошла ошибка при очистке истории.\n\n"
-                    "Попробуйте позже или обратитесь в поддержку."
-                )
+                logger.error("Ошибка очистки истории: %s", e)
+                await callback.message.edit_text(texts.CLEAR_HISTORY_ERROR)
 
     await callback.answer()
 
 
 @router.callback_query(F.data == "cancel_action")
 async def cancel_callback(callback: CallbackQuery) -> Any:
-    """Handle cancel callback."""
-    await callback.message.edit_text(
-        "❌ Действие отменено\n\n"
-        "Используйте меню ниже для выбора других действий."
-    )
+    """Обработка callback отмены действия."""
+    await callback.message.edit_text(texts.ACTION_CANCELLED)
     await callback.answer()
 
 
@@ -980,7 +803,7 @@ async def cancel_callback(callback: CallbackQuery) -> Any:
 
 @router.message(F.text == "💎 Подписка")
 async def subscription_handler(message: Message) -> Any:
-    """Handle subscription menu request."""
+    """Обработка запроса статуса подписки."""
     user = message.from_user
     if not user:
         return
@@ -1004,40 +827,21 @@ async def subscription_handler(message: Message) -> Any:
         price = int(float(price_str)) if price_str else 300
 
         if status["type"] == "vip":
-            status_text = (
-                "✨ Твой статус: VIP ⭐\n\n"
-                f"Причина: {status.get('vip_reason', 'Особый гость Оракула')}\n\n"
-                "Тебе открыты все тайны кофейных узоров!"
-            )
+            status_text = texts.subscription_status_vip(status.get("vip_reason"))
         elif status["type"] == "premium" and status["active"]:
-            status_text = (
-                "✨ Твой статус: Премиум 💫\n\n"
-                f"Магия действует до: {status['until'][:10]}\n\n"
-                "Тебе открыты безграничные сеансы гадания!"
-            )
+            status_text = texts.subscription_status_premium(status["until"][:10])
         else:
             remaining = status.get("predictions_remaining", 0)
             used = status.get("predictions_used", 0)
             limit = status.get("predictions_limit", 10)
-            if remaining > 0:
-                status_text = (
-                    f"☕ Твой статус: Гость Оракула\n\n"
-                    f"🎁 Использовано бесплатных гаданий: {used} из {limit}\n\n"
-                    f"💰 Подписка для безлимита: {price}₽/мес"
-                )
-            else:
-                status_text = (
-                    f"☕ Твой статус: Гость Оракула\n\n"
-                    f"🎁 Использовано бесплатных гаданий: {used} из {limit}\n\n"
-                    f"💰 Подписка для безлимита: {price}₽/мес"
-                )
+            status_text = texts.subscription_status_free(used, limit, price)
 
         has_active = (status["type"] == "vip") or (status["type"] == "premium" and status["active"])
         is_vip = status["type"] == "vip"
         recurring_enabled, _ = await subscription_repo.is_recurring_enabled(db_user.id)
 
         if has_active and not is_vip and not recurring_enabled:
-            status_text += "\n\n⚠️ Автопродление выключено — подписка не продлится автоматически."
+            status_text += texts.SUBSCRIPTION_RECURRING_OFF_WARNING
 
         await message.answer(
             status_text,
@@ -1051,7 +855,7 @@ async def subscription_handler(message: Message) -> Any:
 
 @router.callback_query(F.data == "subscription_status")
 async def subscription_status_callback(callback: CallbackQuery) -> Any:
-    """Handle subscription status callback."""
+    """Обработка callback статуса подписки."""
     user = callback.from_user
     if not user:
         await callback.answer()
@@ -1064,7 +868,7 @@ async def subscription_status_callback(callback: CallbackQuery) -> Any:
 
         db_user = await user_repo.get_user_by_telegram_id(user.id, source=_SOURCE)
         if not db_user:
-            await callback.message.edit_text("Пользователь не найден. Используйте /start")
+            await callback.message.edit_text(texts.USER_NOT_FOUND)
             await callback.answer()
             return
 
@@ -1090,7 +894,7 @@ async def subscription_status_callback(callback: CallbackQuery) -> Any:
         is_vip = status["type"] == "vip"
 
         if has_active and not is_vip and not recurring_enabled:
-            status_text += "\n\n⚠️ Подписка не продлится автоматически."
+            status_text += texts.SUBSCRIPTION_RECURRING_OFF_SHORT
 
         await callback.message.edit_text(
             status_text,
@@ -1111,7 +915,7 @@ async def _poll_payment_and_activate(
     payment_id: str,
     message_id: int,
 ) -> None:
-    """Background task: poll YooKassa until payment succeeds or is terminal, then notify user."""
+    """Фоновая задача: polling YooKassa до завершения платежа."""
     from coffee_oracle.services.payment_service import get_payment_service
 
     payment_service = get_payment_service()
@@ -1131,7 +935,7 @@ async def _poll_payment_and_activate(
         try:
             status_result = await payment_service.get_payment_status(payment_id)
         except Exception as exc:
-            logger.warning("Background poll error for %s: %s", payment_id, exc)
+            logger.warning("Ошибка фонового polling для %s: %s", payment_id, exc)
             continue
 
         if not status_result.get("success"):
@@ -1164,36 +968,37 @@ async def _poll_payment_and_activate(
 
                 payment_service.clear_pending_payment(telegram_user_id)
 
+                recurring_enabled = bool(
+                    status_result.get("payment_method_saved")
+                    and status_result.get("payment_method_id")
+                )
+                success_text = (
+                    texts.PAYMENT_SUCCESS_RECURRING if recurring_enabled
+                    else texts.PAYMENT_SUCCESS
+                )
+
                 try:
                     await bot.edit_message_text(
                         chat_id=chat_id,
                         message_id=message_id,
-                        text=(
-                            "✅ Оплата прошла успешно!\n\n"
-                            "Премиум-подписка активирована на 1 месяц.\n"
-                            "Спасибо за поддержку! ☕"
-                        ),
+                        text=success_text,
                         reply_markup=KeyboardManager.get_subscription_status_keyboard(
                             has_active_subscription=True,
-                            recurring_enabled=bool(payment_method_saved and payment_method_id),
+                            recurring_enabled=recurring_enabled,
                         ),
                     )
                 except Exception:
                     # Message may have been already edited by manual check
                     await bot.send_message(
                         chat_id=chat_id,
-                        text=(
-                            "✅ Оплата прошла успешно!\n\n"
-                            "Премиум-подписка активирована на 1 месяц.\n"
-                            "Спасибо за поддержку! ☕"
-                        ),
+                        text=success_text,
                         reply_markup=KeyboardManager.get_subscription_status_keyboard(
                             has_active_subscription=True,
-                            recurring_enabled=bool(payment_method_saved and payment_method_id),
+                            recurring_enabled=recurring_enabled,
                         ),
                     )
             except Exception as exc:
-                logger.error("Background poll activation error: %s", exc)
+                logger.error("Ошибка активации подписки при polling: %s", exc)
             return
 
         if status == "canceled":
@@ -1208,10 +1013,7 @@ async def _poll_payment_and_activate(
                     await bot.edit_message_text(
                         chat_id=chat_id,
                         message_id=message_id,
-                        text=(
-                            "❌ Платёж отменён.\n"
-                            "Попробуйте оформить подписку снова."
-                        ),
+                        text=texts.PAYMENT_CANCELLED,
                         reply_markup=KeyboardManager.get_subscription_status_keyboard(
                             has_active_subscription=False,
                         ),
@@ -1219,25 +1021,22 @@ async def _poll_payment_and_activate(
                 except Exception:
                     await bot.send_message(
                         chat_id=chat_id,
-                        text=(
-                            "❌ Платёж отменён.\n"
-                            "Попробуйте оформить подписку снова."
-                        ),
+                        text=texts.PAYMENT_CANCELLED,
                         reply_markup=KeyboardManager.get_subscription_status_keyboard(
                             has_active_subscription=False,
                         ),
                     )
             except Exception as exc:
-                logger.error("Background poll cancel handling error: %s", exc)
+                logger.error("Ошибка обработки отмены при polling: %s", exc)
             return
 
     # Exhausted all attempts — payment still pending, user can use the button
-    logger.info("Background poll exhausted for payment %s, user %s", payment_id, telegram_user_id)
+    logger.info("Фоновый polling исчерпан для платежа %s, пользователь %s", payment_id, telegram_user_id)
 
 
 @router.callback_query(F.data == "start_payment")
 async def start_payment_callback(callback: CallbackQuery, bot: Bot, state: FSMContext) -> Any:
-    """Handle start payment callback - ask for email before creating payment."""
+    """Обработка callback начала оплаты — запрос email."""
     user = callback.from_user
     if not user:
         await callback.answer()
@@ -1247,10 +1046,7 @@ async def start_payment_callback(callback: CallbackQuery, bot: Bot, state: FSMCo
 
     payment_service = get_payment_service()
     if payment_service is None:
-        await callback.message.edit_text(
-            "⚠️ Платежи временно недоступны.\n"
-            "Обратитесь в поддержку для оформления подписки."
-        )
+        await callback.message.edit_text(texts.PAYMENT_UNAVAILABLE)
         await callback.answer()
         return
 
@@ -1261,8 +1057,7 @@ async def start_payment_callback(callback: CallbackQuery, bot: Bot, state: FSMCo
     ])
 
     await callback.message.edit_text(
-        "По закону мы обязаны отправить вам чек об оплате 🧾\n\n"
-        "Пожалуйста, напишите ваш email, куда мы сможем его прислать:",
+        texts.EMAIL_REQUEST,
         reply_markup=back_keyboard,
     )
     await callback.answer()
@@ -1275,18 +1070,14 @@ async def _create_payment_and_respond(
     user_email: Optional[str],
     state: FSMContext,
 ) -> None:
-    """Shared logic: create YooKassa payment and send the payment link."""
+    """Общая логика: создание платежа YooKassa и отправка ссылки."""
     from coffee_oracle.services.payment_service import get_payment_service
 
     await state.clear()
 
     payment_service = get_payment_service()
     if payment_service is None:
-        await bot.send_message(
-            chat_id,
-            "⚠️ Платежи временно недоступны.\n"
-            "Обратитесь в поддержку для оформления подписки.",
-        )
+        await bot.send_message(chat_id, texts.PAYMENT_UNAVAILABLE)
         return
 
     async for session in db_manager.get_session():
@@ -1298,7 +1089,7 @@ async def _create_payment_and_respond(
             telegram_user_id, source=_SOURCE,
         )
         if not db_user:
-            await bot.send_message(chat_id, "Пользователь не найден. Используйте /start")
+            await bot.send_message(chat_id, texts.USER_NOT_FOUND)
             return
 
         # Save email for future recurring payments (54-ФЗ receipts)
@@ -1311,23 +1102,17 @@ async def _create_payment_and_respond(
             price = float(price_str) if price_str else 300.0
             price_kopecks = int(price * 100)
 
-            description = "Подписка Coffee Oracle (1 месяц)"
-
             result = await payment_service.create_first_payment(
                 amount=price_kopecks,
-                description=description,
+                description=texts.SUBSCRIPTION_DESCRIPTION,
                 user_id=telegram_user_id,
                 user_email=user_email,
             )
 
             if not result.get("success"):
                 error_msg = result.get("error", "Неизвестная ошибка")
-                logger.error("Failed to create payment via YooKassa: %s", error_msg)
-                await bot.send_message(
-                    chat_id,
-                    "❌ Ошибка создания платежа.\n"
-                    "Попробуйте позже или обратитесь в поддержку.",
-                )
+                logger.error("Ошибка создания платежа YooKassa: %s", error_msg)
+                await bot.send_message(chat_id, texts.PAYMENT_CREATE_ERROR)
                 return
 
             payment_id = result["payment_id"]
@@ -1344,21 +1129,11 @@ async def _create_payment_and_respond(
 
             payment_service.set_pending_payment(telegram_user_id, payment_id)
 
-            recurring_note = ""
-            if not is_recurring:
-                recurring_note = (
-                    "\n⚠️ Автопродление временно недоступно. "
-                    "По истечении подписки потребуется оплатить заново."
-                )
+            recurring_note = "" if is_recurring else texts.RECURRING_UNAVAILABLE_NOTE
 
             sent = await bot.send_message(
                 chat_id,
-                "💳 Для оплаты подписки перейдите по ссылке ниже.\n\n"
-                f"Сумма: {price:.0f} ₽\n"
-                "Период: 1 месяц\n\n"
-                f"Продолжая оплату, вы соглашаетесь с <a href=\"https://{config.domain}/terms\">условиями использования</a> "
-                f"и <a href=\"https://{config.domain}/privacy\">политикой конфиденциальности</a>.\n\n"
-                f"Статус оплаты обновится автоматически.{recurring_note}",
+                texts.payment_link_text_html(price, config.domain, recurring_note),
                 reply_markup=KeyboardManager.get_subscription_keyboard(payment_url=confirmation_url),
                 parse_mode="HTML",
             )
@@ -1374,20 +1149,16 @@ async def _create_payment_and_respond(
             )
 
         except Exception as e:
-            logger.error("Unexpected error in payment flow: %s", e)
+            logger.error("Непредвиденная ошибка в потоке оплаты: %s", e)
             try:
-                await bot.send_message(
-                    chat_id,
-                    "❌ Произошла непредвиденная ошибка.\n"
-                    "Попробуйте позже или обратитесь в поддержку.",
-                )
+                await bot.send_message(chat_id, texts.PAYMENT_UNEXPECTED_ERROR)
             except Exception:
                 pass
 
 
 @router.message(PaymentStates.waiting_for_email)
 async def email_input_handler(message: Message, bot: Bot, state: FSMContext) -> Any:
-    """Validate email and proceed to payment creation."""
+    """Валидация email и переход к созданию платежа."""
     email = message.text.strip() if message.text else ""
 
     if not EMAIL_RE.match(email):
@@ -1395,13 +1166,12 @@ async def email_input_handler(message: Message, bot: Bot, state: FSMContext) -> 
             [InlineKeyboardButton(text="◀️ Назад в меню", callback_data="back_to_menu")],
         ])
         await message.answer(
-            "❌ Некорректный email. Попробуйте ещё раз.\n\n"
-            "Пример: user@example.com",
+            texts.EMAIL_INVALID,
             reply_markup=back_keyboard,
         )
         return
 
-    await message.answer(f"✉️ Чек будет отправлен на {email}\n⏳ Создаём платёж...")
+    await message.answer(texts.email_confirmed(email))
     await _create_payment_and_respond(
         bot=bot,
         chat_id=message.chat.id,
@@ -1413,7 +1183,7 @@ async def email_input_handler(message: Message, bot: Bot, state: FSMContext) -> 
 
 @router.callback_query(F.data == "check_payment")
 async def check_payment_callback(callback: CallbackQuery) -> Any:
-    """Handle check payment callback - verify payment status via YooKassa API."""
+    """Обработка callback проверки статуса платежа."""
     user = callback.from_user
     if not user:
         await callback.answer()
@@ -1423,17 +1193,14 @@ async def check_payment_callback(callback: CallbackQuery) -> Any:
 
     payment_service = get_payment_service()
     if payment_service is None:
-        await callback.message.edit_text(
-            "⚠️ Платежи временно недоступны.\n"
-            "Обратитесь в поддержку для оформления подписки."
-        )
+        await callback.message.edit_text(texts.PAYMENT_UNAVAILABLE)
         await callback.answer()
         return
 
     # Get pending payment for this user
     payment_id = payment_service.get_pending_payment(user.id)
     if not payment_id:
-        await callback.message.edit_text("ℹ️ Нет ожидающих платежей.")
+        await callback.message.edit_text(texts.NO_PENDING_PAYMENTS)
         await callback.answer()
         return
 
@@ -1443,7 +1210,7 @@ async def check_payment_callback(callback: CallbackQuery) -> Any:
 
         db_user = await user_repo.get_user_by_telegram_id(user.id, source=_SOURCE)
         if not db_user:
-            await callback.message.edit_text("Пользователь не найден. Используйте /start")
+            await callback.message.edit_text(texts.USER_NOT_FOUND)
             await callback.answer()
             return
 
@@ -1451,11 +1218,8 @@ async def check_payment_callback(callback: CallbackQuery) -> Any:
             status_result = await payment_service.get_payment_status(payment_id)
 
             if not status_result.get("success"):
-                logger.error("Failed to get payment status: %s", status_result.get("error"))
-                await callback.message.edit_text(
-                    "❌ Не удалось проверить статус платежа.\n"
-                    "Попробуйте позже."
-                )
+                logger.error("Ошибка получения статуса платежа: %s", status_result.get("error"))
+                await callback.message.edit_text(texts.PAYMENT_STATUS_CHECK_FAILED)
                 await callback.answer()
                 return
 
@@ -1478,19 +1242,23 @@ async def check_payment_callback(callback: CallbackQuery) -> Any:
                 # Clear pending payment
                 payment_service.clear_pending_payment(user.id)
 
+                recurring_enabled = bool(payment_method_saved and payment_method_id)
+                success_text = (
+                    texts.PAYMENT_SUCCESS_RECURRING if recurring_enabled
+                    else texts.PAYMENT_SUCCESS
+                )
+
                 await callback.message.edit_text(
-                    "✅ Оплата прошла успешно!\n\n"
-                    "Премиум-подписка активирована на 1 месяц.\n"
-                    "Спасибо за поддержку! ☕",
+                    success_text,
                     reply_markup=KeyboardManager.get_subscription_status_keyboard(
                         has_active_subscription=True,
-                        recurring_enabled=bool(payment_method_saved and payment_method_id),
+                        recurring_enabled=recurring_enabled,
                     ),
                 )
 
             elif status == "pending":
                 await callback.message.edit_text(
-                    "⏳ Платёж ещё обрабатывается, проверьте позже.",
+                    texts.PAYMENT_PENDING,
                     reply_markup=KeyboardManager.get_subscription_keyboard(),
                 )
 
@@ -1502,8 +1270,7 @@ async def check_payment_callback(callback: CallbackQuery) -> Any:
                 payment_service.clear_pending_payment(user.id)
 
                 await callback.message.edit_text(
-                    "❌ Платёж отменён.\n"
-                    "Попробуйте оформить подписку снова.",
+                    texts.PAYMENT_CANCELLED,
                     reply_markup=KeyboardManager.get_subscription_status_keyboard(
                         has_active_subscription=False,
                     ),
@@ -1511,18 +1278,14 @@ async def check_payment_callback(callback: CallbackQuery) -> Any:
 
             else:
                 await callback.message.edit_text(
-                    f"ℹ️ Статус платежа: {status}.\n"
-                    "Попробуйте проверить позже.",
+                    texts.payment_status_unknown(status),
                     reply_markup=KeyboardManager.get_subscription_keyboard(),
                 )
 
         except Exception as e:
-            logger.error("Unexpected error checking payment status: %s", e)
+            logger.error("Непредвиденная ошибка проверки платежа: %s", e)
             try:
-                await callback.message.edit_text(
-                    "❌ Произошла ошибка при проверке платежа.\n"
-                    "Попробуйте позже."
-                )
+                await callback.message.edit_text(texts.PAYMENT_CHECK_ERROR)
             except Exception:
                 pass
 
@@ -1535,9 +1298,8 @@ async def check_payment_callback(callback: CallbackQuery) -> Any:
     "📞 Поддержка", "💎 Подписка"
 ]))
 async def text_handler(message: Message) -> Any:
-    """Handle other text messages."""
+    """Обработка прочих текстовых сообщений."""
     await message.answer(
-        "🔮 Я понимаю только язык кофейной гущи! \n\n"
-        "Отправьте фото вашей кофейной чашки или воспользуйтесь меню ниже.",
+        texts.UNKNOWN_TEXT_MESSAGE,
         reply_markup=KeyboardManager.get_main_menu_with_subscription()
     )

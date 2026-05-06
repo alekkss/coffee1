@@ -12,6 +12,7 @@ import re
 import random
 from typing import Any, Dict, List, Optional
 
+from coffee_oracle.bot import texts
 from coffee_oracle.config import config
 from coffee_oracle.database.connection import db_manager
 from coffee_oracle.database.repositories import (
@@ -293,22 +294,18 @@ async def _poll_payment_and_activate(
 
                 payment_service.clear_pending_payment(max_user_id)
 
-                recurring_msg = ""
-                if status_result.get("payment_method_saved"):
-                    recurring_msg = "\n🔄 Автопродление включено."
-
+                recurring_enabled = bool(
+                    status_result.get("payment_method_saved")
+                    and status_result.get("payment_method_id")
+                )
                 success_text = (
-                    "✅ Оплата прошла успешно!\n\n"
-                    "Премиум-подписка активирована на 1 месяц.\n"
-                    f"Спасибо за поддержку! ☕{recurring_msg}"
+                    texts.PAYMENT_SUCCESS_RECURRING if recurring_enabled
+                    else texts.PAYMENT_SUCCESS
                 )
 
                 keyboard = MaxKeyboardManager.get_subscription_status_keyboard(
                     has_active_subscription=True,
-                    recurring_enabled=bool(
-                        status_result.get("payment_method_saved")
-                        and status_result.get("payment_method_id")
-                    ),
+                    recurring_enabled=recurring_enabled,
                 )
 
                 # Пробуем отредактировать, иначе — новое сообщение
@@ -344,10 +341,6 @@ async def _poll_payment_and_activate(
 
                 payment_service.clear_pending_payment(max_user_id)
 
-                cancel_text = (
-                    "❌ Платёж отменён.\n"
-                    "Попробуйте оформить подписку снова."
-                )
                 keyboard = MaxKeyboardManager.get_subscription_status_keyboard(
                     has_active_subscription=False,
                 )
@@ -356,7 +349,7 @@ async def _poll_payment_and_activate(
                     try:
                         await api_client.edit_message(
                             message_id=processing_msg_id,
-                            text=cancel_text,
+                            text=texts.PAYMENT_CANCELLED,
                             attachments=[keyboard],
                         )
                         return
@@ -365,7 +358,7 @@ async def _poll_payment_and_activate(
 
                 await api_client.send_message(
                     chat_id=chat_id,
-                    text=cancel_text,
+                    text=texts.PAYMENT_CANCELLED,
                     attachments=[keyboard],
                 )
 
@@ -484,14 +477,7 @@ class MaxBotHandlers:
 
         welcome_template = await _get_bot_text(
             "welcome_message",
-            "🔮 Добро пожаловать в мир Кофейного Оракула, {name}!\n\n"
-            "Я помогу вам узнать, что говорят узоры кофейной гущи "
-            "о вашем будущем. Просто сфотографируйте дно выпитой "
-            "чашки кофе, и я открою вам тайны, которые скрывают "
-            "эти магические узоры.\n\n"
-            "✨ Все предсказания несут только позитивную энергию "
-            "и вдохновение!\n\n"
-            "Выберите действие:",
+            texts.WELCOME_MESSAGE_FALLBACK,
         )
 
         welcome_text = welcome_template.replace("{name}", db_user.full_name)
@@ -542,8 +528,7 @@ class MaxBotHandlers:
         # Неизвестный тип контента
         await self._api.send_message(
             chat_id=chat_id,
-            text="📸 Пожалуйста, отправьте фотографию кофейной чашки "
-                 "с гущей или воспользуйтесь кнопками меню.",
+            text=texts.UNKNOWN_CONTENT_TYPE,
             attachments=[MaxKeyboardManager.get_main_menu_with_subscription()],
         )
 
@@ -602,9 +587,7 @@ class MaxBotHandlers:
             # Произвольный текст — предложить меню
             await self._api.send_message(
                 chat_id=chat_id,
-                text="🔮 Я понимаю только язык кофейной гущи!\n\n"
-                     "Отправьте фото вашей кофейной чашки "
-                     "или воспользуйтесь кнопками меню.",
+                text=texts.UNKNOWN_TEXT_MESSAGE,
                 attachments=[MaxKeyboardManager.get_main_menu_with_subscription()],
             )
 
@@ -633,8 +616,7 @@ class MaxBotHandlers:
         if not _EMAIL_RE.match(email):
             await self._api.send_message(
                 chat_id=chat_id,
-                text="❌ Некорректный email. Попробуйте ещё раз.\n\n"
-                     "Пример: user@example.com",
+                text=texts.EMAIL_INVALID,
                 attachments=[MaxKeyboardManager.get_email_cancel_keyboard()],
             )
             return
@@ -644,7 +626,7 @@ class MaxBotHandlers:
 
         await self._api.send_message(
             chat_id=chat_id,
-            text=f"✉️ Чек будет отправлен на {email}\n⏳ Создаём платёж...",
+            text=texts.email_confirmed(email),
         )
 
         await self._create_payment_and_respond(
@@ -678,8 +660,7 @@ class MaxBotHandlers:
         if payment_service is None:
             await self._api.send_message(
                 chat_id=chat_id,
-                text="⚠️ Платежи временно недоступны.\n"
-                     "Обратитесь в поддержку для оформления подписки.",
+                text=texts.PAYMENT_UNAVAILABLE,
             )
             return
 
@@ -694,7 +675,7 @@ class MaxBotHandlers:
             if not db_user:
                 await self._api.send_message(
                     chat_id=chat_id,
-                    text="Пользователь не найден. Используйте /start",
+                    text=texts.USER_NOT_FOUND,
                 )
                 return
 
@@ -708,11 +689,9 @@ class MaxBotHandlers:
                 price = float(price_str) if price_str else 300.0
                 price_kopecks = int(price * 100)
 
-                description = "Подписка Coffee Oracle (1 месяц)"
-
                 result = await payment_service.create_first_payment(
                     amount=price_kopecks,
-                    description=description,
+                    description=texts.SUBSCRIPTION_DESCRIPTION,
                     user_id=max_user_id,
                     user_email=user_email,
                     return_url=f"https://max.ru/{config.max_bot_id}" if config.max_bot_id else "https://max.ru",
@@ -726,8 +705,7 @@ class MaxBotHandlers:
                     )
                     await self._api.send_message(
                         chat_id=chat_id,
-                        text="❌ Ошибка создания платежа.\n"
-                             "Попробуйте позже или обратитесь в поддержку.",
+                        text=texts.PAYMENT_CREATE_ERROR,
                     )
                     return
 
@@ -747,22 +725,10 @@ class MaxBotHandlers:
                 # Запоминаем pending-платёж в памяти
                 payment_service.set_pending_payment(max_user_id, payment_id)
 
-                recurring_note = ""
-                if not is_recurring:
-                    recurring_note = (
-                        "\n⚠️ Автопродление временно недоступно. "
-                        "По истечении подписки потребуется оплатить заново."
-                    )
+                recurring_note = "" if is_recurring else texts.RECURRING_UNAVAILABLE_NOTE
 
-                domain = config.domain
-                payment_text = (
-                    "💳 Для оплаты подписки перейдите по ссылке ниже.\n\n"
-                    f"Сумма: {price:.0f} ₽\n"
-                    "Период: 1 месяц\n\n"
-                    f"Продолжая оплату, вы соглашаетесь с условиями использования "
-                    f"(https://{domain}/terms) и политикой конфиденциальности "
-                    f"(https://{domain}/privacy).\n\n"
-                    f"Статус оплаты обновится автоматически.{recurring_note}"
+                payment_text = texts.payment_link_text(
+                    price, config.domain, recurring_note,
                 )
 
                 sent_msg = await self._api.send_message(
@@ -793,8 +759,7 @@ class MaxBotHandlers:
                 )
                 await self._api.send_message(
                     chat_id=chat_id,
-                    text="❌ Произошла непредвиденная ошибка.\n"
-                         "Попробуйте позже или обратитесь в поддержку.",
+                    text=texts.PAYMENT_UNEXPECTED_ERROR,
                 )
 
     # ────────────────────────────────────────────
@@ -814,10 +779,7 @@ class MaxBotHandlers:
 
         welcome_template = await _get_bot_text(
             "welcome_message",
-            "🔮 Добро пожаловать в мир Кофейного Оракула, {name}!\n\n"
-            "Просто сфотографируйте дно выпитой чашки кофе, "
-            "и я открою вам тайны узоров.\n\n"
-            "Выберите действие:",
+            texts.WELCOME_MESSAGE_FALLBACK,
         )
 
         welcome_text = welcome_template.replace("{name}", db_user.full_name)
@@ -832,7 +794,7 @@ class MaxBotHandlers:
         """Обработка команды /help."""
         await self._api.send_message(
             chat_id=chat_id,
-            text="📚 Искусство гадания на кофейной гуще",
+            text=texts.HELP_TITLE,
             attachments=[MaxKeyboardManager.get_help_menu()],
         )
 
@@ -840,12 +802,7 @@ class MaxBotHandlers:
         """Обработка команды /predict."""
         instruction = await _get_bot_text(
             "photo_instruction",
-            "📸 Отправьте мне фотографию дна вашей кофейной чашки!\n\n"
-            "Убедитесь, что:\n"
-            "• Узоры кофейной гущи хорошо видны\n"
-            "• Освещение достаточное\n"
-            "• Фото сделано сверху\n\n"
-            "Я внимательно изучу узоры и расскажу, что они предвещают! ✨",
+            texts.PHOTO_INSTRUCTION_FALLBACK,
         )
 
         await self._api.send_message(chat_id=chat_id, text=instruction)
@@ -866,8 +823,7 @@ class MaxBotHandlers:
             if not db_user:
                 await self._api.send_message(
                     chat_id=chat_id,
-                    text="Сначала получите ваше первое предсказание! 🔮\n\n"
-                         "Отправьте фото кофейной чашки.",
+                    text=texts.NO_USER_FOR_HISTORY,
                 )
                 return
 
@@ -876,8 +832,7 @@ class MaxBotHandlers:
             if not predictions:
                 await self._api.send_message(
                     chat_id=chat_id,
-                    text="📜 У вас пока нет предсказаний в истории.\n\n"
-                         "Отправьте фото кофейной чашки с гущей! ☕✨",
+                    text=texts.EMPTY_HISTORY,
                 )
                 return
 
@@ -897,29 +852,10 @@ class MaxBotHandlers:
 
     async def _handle_random_command(self, chat_id: int) -> None:
         """Обработка команды /random."""
-        random_predictions = [
-            "🌟 Сегодня звезды благоволят вашим начинаниям! "
-            "Смело идите к своим целям, удача на вашей стороне.",
-            "💫 Впереди вас ждет приятная встреча, которая может "
-            "изменить ваш взгляд на многие вещи к лучшему.",
-            "🍀 Ваша интуиция сегодня особенно сильна. "
-            "Доверьтесь внутреннему голосу — он не подведет.",
-            "✨ Скоро в вашу жизнь войдет что-то новое и прекрасное. "
-            "Будьте открыты для перемен!",
-            "🌈 После небольших трудностей вас ждет период гармонии "
-            "и процветания. Не сдавайтесь!",
-            "🎭 Ваши творческие способности сейчас на пике. "
-            "Время воплощать смелые идеи в жизнь!",
-            "🌸 Любовь и дружба окружат вас теплом. Цените близких "
-            "людей — они ваша главная сила.",
-            "🚀 Впереди открываются новые возможности для роста. "
-            "Не бойтесь выходить из зоны комфорта!",
-        ]
-
-        prediction = random.choice(random_predictions)
+        prediction = random.choice(texts.RANDOM_PREDICTIONS)
         await self._api.send_message(
             chat_id=chat_id,
-            text=f"🔮 Случайное предсказание от Кофейного Оракула:\n\n{prediction}",
+            text=f"{texts.RANDOM_PREDICTION_HEADER}{prediction}",
             attachments=[MaxKeyboardManager.get_prediction_actions()],
         )
 
@@ -927,15 +863,7 @@ class MaxBotHandlers:
         """Обработка команды /about."""
         about_text = await _get_bot_text(
             "about_text",
-            "🔮 Кофейный Оракул\n\n"
-            "Я — мистический бот, который умеет читать будущее "
-            "по узорам кофейной гущи.\n\n"
-            "✨ Особенности:\n"
-            "• Только позитивные предсказания\n"
-            "• Анализ реальных узоров гущи\n"
-            "• Мистический, но добрый подход\n"
-            "• История ваших предсказаний\n\n"
-            "Создано с ❤️ для любителей кофе и магии.",
+            texts.ABOUT_TEXT_FALLBACK,
         )
         await self._api.send_message(chat_id=chat_id, text=about_text)
 
@@ -943,27 +871,13 @@ class MaxBotHandlers:
         """Обработка команды /clear — запрос подтверждения."""
         await self._api.send_message(
             chat_id=chat_id,
-            text="🗑️ Очистить историю предсказаний\n\n"
-                 "⚠️ Это действие нельзя отменить!\n"
-                 "Все ваши предсказания будут удалены навсегда.\n\n"
-                 "Вы уверены?",
+            text=texts.CLEAR_HISTORY_CONFIRM,
             attachments=[MaxKeyboardManager.get_confirmation_keyboard("clear_history")],
         )
 
     async def _handle_support_command(self, chat_id: int) -> None:
         """Обработка команды /support."""
-        support_text = (
-            "📞 Поддержка Кофейного Оракула\n\n"
-            "🔮 Если у вас возникли вопросы или проблемы:\n\n"
-            "• Убедитесь, что отправляете именно фото (не файл)\n"
-            "• Проверьте качество освещения на фото\n"
-            "• Убедитесь, что гуща хорошо видна\n\n"
-            "❓ Частые вопросы:\n"
-            "• Бот не отвечает → Попробуйте /start\n"
-            "• Нет истории → Сначала получите предсказание\n\n"
-            "✨ Помните: магия требует терпения!"
-        )
-        await self._api.send_message(chat_id=chat_id, text=support_text)
+        await self._api.send_message(chat_id=chat_id, text=texts.SUPPORT_TEXT)
 
     async def _handle_subscription_command(
         self,
@@ -1005,31 +919,19 @@ class MaxBotHandlers:
             recurring_enabled, _ = await sub_repo.is_recurring_enabled(db_user.id)
 
             if status["type"] == "vip":
-                status_text = (
-                    "✨ Твой статус: VIP ⭐\n\n"
-                    f"Причина: {status.get('vip_reason', 'Особый гость Оракула')}\n\n"
-                    "Тебе открыты все тайны кофейных узоров!"
+                status_text = texts.subscription_status_vip(
+                    status.get("vip_reason"),
                 )
             elif status["type"] == "premium" and status["active"]:
-                status_text = (
-                    "✨ Твой статус: Премиум 💫\n\n"
-                    f"Магия действует до: {status['until'][:10]}\n\n"
-                    "Тебе открыты безграничные сеансы гадания!"
+                status_text = texts.subscription_status_premium(
+                    status["until"][:10],
                 )
                 if not recurring_enabled:
-                    status_text += (
-                        "\n\n⚠️ Автопродление выключено — "
-                        "подписка не продлится автоматически."
-                    )
+                    status_text += texts.SUBSCRIPTION_RECURRING_OFF_WARNING
             else:
-                remaining = status.get("predictions_remaining", 0)
                 used = status.get("predictions_used", 0)
                 limit = status.get("predictions_limit", 10)
-                status_text = (
-                    f"☕ Твой статус: Гость Оракула\n\n"
-                    f"🎁 Использовано бесплатных гаданий: {used} из {limit}\n\n"
-                    f"💰 Подписка для безлимита: {price}₽/мес"
-                )
+                status_text = texts.subscription_status_free(used, limit, price)
 
             has_active = (
                 status["type"] == "vip"
@@ -1082,19 +984,9 @@ class MaxBotHandlers:
                 price_str = await settings_repo.get_setting("subscription_price")
                 price = int(float(price_str)) if price_str else 300
 
-                paywall_text = (
-                    f"{reason}\n\n"
-                    "✨ Хочешь продолжить наше магическое путешествие?\n\n"
-                    "Оформи подписку и получи:\n"
-                    "• Безлимитные сеансы магии\n"
-                    "• Безграничную мудрость Оракула\n"
-                    "• Поддержку проекта ❤️\n\n"
-                    f"💰 Стоимость: {price}₽/мес"
-                )
-
                 await self._api.send_message(
                     chat_id=chat_id,
-                    text=paywall_text,
+                    text=texts.paywall_text(reason, price),
                     attachments=[MaxKeyboardManager.get_paywall_keyboard()],
                 )
                 return
@@ -1110,11 +1002,11 @@ class MaxBotHandlers:
         # Сообщение обработки
         photo_urls = self._photo.extract_photo_urls(message)
         if len(photo_urls) > 1:
-            processing_text = f"🔮 Получено {len(photo_urls)} фото. Изучаю узоры... ✨"
+            processing_text = texts.processing_message_multiple(len(photo_urls))
         else:
             processing_text = await _get_bot_text(
                 "processing_message",
-                "🔮 Смотрю в чашку... Звезды открывают свои тайны... ✨",
+                texts.PROCESSING_MESSAGE_FALLBACK,
             )
 
         processing_msg = await self._api.send_message(
@@ -1154,17 +1046,16 @@ class MaxBotHandlers:
 
         except Exception as e:
             logger.error("MAX: непредвиденная ошибка обработки фото: %s", e, exc_info=True)
-            error_text = "🔮 Произошла магическая помеха. Попробуйте ещё раз через несколько минут."
             if processing_msg_id:
-                await self._safe_edit_message(processing_msg_id, error_text)
+                await self._safe_edit_message(processing_msg_id, texts.PHOTO_PROCESSING_ERROR)
             else:
-                await self._api.send_message(chat_id=chat_id, text=error_text)
+                await self._api.send_message(chat_id=chat_id, text=texts.PHOTO_PROCESSING_ERROR)
             return
 
         if not prediction_text:
             await self._safe_edit_message(
                 processing_msg_id,
-                "🔮 Не удалось получить предсказание. Попробуйте ещё раз.",
+                texts.PREDICTION_FAILED,
             )
             return
 
@@ -1429,8 +1320,7 @@ class MaxBotHandlers:
         if payment_service is None:
             await self._api.send_message(
                 chat_id=chat_id,
-                text="⚠️ Платежи временно недоступны.\n"
-                     "Обратитесь в поддержку для оформления подписки.",
+                text=texts.PAYMENT_UNAVAILABLE,
             )
             return
 
@@ -1443,8 +1333,7 @@ class MaxBotHandlers:
 
         await self._api.send_message(
             chat_id=chat_id,
-            text="По закону мы обязаны отправить вам чек об оплате 🧾\n\n"
-                 "Пожалуйста, напишите ваш email, куда мы сможем его прислать:",
+            text=texts.EMAIL_REQUEST,
             attachments=[MaxKeyboardManager.get_email_cancel_keyboard()],
         )
 
@@ -1463,7 +1352,7 @@ class MaxBotHandlers:
         if payment_service is None:
             await self._api.send_message(
                 chat_id=chat_id,
-                text="⚠️ Платежи временно недоступны.",
+                text=texts.PAYMENT_UNAVAILABLE,
             )
             return
 
@@ -1472,7 +1361,7 @@ class MaxBotHandlers:
         if not payment_id:
             await self._api.send_message(
                 chat_id=chat_id,
-                text="ℹ️ Нет ожидающих платежей.",
+                text=texts.NO_PENDING_PAYMENTS,
             )
             return
 
@@ -1486,7 +1375,7 @@ class MaxBotHandlers:
             if not db_user:
                 await self._api.send_message(
                     chat_id=chat_id,
-                    text="Пользователь не найден. Используйте /start",
+                    text=texts.USER_NOT_FOUND,
                 )
                 return
 
@@ -1500,8 +1389,7 @@ class MaxBotHandlers:
                     )
                     await self._api.send_message(
                         chat_id=chat_id,
-                        text="❌ Не удалось проверить статус платежа.\n"
-                             "Попробуйте позже.",
+                        text=texts.PAYMENT_STATUS_CHECK_FAILED,
                     )
                     return
 
@@ -1524,23 +1412,21 @@ class MaxBotHandlers:
                     await sub_repo.update_payment_status(payment_id, "succeeded")
                     payment_service.clear_pending_payment(user.user_id)
 
-                    recurring_msg = ""
-                    if payment_method_saved:
-                        recurring_msg = "\n🔄 Автопродление включено."
+                    recurring_enabled = bool(
+                        payment_method_saved and payment_method_id,
+                    )
+                    success_text = (
+                        texts.PAYMENT_SUCCESS_RECURRING if recurring_enabled
+                        else texts.PAYMENT_SUCCESS
+                    )
 
                     await self._api.send_message(
                         chat_id=chat_id,
-                        text=(
-                            "✅ Оплата прошла успешно!\n\n"
-                            "Премиум-подписка активирована на 1 месяц.\n"
-                            f"Спасибо за поддержку! ☕{recurring_msg}"
-                        ),
+                        text=success_text,
                         attachments=[
                             MaxKeyboardManager.get_subscription_status_keyboard(
                                 has_active_subscription=True,
-                                recurring_enabled=bool(
-                                    payment_method_saved and payment_method_id
-                                ),
+                                recurring_enabled=recurring_enabled,
                             ),
                         ],
                     )
@@ -1548,7 +1434,7 @@ class MaxBotHandlers:
                 elif status == "pending":
                     await self._api.send_message(
                         chat_id=chat_id,
-                        text="⏳ Платёж ещё обрабатывается, проверьте позже.",
+                        text=texts.PAYMENT_PENDING,
                         attachments=[
                             MaxKeyboardManager.get_subscription_keyboard(),
                         ],
@@ -1560,8 +1446,7 @@ class MaxBotHandlers:
 
                     await self._api.send_message(
                         chat_id=chat_id,
-                        text="❌ Платёж отменён.\n"
-                             "Попробуйте оформить подписку снова.",
+                        text=texts.PAYMENT_CANCELLED,
                         attachments=[
                             MaxKeyboardManager.get_subscription_status_keyboard(
                                 has_active_subscription=False,
@@ -1572,8 +1457,7 @@ class MaxBotHandlers:
                 else:
                     await self._api.send_message(
                         chat_id=chat_id,
-                        text=f"ℹ️ Статус платежа: {status}.\n"
-                             "Попробуйте проверить позже.",
+                        text=texts.payment_status_unknown(status),
                         attachments=[
                             MaxKeyboardManager.get_subscription_keyboard(),
                         ],
@@ -1586,17 +1470,14 @@ class MaxBotHandlers:
                 )
                 await self._api.send_message(
                     chat_id=chat_id,
-                    text="❌ Произошла ошибка при проверке платежа.\n"
-                         "Попробуйте позже.",
+                    text=texts.PAYMENT_CHECK_ERROR,
                 )
 
     async def _callback_cancel_subscription(self, chat_id: int) -> None:
         """Callback: запрос подтверждения отмены автопродления."""
         await self._api.send_message(
             chat_id=chat_id,
-            text="⚠️ Вы уверены, что хотите отменить подписку?\n\n"
-                 "Автопродление будет отключено, а доступ сохранится "
-                 "до конца оплаченного периода.",
+            text=texts.CANCEL_SUBSCRIPTION_CONFIRM,
             attachments=[
                 MaxKeyboardManager.get_cancel_subscription_confirmation(),
             ],
@@ -1619,7 +1500,7 @@ class MaxBotHandlers:
                 if not db_user:
                     await self._api.send_message(
                         chat_id=chat_id,
-                        text="Пользователь не найден. Используйте /start",
+                        text=texts.USER_NOT_FOUND,
                     )
                     return
 
@@ -1632,16 +1513,9 @@ class MaxBotHandlers:
                     else ""
                 )
 
-            until_text = f"\n📅 Доступ сохранится до: {until}" if until else ""
-
             await self._api.send_message(
                 chat_id=chat_id,
-                text=(
-                    "✅ Автопродление отключено\n\n"
-                    "Премиум-функции останутся доступны до конца "
-                    f"оплаченного периода.{until_text}\n\n"
-                    "Вы всегда можете оформить подписку снова. ☕"
-                ),
+                text=texts.cancel_subscription_success(until),
                 attachments=[
                     MaxKeyboardManager.get_subscription_status_keyboard(
                         has_active_subscription=bool(until),
@@ -1655,8 +1529,7 @@ class MaxBotHandlers:
             logger.error("MAX: ошибка отмены подписки: %s", e, exc_info=True)
             await self._api.send_message(
                 chat_id=chat_id,
-                text="❌ Произошла ошибка при отмене подписки.\n"
-                     "Попробуйте позже или обратитесь в поддержку.",
+                text=texts.CANCEL_SUBSCRIPTION_ERROR,
             )
 
     # ────────────────────────────────────────────
@@ -1679,7 +1552,7 @@ class MaxBotHandlers:
             if not db_user:
                 await self._api.send_message(
                     chat_id=chat_id,
-                    text="Сначала получите ваше первое предсказание! 🔮",
+                    text=texts.NO_USER_FOR_HISTORY,
                 )
                 return
 
@@ -1688,8 +1561,7 @@ class MaxBotHandlers:
             if not predictions:
                 await self._api.send_message(
                     chat_id=chat_id,
-                    text="📜 У вас пока нет предсказаний. "
-                         "Отправьте фото кофейной чашки! ☕✨",
+                    text=texts.EMPTY_HISTORY,
                 )
                 return
 
@@ -1709,7 +1581,7 @@ class MaxBotHandlers:
         """Callback: возврат в главное меню."""
         await self._api.send_message(
             chat_id=chat_id,
-            text="📋 Главное меню Кофейного Оракула\n\nВыберите действие:",
+            text=texts.MAIN_MENU_TEXT,
             attachments=[MaxKeyboardManager.get_main_menu_with_subscription()],
         )
 
@@ -1717,8 +1589,7 @@ class MaxBotHandlers:
         """Callback: отмена действия."""
         await self._api.send_message(
             chat_id=chat_id,
-            text="❌ Действие отменено\n\n"
-                 "Используйте кнопки меню для выбора других действий.",
+            text=texts.ACTION_CANCELLED_MAX,
             attachments=[MaxKeyboardManager.get_main_menu_with_subscription()],
         )
 
@@ -1760,9 +1631,7 @@ class MaxBotHandlers:
 
                 await self._api.send_message(
                     chat_id=chat_id,
-                    text="✅ История предсказаний очищена!\n\n"
-                         "Теперь вы можете начать с чистого листа. "
-                         "Отправьте фото кофейной чашки для нового предсказания! 🔮",
+                    text=texts.CLEAR_HISTORY_SUCCESS,
                     attachments=[MaxKeyboardManager.get_main_menu_with_subscription()],
                 )
 
@@ -1770,8 +1639,7 @@ class MaxBotHandlers:
                 logger.error("MAX: ошибка очистки истории: %s", e)
                 await self._api.send_message(
                     chat_id=chat_id,
-                    text="❌ Произошла ошибка при очистке истории.\n"
-                         "Попробуйте позже.",
+                    text=texts.CLEAR_HISTORY_ERROR,
                 )
 
     async def _callback_help_section(
@@ -1788,53 +1656,7 @@ class MaxBotHandlers:
             chat_id: ID чата для ответа.
         """
         help_type = payload.replace("help_", "", 1)
-
-        help_texts = {
-            "photo": (
-                "📸 Как правильно сфотографировать чашку:\n\n"
-                "1. ☕ Выпейте кофе, оставив немного гущи на дне\n"
-                "2. 🔄 Слегка покрутите чашку\n"
-                "3. 📱 Сделайте фото сверху при хорошем освещении\n"
-                "4. 🔍 Убедитесь, что узоры четко видны\n"
-                "5. 📤 Отправьте фото\n\n"
-                "💡 Совет: лучше всего фотографировать при дневном свете!"
-            ),
-            "coffee": (
-                "☕ Приготовление кофе для гадания:\n\n"
-                "1. ☕ Используйте молотый кофе среднего помола\n"
-                "2. 🔥 Заварите крепкий кофе (турка или френч-пресс)\n"
-                "3. 🥄 Не добавляйте сахар и молоко\n"
-                "4. 🍵 Выпейте, оставив 1-2 глотка с гущей\n"
-                "5. 🔄 Покрутите чашку 3 раза по часовой стрелке\n"
-                "6. ⏰ Подождите 2-3 минуты\n\n"
-                "✨ Чем крепче кофе, тем четче узоры!"
-            ),
-            "divination": (
-                "🔮 О гадании на кофейной гуще:\n\n"
-                "📜 Древнее искусство, пришедшее с Востока\n"
-                "🎨 Узоры гущи — это язык подсознания\n\n"
-                "🔍 Основные символы:\n"
-                "• Круги — гармония, завершение дел\n"
-                "• Линии — путешествия, перемены\n"
-                "• Звезды — исполнение желаний\n"
-                "• Цветы — любовь и радость\n"
-                "• Птицы — хорошие новости\n\n"
-                "💫 Помните: будущее в ваших руках!"
-            ),
-            "faq": (
-                "❓ Частые вопросы:\n\n"
-                "Q: Почему бот не отвечает на фото?\n"
-                "A: Проверьте качество фото и освещение\n\n"
-                "Q: Можно ли гадать на растворимом кофе?\n"
-                "A: Лучше использовать молотый кофе\n\n"
-                "Q: Сколько раз в день можно гадать?\n"
-                "A: Рекомендуется не чаще 2-3 раз\n\n"
-                "Q: Бот не работает, что делать?\n"
-                "A: Попробуйте команду /start"
-            ),
-        }
-
-        text = help_texts.get(help_type, "Информация не найдена")
+        text = texts.HELP_SECTIONS.get(help_type, "Информация не найдена")
         await self._api.send_message(
             chat_id=chat_id,
             text=text,
