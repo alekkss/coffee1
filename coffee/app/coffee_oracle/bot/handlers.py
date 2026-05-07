@@ -180,7 +180,7 @@ async def help_handler(message: Message) -> Any:
     await message.answer(faq_text)
 
 
-@router.message(F.text == "🔮 Получить предсказание")
+@router.message(F.text == texts.BTN_PREDICT)
 async def prediction_request_handler(message: Message) -> Any:
     """Обработка запроса на предсказание."""
     instruction_text = await get_bot_text(
@@ -189,7 +189,7 @@ async def prediction_request_handler(message: Message) -> Any:
     await message.answer(instruction_text)
 
 
-@router.message(F.text == "📜 Моя история")
+@router.message(F.text == texts.BTN_HISTORY)
 async def history_handler(message: Message) -> Any:
     """Обработка запроса истории предсказаний."""
     user = message.from_user
@@ -234,7 +234,7 @@ async def history_handler(message: Message) -> Any:
             await message.answer(chunk, parse_mode="HTML")
 
 
-@router.message(F.text == "ℹ️ Об Оракуле")
+@router.message(F.text == texts.BTN_ABOUT)
 async def about_handler(message: Message) -> Any:
     """Обработка запроса информации о боте."""
     about_text = await get_bot_text("about_text", texts.ABOUT_TEXT_FALLBACK)
@@ -281,8 +281,8 @@ async def photo_handler(
                 price = int(float(price_str)) if price_str else 300
 
                 keyboard = InlineKeyboardMarkup(inline_keyboard=[
-                    [InlineKeyboardButton(text="⭐ Оформить подписку", callback_data="start_payment")],
-                    [InlineKeyboardButton(text="◀️ Назад в меню", callback_data="back_to_menu")],
+                    [InlineKeyboardButton(text=texts.BTN_SUBSCRIBE, callback_data="start_payment")],
+                    [InlineKeyboardButton(text=texts.BTN_BACK_TO_MENU, callback_data="back_to_menu")],
                 ])
                 await message.answer(
                     texts.paywall_text(reason, price),
@@ -488,7 +488,7 @@ async def non_photo_handler(message: Message) -> Any:
     await message.answer(texts.NON_PHOTO_CONTENT)
 
 
-@router.message(F.text == "🎯 Случайное предсказание")
+@router.message(F.text == texts.BTN_RANDOM)
 async def random_prediction_handler(message: Message) -> Any:
     """Обработка запроса случайного предсказания."""
     prediction = random.choice(texts.RANDOM_PREDICTIONS)
@@ -498,14 +498,14 @@ async def random_prediction_handler(message: Message) -> Any:
     )
 
 
-@router.message(F.text == "❓ Частые вопросы")
+@router.message(F.text == texts.BTN_FAQ)
 async def faq_handler(message: Message) -> Any:
-    """Обработка кнопки «Частые вопросы» — показ FAQ напрямую."""
+    """Обработка кнопки «FAQ» — показ FAQ напрямую."""
     faq_text = texts.HELP_SECTIONS.get("faq", "Информация не найдена")
     await message.answer(faq_text)
 
 
-@router.message(F.text == "🗑️ Очистить историю")
+@router.message(F.text == texts.BTN_CLEAR)
 async def clear_history_handler(message: Message) -> Any:
     """Обработка запроса очистки истории."""
     await message.answer(
@@ -514,7 +514,7 @@ async def clear_history_handler(message: Message) -> Any:
     )
 
 
-@router.message(F.text == "📞 Поддержка")
+@router.message(F.text == texts.BTN_SUPPORT)
 async def support_handler(message: Message) -> Any:
     """Обработка запроса поддержки."""
     await message.answer(texts.SUPPORT_TEXT)
@@ -593,7 +593,7 @@ async def update_menu_command_handler(message: Message, bot: Bot) -> Any:
     try:
         commands = [
             BotCommand(command="start", description="🔮 Начать работу с ботом"),
-            BotCommand(command="help", description="❓ Частые вопросы"),
+            BotCommand(command="help", description="❓ FAQ"),
             BotCommand(command="predict", description="🔮 Получить предсказание"),
             BotCommand(command="history", description="📜 Моя история"),
             BotCommand(command="random", description="🎯 Случайное предсказание"),
@@ -703,8 +703,8 @@ async def help_callback(callback: CallbackQuery) -> Any:
 async def cancel_subscription_callback(callback: CallbackQuery) -> Any:
     """Запрос подтверждения отмены подписки."""
     keyboard = InlineKeyboardMarkup(inline_keyboard=[
-        [InlineKeyboardButton(text="✅ Да, отменить подписку", callback_data="confirm_cancel_sub")],
-        [InlineKeyboardButton(text="◀️ Нет, вернуться", callback_data="subscription_status")]
+        [InlineKeyboardButton(text=texts.BTN_CONFIRM_CANCEL_SUB, callback_data="confirm_cancel_sub")],
+        [InlineKeyboardButton(text=texts.BTN_BACK_NO, callback_data="subscription_status")]
     ])
     await callback.message.edit_text(
         texts.CANCEL_SUBSCRIPTION_CONFIRM,
@@ -752,8 +752,8 @@ async def confirm_cancel_subscription_callback(callback: CallbackQuery) -> Any:
         await callback.message.edit_text(
             texts.CANCEL_SUBSCRIPTION_ERROR,
             reply_markup=InlineKeyboardMarkup(inline_keyboard=[
-                [InlineKeyboardButton(text="🔄 Попробовать снова", callback_data="cancel_subscription")],
-                [InlineKeyboardButton(text="◀️ В меню", callback_data="back_to_menu")]
+                [InlineKeyboardButton(text=texts.BTN_RETRY, callback_data="cancel_subscription")],
+                [InlineKeyboardButton(text=texts.BTN_BACK_SHORT, callback_data="back_to_menu")]
             ])
         )
 
@@ -800,7 +800,7 @@ async def cancel_callback(callback: CallbackQuery) -> Any:
 
 # ===== Subscription Handlers =====
 
-@router.message(F.text == "💎 Подписка")
+@router.message(F.text == texts.BTN_SUBSCRIPTION)
 async def subscription_handler(message: Message) -> Any:
     """Обработка запроса статуса подписки."""
     user = message.from_user
@@ -1052,7 +1052,7 @@ async def start_payment_callback(callback: CallbackQuery, bot: Bot, state: FSMCo
     await state.set_state(PaymentStates.waiting_for_email)
 
     back_keyboard = InlineKeyboardMarkup(inline_keyboard=[
-        [InlineKeyboardButton(text="◀️ Назад в меню", callback_data="back_to_menu")],
+        [InlineKeyboardButton(text=texts.BTN_BACK_TO_MENU, callback_data="back_to_menu")],
     ])
 
     await callback.message.edit_text(
@@ -1162,7 +1162,7 @@ async def email_input_handler(message: Message, bot: Bot, state: FSMContext) -> 
 
     if not EMAIL_RE.match(email):
         back_keyboard = InlineKeyboardMarkup(inline_keyboard=[
-            [InlineKeyboardButton(text="◀️ Назад в меню", callback_data="back_to_menu")],
+            [InlineKeyboardButton(text=texts.BTN_BACK_TO_MENU, callback_data="back_to_menu")],
         ])
         await message.answer(
             texts.EMAIL_INVALID,
@@ -1292,9 +1292,9 @@ async def check_payment_callback(callback: CallbackQuery) -> Any:
 
 
 @router.message(F.text & ~F.text.in_([
-    "🔮 Получить предсказание", "📜 Моя история", "ℹ️ Об Оракуле",
-    "🎯 Случайное предсказание", "❓ Частые вопросы", "🗑️ Очистить историю",
-    "📞 Поддержка", "💎 Подписка"
+    texts.BTN_PREDICT, texts.BTN_HISTORY, texts.BTN_ABOUT,
+    texts.BTN_RANDOM, texts.BTN_FAQ, texts.BTN_CLEAR,
+    texts.BTN_SUPPORT, texts.BTN_SUBSCRIPTION,
 ]))
 async def text_handler(message: Message) -> Any:
     """Обработка прочих текстовых сообщений."""

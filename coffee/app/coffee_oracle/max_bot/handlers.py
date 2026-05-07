@@ -789,7 +789,7 @@ class MaxBotHandlers:
         )
 
     async def _handle_faq_command(self, chat_id: int) -> None:
-        """Обработка команды /help и кнопки «Частые вопросы» — показ FAQ напрямую."""
+        """Обработка команды /help и кнопки «FAQ» — показ FAQ напрямую."""
         faq_text = texts.HELP_SECTIONS.get("faq", "Информация не найдена")
         await self._api.send_message(chat_id=chat_id, text=faq_text)
 

@@ -3,9 +3,14 @@
 Формирует структуры inline-клавиатур в формате MAX Bot API.
 Каждая кнопка — словарь с полями type, text, payload/url.
 Клавиатура передаётся как вложение типа inline_keyboard.
+
+Названия кнопок импортируются из bot/texts.py —
+единого источника для TG и MAX ботов.
 """
 
 from typing import Any, Dict, List, Optional
+
+from coffee_oracle.bot import texts
 
 
 class MaxKeyboardManager:
@@ -46,43 +51,43 @@ class MaxKeyboardManager:
             [
                 {
                     "type": "callback",
-                    "text": "🔮 Получить предсказание",
+                    "text": texts.BTN_PREDICT,
                     "payload": "action_predict",
                 },
             ],
             [
                 {
                     "type": "callback",
-                    "text": "📜 Моя история",
+                    "text": texts.BTN_HISTORY,
                     "payload": "action_history",
                 },
                 {
                     "type": "callback",
-                    "text": "🎯 Случайное",
+                    "text": texts.BTN_RANDOM_SHORT,
                     "payload": "action_random",
                 },
             ],
             [
                 {
                     "type": "callback",
-                    "text": "❓ Частые вопросы",
+                    "text": texts.BTN_FAQ,
                     "payload": "action_faq",
                 },
                 {
                     "type": "callback",
-                    "text": "ℹ️ Об Оракуле",
+                    "text": texts.BTN_ABOUT,
                     "payload": "action_about",
                 },
             ],
             [
                 {
                     "type": "callback",
-                    "text": "🗑️ Очистить историю",
+                    "text": texts.BTN_CLEAR,
                     "payload": "action_clear",
                 },
                 {
                     "type": "callback",
-                    "text": "📞 Поддержка",
+                    "text": texts.BTN_SUPPORT,
                     "payload": "action_support",
                 },
             ],
@@ -103,50 +108,50 @@ class MaxKeyboardManager:
             [
                 {
                     "type": "callback",
-                    "text": "🔮 Получить предсказание",
+                    "text": texts.BTN_PREDICT,
                     "payload": "action_predict",
                 },
             ],
-            [   
+            [
                 {
                     "type": "callback",
-                    "text": "💎 Подписка",
+                    "text": texts.BTN_SUBSCRIPTION,
                     "payload": "action_subscription",
-                },                
+                },
                 {
                     "type": "callback",
-                    "text": "🎯 Случайное",
+                    "text": texts.BTN_RANDOM_SHORT,
                     "payload": "action_random",
                 },
             ],
             [
                 {
                     "type": "callback",
-                    "text": "📜 Моя история",
+                    "text": texts.BTN_HISTORY,
                     "payload": "action_history",
                 },
                 {
                     "type": "callback",
-                    "text": "❓ Частые вопросы",
+                    "text": texts.BTN_FAQ,
                     "payload": "action_faq",
                 },
             ],
             [
                 {
                     "type": "callback",
-                    "text": "ℹ️ Об Оракуле",
+                    "text": texts.BTN_ABOUT,
                     "payload": "action_about",
                 },
                 {
                     "type": "callback",
-                    "text": "📞 Поддержка",
+                    "text": texts.BTN_SUPPORT,
                     "payload": "action_support",
                 },
             ],
             [
                 {
                     "type": "callback",
-                    "text": "🗑️ Очистить историю",
+                    "text": texts.BTN_CLEAR,
                     "payload": "action_clear",
                 },
             ],
@@ -179,7 +184,7 @@ class MaxKeyboardManager:
             buttons.append([
                 {
                     "type": "callback",
-                    "text": "◀️ Назад в меню",
+                    "text": texts.BTN_BACK_TO_MENU,
                     "payload": "action_back_to_menu",
                 },
             ])
@@ -189,21 +194,21 @@ class MaxKeyboardManager:
                 buttons.append([
                     {
                         "type": "callback",
-                        "text": "🔄 Отменить автопродление",
+                        "text": texts.BTN_CANCEL_RECURRING,
                         "payload": "action_cancel_subscription",
                     },
                 ])
             buttons.append([
                 {
                     "type": "callback",
-                    "text": "🔄 Обновить статус",
+                    "text": texts.BTN_UPDATE_STATUS,
                     "payload": "action_subscription_status",
                 },
             ])
             buttons.append([
                 {
                     "type": "callback",
-                    "text": "◀️ Назад в меню",
+                    "text": texts.BTN_BACK_TO_MENU,
                     "payload": "action_back_to_menu",
                 },
             ])
@@ -212,14 +217,14 @@ class MaxKeyboardManager:
             buttons.append([
                 {
                     "type": "callback",
-                    "text": "⭐ Оформить подписку",
+                    "text": texts.BTN_SUBSCRIBE,
                     "payload": "action_start_payment",
                 },
             ])
             buttons.append([
                 {
                     "type": "callback",
-                    "text": "◀️ Назад в меню",
+                    "text": texts.BTN_BACK_TO_MENU,
                     "payload": "action_back_to_menu",
                 },
             ])
@@ -248,7 +253,7 @@ class MaxKeyboardManager:
             buttons.append([
                 {
                     "type": "link",
-                    "text": "💳 Перейти к оплате",
+                    "text": texts.BTN_PAY_LINK,
                     "url": payment_url,
                 },
             ])
@@ -256,14 +261,14 @@ class MaxKeyboardManager:
         buttons.append([
             {
                 "type": "callback",
-                "text": "✅ Я оплатил — проверить",
+                "text": texts.BTN_CHECK_PAYMENT_MAX,
                 "payload": "action_check_payment",
             },
         ])
         buttons.append([
             {
                 "type": "callback",
-                "text": "◀️ Назад в меню",
+                "text": texts.BTN_BACK_TO_MENU,
                 "payload": "action_back_to_menu",
             },
         ])
@@ -281,7 +286,7 @@ class MaxKeyboardManager:
             [
                 {
                     "type": "callback",
-                    "text": "◀️ Назад в меню",
+                    "text": texts.BTN_BACK_TO_MENU,
                     "payload": "action_back_to_menu",
                 },
             ],
@@ -302,14 +307,14 @@ class MaxKeyboardManager:
             [
                 {
                     "type": "callback",
-                    "text": "⭐ Оформить подписку",
+                    "text": texts.BTN_SUBSCRIBE,
                     "payload": "action_start_payment",
                 },
             ],
             [
                 {
                     "type": "callback",
-                    "text": "◀️ Назад в меню",
+                    "text": texts.BTN_BACK_TO_MENU,
                     "payload": "action_back_to_menu",
                 },
             ],
@@ -327,14 +332,14 @@ class MaxKeyboardManager:
             [
                 {
                     "type": "callback",
-                    "text": "✅ Да, отменить автопродление",
+                    "text": texts.BTN_CONFIRM_CANCEL_SUB_MAX,
                     "payload": "action_confirm_cancel_sub",
                 },
             ],
             [
                 {
                     "type": "callback",
-                    "text": "◀️ Нет, вернуться",
+                    "text": texts.BTN_BACK_NO,
                     "payload": "action_subscription_status",
                 },
             ],
@@ -352,14 +357,14 @@ class MaxKeyboardManager:
             [
                 {
                     "type": "callback",
-                    "text": "🔮 Ещё предсказание",
+                    "text": texts.BTN_NEW_PREDICTION,
                     "payload": "action_new_prediction",
                 },
             ],
             [
                 {
                     "type": "callback",
-                    "text": "📜 Моя история",
+                    "text": texts.BTN_SHOW_HISTORY,
                     "payload": "action_show_history",
                 },
             ],
@@ -380,14 +385,14 @@ class MaxKeyboardManager:
             [
                 {
                     "type": "callback",
-                    "text": "✅ Да, подтверждаю",
+                    "text": texts.BTN_CONFIRM,
                     "payload": f"confirm_{action}",
                 },
             ],
             [
                 {
                     "type": "callback",
-                    "text": "❌ Отмена",
+                    "text": texts.BTN_CANCEL,
                     "payload": "action_cancel",
                 },
             ],
@@ -405,7 +410,7 @@ class MaxKeyboardManager:
             [
                 {
                     "type": "callback",
-                    "text": "◀️ Назад в меню",
+                    "text": texts.BTN_BACK_TO_MENU,
                     "payload": "action_back_to_menu",
                 },
             ],
