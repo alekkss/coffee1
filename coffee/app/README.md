@@ -152,6 +152,7 @@ PaymentService.create_first_payment() → YooKassa API
 ### Кнопки главного меню (InlineKeyboard)
 
 - 🔮 Получить предсказание
+- 🎬 Видеоинструкция
 - 📜 Моя история / 🎯 Случайное
 - 💎 Подписка / ❓ FAQ
 - ℹ️ О боте / 📞 Поддержка
@@ -171,7 +172,7 @@ PaymentService.create_first_payment() → YooKassa API
 | Компонент | Файл | Описание |
 |-----------|------|----------|
 | MaxOracleBot | `max_bot/bot.py` | Главный класс: инициализация, цикл long polling, graceful shutdown |
-| MaxApiClient | `max_bot/api_client.py` | HTTP-клиент для MAX Bot API (aiohttp). Отправка/редактирование сообщений, callback-ответы, скачивание файлов |
+| MaxApiClient | `max_bot/api_client.py` | HTTP-клиент для MAX Bot API (aiohttp). Отправка/редактирование сообщений, callback-ответы, скачивание файлов, загрузка и отправка видео |
 | MaxBotHandlers | `max_bot/handlers.py` | Маршрутизация обновлений: bot_started, message_created, message_callback. Тексты импортируются из `bot/texts.py` |
 | MaxPhotoProcessor | `max_bot/photo_processor.py` | Скачивание фото через MAX API, ресайз (≤800×800), сохранение, анализ через LLM |
 | MaxKeyboardManager | `max_bot/keyboards.py` | Формирование inline-клавиатур в формате MAX API, включая клавиатуры подписки и оплаты |
@@ -183,6 +184,7 @@ PaymentService.create_first_payment() → YooKassa API
 - Сообщения: `POST /messages`, `PUT /messages`, `DELETE /messages`
 - Callback-ответы: `POST /answers` с `callback_id`
 - Фото приходят как вложения типа `image` с прямым URL в поле `payload.url`
+- Видео: трёхшаговая загрузка (`POST /uploads?type=video` → upload bytes → `POST /messages` с token)
 - Лимит сообщения: 4000 символов (против 4096 у Telegram)
 - Клавиатуры: передаются через `attachments` как объект `inline_keyboard`
 
@@ -446,6 +448,8 @@ docker run -d \
 | `MAX_BOT_TOKEN` | — | Токен MAX-бота (если не задан, MAX-бот не запускается) |
 | `BOT_USERNAME`| — |	Имя Telegram-бота без @ (для реферальных ссылок партнёров) |
 | `MAX_BOT_ID`|	— |	Идентификатор MAX-бота для return_url при оплате (например, id9728167964_bot) |
+| `WELCOME_VIDEO_PATH` | — | Путь к видеофайлу инструкции для кнопки «Видеоинструкция» (MP4) |
+
 
 
 ### Пример .env
@@ -468,6 +472,7 @@ YOOKASSA_SECRET_KEY=live_xxxxxxxxxxxxx
 ERROR_NOTIFY_TELEGRAM_IDS=91675683
 BOT_USERNAME=oracul_coffee_bot
 MAX_BOT_TOKEN=your-max-bot-token-here
+MAX_BOT_ID=id9728167964_bot
 ```
 
 ---
@@ -491,6 +496,7 @@ MAX_BOT_TOKEN=your-max-bot-token-here
 ### Кнопки главного меню (ReplyKeyboard)
 
 - 🔮 Получить предсказание
+- 🎬 Видеоинструкция
 - 📜 Моя история
 - 🎯 Случайное предсказание
 - 💎 Подписка
@@ -561,6 +567,7 @@ MAX_BOT_TOKEN=your-max-bot-token-here
 | `BTN_BACK_TO_MENU` | ◀️ Назад в меню | Навигация |
 | `BTN_CONFIRM` | ✅ Да, подтверждаю | Подтверждение |
 | `BTN_CANCEL` | ❌ Отмена | Отмена действия |
+| `BTN_VIDEO_INSTRUCTION` | 🎬 Видеоинструкция | Главное меню |
 
 
 ---
