@@ -21,6 +21,7 @@ class KeyboardManager:
         """Главное меню без кнопки подписки."""
         keyboard = [
             [KeyboardButton(text=texts.BTN_PREDICT)],
+            [KeyboardButton(text=texts.BTN_VIDEO_INSTRUCTION)],
             [KeyboardButton(text=texts.BTN_HISTORY), KeyboardButton(text=texts.BTN_RANDOM)],
             [KeyboardButton(text=texts.BTN_FAQ), KeyboardButton(text=texts.BTN_ABOUT)],
             [KeyboardButton(text=texts.BTN_CLEAR), KeyboardButton(text=texts.BTN_SUPPORT)]
@@ -37,6 +38,7 @@ class KeyboardManager:
         """Главное меню с кнопкой подписки."""
         keyboard = [
             [KeyboardButton(text=texts.BTN_PREDICT)],
+            [KeyboardButton(text=texts.BTN_VIDEO_INSTRUCTION)],
             [KeyboardButton(text=texts.BTN_SUBSCRIPTION), KeyboardButton(text=texts.BTN_RANDOM)],
             [KeyboardButton(text=texts.BTN_HISTORY), KeyboardButton(text=texts.BTN_FAQ)],
             [KeyboardButton(text=texts.BTN_ABOUT), KeyboardButton(text=texts.BTN_SUPPORT)]

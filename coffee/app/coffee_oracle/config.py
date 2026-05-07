@@ -41,6 +41,10 @@ class Config:
     # (часть URL вида "id9728167964_bot" из https://max.ru/id9728167964_bot)
     max_bot_id: Optional[str] = None
 
+    # Путь к видеофайлу приветствия для /start (опционально)
+    # Если не задан — видео не отправляется
+    welcome_video_path: Optional[str] = None
+
     # LiteLLM конфигурация
     litellm_model: str = "platto/gpt-5.1"
     litellm_model_fallback: Optional[str] = None
@@ -89,6 +93,9 @@ class Config:
         # Идентификатор MAX-бота для реферальных ссылок
         # (например, "id9728167964_bot" из https://max.ru/id9728167964_bot)
         max_bot_id = os.getenv("MAX_BOT_ID", "").strip() or None
+
+        # Путь к видеофайлу приветствия (опционально)
+        welcome_video_path = os.getenv("WELCOME_VIDEO_PATH", "").strip() or None
 
         admin_username = os.getenv("ADMIN_USERNAME")
         admin_password = os.getenv("ADMIN_PASSWORD")
@@ -157,6 +164,7 @@ class Config:
             admin_port=admin_port,
             max_bot_token=max_bot_token,
             max_bot_id=max_bot_id,
+            welcome_video_path=welcome_video_path,
             litellm_model=litellm_model,
             litellm_model_fallback=litellm_model_fallback,
             litellm_api_key=litellm_api_key,

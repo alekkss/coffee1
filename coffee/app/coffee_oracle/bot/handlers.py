@@ -7,6 +7,7 @@ FSM для оплаты подписки.
 
 import asyncio
 import logging
+import os
 import re
 from typing import Any, Optional
 
@@ -14,7 +15,14 @@ from aiogram import Bot, F, Router
 from aiogram.filters import Command, CommandStart
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
-from aiogram.types import Message, CallbackQuery, BotCommand, InlineKeyboardMarkup, InlineKeyboardButton
+from aiogram.types import (
+    Message,
+    CallbackQuery,
+    BotCommand,
+    FSInputFile,
+    InlineKeyboardMarkup,
+    InlineKeyboardButton,
+)
 from aiogram.enums import ChatAction
 import random
 
@@ -187,6 +195,33 @@ async def prediction_request_handler(message: Message) -> Any:
         "photo_instruction", texts.PHOTO_INSTRUCTION_FALLBACK,
     )
     await message.answer(instruction_text)
+
+
+@router.message(F.text == texts.BTN_VIDEO_INSTRUCTION)
+async def video_instruction_handler(message: Message) -> Any:
+    """Обработка кнопки «Видеоинструкция» — отправка видео из локального файла.
+
+    Если WELCOME_VIDEO_PATH задан в .env и файл существует — отправляет видео
+    с подписью. Если видео не настроено или файл не найден — отправляет
+    текстовое сообщение с предложением использовать текстовую инструкцию.
+    """
+    video_path = config.welcome_video_path
+
+    if video_path and os.path.isfile(video_path):
+        try:
+            video_file = FSInputFile(video_path)
+            await message.answer_video(
+                video=video_file,
+                caption=texts.VIDEO_INSTRUCTION_CAPTION,
+            )
+            return
+        except Exception as e:
+            logger.error("Ошибка отправки видеоинструкции: %s", e)
+
+    # Fallback: видео не настроено, файл не найден или ошибка отправки
+    if video_path:
+        logger.warning(texts.VIDEO_NOT_CONFIGURED)
+    await message.answer(texts.VIDEO_NOT_CONFIGURED)
 
 
 @router.message(F.text == texts.BTN_HISTORY)
@@ -1292,9 +1327,9 @@ async def check_payment_callback(callback: CallbackQuery) -> Any:
 
 
 @router.message(F.text & ~F.text.in_([
-    texts.BTN_PREDICT, texts.BTN_HISTORY, texts.BTN_ABOUT,
-    texts.BTN_RANDOM, texts.BTN_FAQ, texts.BTN_CLEAR,
-    texts.BTN_SUPPORT, texts.BTN_SUBSCRIPTION,
+    texts.BTN_PREDICT, texts.BTN_VIDEO_INSTRUCTION, texts.BTN_HISTORY,
+    texts.BTN_ABOUT, texts.BTN_RANDOM, texts.BTN_FAQ,
+    texts.BTN_CLEAR, texts.BTN_SUPPORT, texts.BTN_SUBSCRIPTION,
 ]))
 async def text_handler(message: Message) -> Any:
     """Обработка прочих текстовых сообщений."""
