@@ -10,6 +10,7 @@ import asyncio
 import logging
 import re
 import random
+import os
 from typing import Any, Dict, List, Optional
 
 from coffee_oracle.bot import texts
@@ -801,6 +802,48 @@ class MaxBotHandlers:
         )
 
         await self._api.send_message(chat_id=chat_id, text=instruction)
+    
+    async def _handle_video_instruction(self, chat_id: int) -> None:
+        """Обработка кнопки «Видеоинструкция» — отправка видео из локального файла.
+
+        Если WELCOME_VIDEO_PATH задан в .env и файл существует — загружает видео
+        через MAX API (трёхшаговый upload) и отправляет с подписью.
+        Если видео не настроено или произошла ошибка — отправляет текстовый fallback.
+
+        Args:
+            chat_id: ID чата для ответа.
+        """
+        video_path = config.welcome_video_path
+
+        if video_path and os.path.isfile(video_path):
+            try:
+                # Показываем индикатор отправки видео
+                try:
+                    await self._api.send_action(chat_id, "sending_video")
+                except Exception:
+                    pass
+
+                await self._api.send_video_from_file(
+                    file_path=video_path,
+                    chat_id=chat_id,
+                    text=texts.VIDEO_INSTRUCTION_CAPTION,
+                )
+                return
+
+            except Exception as e:
+                logger.error("MAX: ошибка отправки видеоинструкции: %s", e)
+
+        # Fallback: видео не настроено, файл не найден или ошибка отправки
+        if video_path:
+            logger.warning(
+                "MAX: видеоинструкция недоступна, путь: %s",
+                video_path,
+            )
+
+        await self._api.send_message(
+            chat_id=chat_id,
+            text=texts.VIDEO_NOT_CONFIGURED,
+        )
 
     async def _handle_history_command(self, message: MaxMessage, chat_id: int) -> None:
         """Обработка команды /history."""
@@ -1212,6 +1255,9 @@ class MaxBotHandlers:
         try:
             if payload == "action_predict":
                 await self._handle_predict_command(chat_id)
+
+            elif payload == "action_video_instruction":
+                await self._handle_video_instruction(chat_id)
 
             elif payload in ("action_history", "action_show_history"):
                 await self._callback_show_history(callback, chat_id)

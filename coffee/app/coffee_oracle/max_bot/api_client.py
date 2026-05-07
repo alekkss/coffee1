@@ -454,6 +454,146 @@ class MaxApiClient:
                 message="Сетевая ошибка при загрузке файла",
                 details=str(e),
             ) from e
+    
+    async def send_video_from_file(
+        self,
+        file_path: str,
+        chat_id: Optional[int] = None,
+        user_id: Optional[int] = None,
+        text: Optional[str] = None,
+        max_retries: int = 5,
+        initial_delay: float = 2.0,
+    ) -> MaxMessage:
+        """Загрузка видео из локального файла и отправка в чат.
+
+        Выполняет трёхшаговый процесс MAX API:
+        1. POST /uploads?type=video → получение upload_url и token.
+        2. POST upload_url с multipart файлом → загрузка байтов.
+        3. POST /messages с attachment type=video и token → отправка.
+
+        Включает retry при ошибке 'attachment.not.ready' с экспоненциальной задержкой.
+
+        Args:
+            file_path: Путь к видеофайлу на диске.
+            chat_id: ID чата для отправки (для групповых чатов).
+            user_id: ID пользователя для отправки (для диалогов).
+            text: Подпись к видео (до 4000 символов).
+            max_retries: Максимальное количество попыток отправки при 'not ready'.
+            initial_delay: Начальная задержка между попытками (секунды).
+
+        Returns:
+            Объект MaxMessage отправленного сообщения.
+
+        Raises:
+            MaxApiError: При ошибке на любом этапе загрузки/отправки.
+            FileNotFoundError: Если файл не найден по указанному пути.
+        """
+        import asyncio as _asyncio
+        import os as _os
+
+        if not _os.path.isfile(file_path):
+            raise FileNotFoundError(f"Видеофайл не найден: {file_path}")
+
+        # Шаг 1: получение URL для загрузки и токена видео
+        upload_data = await self.get_upload_url(file_type="video")
+        upload_url = upload_data.get("url")
+        video_token = upload_data.get("token")
+
+        if not upload_url:
+            raise MaxApiError(
+                message="MAX API не вернул URL для загрузки видео",
+                details=str(upload_data),
+            )
+
+        # Шаг 2: загрузка файла по полученному URL
+        filename = _os.path.basename(file_path)
+        with open(file_path, "rb") as f:
+            file_data = f.read()
+
+        session = await self._get_session()
+
+        form_data = aiohttp.FormData()
+        form_data.add_field(
+            "data",
+            file_data,
+            filename=filename,
+            content_type="video/mp4",
+        )
+
+        try:
+            async with session.post(upload_url, data=form_data) as response:
+                response_text = await response.text()
+
+                if response.status != 200:
+                    raise MaxApiError(
+                        message=f"Ошибка загрузки видео: HTTP {response.status}",
+                        status_code=response.status,
+                        details=response_text,
+                    )
+
+                # Для video токен приходит в шаге 1, а upload подтверждает загрузку
+                logger.info(
+                    "MAX API: видео загружено, token=%s, файл=%s",
+                    video_token, filename,
+                )
+
+        except aiohttp.ClientError as e:
+            raise MaxApiError(
+                message="Сетевая ошибка при загрузке видео",
+                details=str(e),
+            ) from e
+
+        # Если токен не пришёл в шаге 1, пробуем извлечь из ответа загрузки
+        if not video_token:
+            try:
+                import json
+                upload_response = json.loads(response_text)
+                video_token = upload_response.get("token")
+            except (json.JSONDecodeError, AttributeError):
+                pass
+
+        if not video_token:
+            raise MaxApiError(
+                message="Не удалось получить токен видео после загрузки",
+                details=f"upload_data={upload_data}, upload_response={response_text}",
+            )
+
+        # Шаг 3: отправка сообщения с видео-вложением (с retry при 'not ready')
+        video_attachment = {
+            "type": "video",
+            "payload": {
+                "token": video_token,
+            },
+        }
+
+        delay = initial_delay
+        last_error: Optional[Exception] = None
+
+        for attempt in range(max_retries):
+            try:
+                return await self.send_message(
+                    chat_id=chat_id,
+                    user_id=user_id,
+                    text=text,
+                    attachments=[video_attachment],
+                )
+            except MaxApiError as e:
+                if e.details and "attachment.not.ready" in str(e.details):
+                    last_error = e
+                    logger.debug(
+                        "MAX API: видео ещё не обработано, попытка %d/%d, ожидание %.1fс",
+                        attempt + 1, max_retries, delay,
+                    )
+                    await _asyncio.sleep(delay)
+                    delay *= 1.5  # Экспоненциальная задержка
+                else:
+                    raise
+
+        # Все попытки исчерпаны
+        raise MaxApiError(
+            message="Видео не обработано сервером MAX после всех попыток",
+            details=str(last_error),
+        )
 
     # ────────────────────────────────────────────
     #  Скачивание файлов (по URL из вложения)

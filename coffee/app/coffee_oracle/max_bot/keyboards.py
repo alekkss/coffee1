@@ -41,8 +41,8 @@ class MaxKeyboardManager:
     def get_main_menu(cls) -> Dict[str, Any]:
         """Главное меню бота (без кнопки подписки).
 
-        Содержит основные действия: предсказание, история,
-        случайное предсказание, FAQ, о боте, очистка, поддержка.
+        Содержит основные действия: предсказание, видеоинструкция,
+        история, случайное предсказание, FAQ, о боте, очистка, поддержка.
 
         Returns:
             Вложение inline_keyboard с кнопками главного меню.
@@ -53,6 +53,13 @@ class MaxKeyboardManager:
                     "type": "callback",
                     "text": texts.BTN_PREDICT,
                     "payload": "action_predict",
+                },
+            ],
+            [
+                {
+                    "type": "callback",
+                    "text": texts.BTN_VIDEO_INSTRUCTION,
+                    "payload": "action_video_instruction",
                 },
             ],
             [
@@ -110,6 +117,13 @@ class MaxKeyboardManager:
                     "type": "callback",
                     "text": texts.BTN_PREDICT,
                     "payload": "action_predict",
+                },
+            ],
+            [
+                {
+                    "type": "callback",
+                    "text": texts.BTN_VIDEO_INSTRUCTION,
+                    "payload": "action_video_instruction",
                 },
             ],
             [
