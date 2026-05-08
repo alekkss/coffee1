@@ -11,6 +11,7 @@
 from typing import Any, Dict, List, Optional
 
 from coffee_oracle.bot import texts
+from coffee_oracle.config import config
 
 
 class MaxKeyboardManager:
@@ -167,6 +168,35 @@ class MaxKeyboardManager:
                     "type": "callback",
                     "text": texts.BTN_CLEAR,
                     "payload": "action_clear",
+                },
+            ],
+        ]
+        return cls._build_attachment(buttons)
+
+    @classmethod
+    def get_about_keyboard(cls) -> Dict[str, Any]:
+        """Клавиатура «Об Оракуле» со ссылками на правовые документы.
+
+        Содержит URL-кнопки для открытия страниц
+        «Условия использования» и «Политика конфиденциальности».
+
+        Returns:
+            Вложение inline_keyboard с кнопками-ссылками.
+        """
+        domain = config.domain
+        buttons = [
+            [
+                {
+                    "type": "link",
+                    "text": "📄 Условия использования",
+                    "url": f"https://{domain}/terms",
+                },
+            ],
+            [
+                {
+                    "type": "link",
+                    "text": "🔒 Политика конфиденциальности",
+                    "url": f"https://{domain}/privacy",
                 },
             ],
         ]

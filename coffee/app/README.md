@@ -153,7 +153,7 @@ PaymentService.create_first_payment() → YooKassa API
 
 - 🔮 Получить предсказание
 - 🎬 Видеоинструкция
-- 📜 Моя история / 🎯 Случайное
+- 📜 Частые запросы / 🎯 Случайное
 - 💎 Подписка / ❓ FAQ
 - ℹ️ О боте / 📞 Поддержка
 - 🗑️ Очистить историю
@@ -175,7 +175,7 @@ PaymentService.create_first_payment() → YooKassa API
 | MaxApiClient | `max_bot/api_client.py` | HTTP-клиент для MAX Bot API (aiohttp). Отправка/редактирование сообщений, callback-ответы, скачивание файлов, загрузка и отправка видео |
 | MaxBotHandlers | `max_bot/handlers.py` | Маршрутизация обновлений: bot_started, message_created, message_callback. Тексты импортируются из `bot/texts.py` |
 | MaxPhotoProcessor | `max_bot/photo_processor.py` | Скачивание фото через MAX API, ресайз (≤800×800), сохранение, анализ через LLM |
-| MaxKeyboardManager | `max_bot/keyboards.py` | Формирование inline-клавиатур в формате MAX API, включая клавиатуры подписки и оплаты |
+| MaxKeyboardManager | `max_bot/keyboards.py` | Формирование inline-клавиатур в формате MAX API, включая клавиатуры подписки, оплаты и «Об Оракуле» (ссылки на terms/privacy) |
 
 ### Особенности MAX API
 
@@ -235,7 +235,7 @@ coffee_oracle/
 ├── bot/
 │   ├── bot.py                           # CoffeeOracleBot — инициализация, polling
 │   ├── handlers.py                      # Хендлеры команд, фото, подписок, платежей
-│   ├── keyboards.py                     # KeyboardManager — Reply и Inline клавиатуры (тексты из texts.py)
+│   ├── keyboards.py                     # KeyboardManager — Reply и Inline клавиатуры, включая «Об Оракуле» (ссылки на terms/privacy)
 │   ├── texts.py                         # Общие тексты и названия кнопок для TG и MAX ботов (единый источник)
 │   └── middleware.py                    # MediaGroupMiddleware — сбор групп фото
 ├── max_bot/
@@ -497,7 +497,7 @@ MAX_BOT_ID=id9728167964_bot
 
 - 🔮 Получить предсказание
 - 🎬 Видеоинструкция
-- 📜 Моя история
+- 📜 Частые запросы
 - 🎯 Случайное предсказание
 - 💎 Подписка
 - ❓ FAQ
@@ -550,7 +550,7 @@ MAX_BOT_ID=id9728167964_bot
 | Константа | Значение | Назначение |
 |-----------|----------|-----------|
 | `BTN_PREDICT` | 🔮 Получить предсказание | Главное меню |
-| `BTN_HISTORY` | 📜 Моя история | Главное меню |
+| `BTN_HISTORY` | 📜 Частые запросы | Главное меню |
 | `BTN_RANDOM` | 🎯 Случайное предсказание | Главное меню (TG) |
 | `BTN_RANDOM_SHORT` | 🎯 Случайное | Главное меню (MAX, короткий вариант) |
 | `BTN_FAQ` | ❓ FAQ | Главное меню |
@@ -568,6 +568,21 @@ MAX_BOT_ID=id9728167964_bot
 | `BTN_CONFIRM` | ✅ Да, подтверждаю | Подтверждение |
 | `BTN_CANCEL` | ❌ Отмена | Отмена действия |
 | `BTN_VIDEO_INSTRUCTION` | 🎬 Видеоинструкция | Главное меню |
+| `BTN_SHOW_HISTORY` | 📜 Частые запросы | После предсказания |
+| `BTN_SHARE` | 📤 Поделиться | После предсказания |
+| `BTN_CANCEL_RECURRING` | ❌ Отменить автопродление | Подписка (premium) |
+| `BTN_RENEW` | 🔄 Возобновить подписку | Подписка (без recurring) |
+| `BTN_UPDATE_STATUS` | 🔄 Обновить статус | Подписка |
+| `BTN_CONFIRM_CANCEL_SUB` | ✅ Да, отменить подписку | Подтверждение отмены (TG) |
+| `BTN_CONFIRM_CANCEL_SUB_MAX` | ✅ Да, отменить автопродление | Подтверждение отмены (MAX) |
+| `BTN_BACK_NO` | ◀️ Нет, вернуться | Отмена подтверждения |
+| `BTN_RETRY` | 🔄 Попробовать снова | Ошибки |
+| `BTN_BACK_SHORT` | ◀️ В меню | Короткий вариант навигации |
+| `BTN_PAY_LINK` | 💳 Перейти к оплате | Оплата (MAX) |
+
+При нажатии кнопки «ℹ️ Об Оракуле» помимо текста отображаются inline-кнопки-ссылки:
+- 📄 Условия использования → https://{DOMAIN}/terms
+- 🔒 Политика конфиденциальности → https://{DOMAIN}/privacy
 
 
 ---

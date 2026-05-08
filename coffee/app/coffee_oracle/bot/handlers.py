@@ -273,7 +273,10 @@ async def history_handler(message: Message) -> Any:
 async def about_handler(message: Message) -> Any:
     """Обработка запроса информации о боте."""
     about_text = await get_bot_text("about_text", texts.ABOUT_TEXT_FALLBACK)
-    await message.answer(about_text)
+    await message.answer(
+        about_text,
+        reply_markup=KeyboardManager.get_about_keyboard(),
+    )
 
 
 @router.message(F.photo)

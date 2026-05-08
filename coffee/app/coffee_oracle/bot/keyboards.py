@@ -11,6 +11,7 @@
 from aiogram.types import KeyboardButton, ReplyKeyboardMarkup, InlineKeyboardButton, InlineKeyboardMarkup
 
 from coffee_oracle.bot import texts
+from coffee_oracle.config import config
 
 
 class KeyboardManager:
@@ -69,6 +70,22 @@ class KeyboardManager:
             [InlineKeyboardButton(text=texts.BTN_SHARE, callback_data="share_prediction")]
         ]
 
+        return InlineKeyboardMarkup(inline_keyboard=keyboard)
+
+    @staticmethod
+    def get_about_keyboard() -> InlineKeyboardMarkup:
+        """Клавиатура «Об Оракуле» со ссылками на правовые документы."""
+        domain = config.domain
+        keyboard = [
+            [InlineKeyboardButton(
+                text="📄 Условия использования",
+                url=f"https://{domain}/terms",
+            )],
+            [InlineKeyboardButton(
+                text="🔒 Политика конфиденциальности",
+                url=f"https://{domain}/privacy",
+            )],
+        ]
         return InlineKeyboardMarkup(inline_keyboard=keyboard)
 
     @staticmethod

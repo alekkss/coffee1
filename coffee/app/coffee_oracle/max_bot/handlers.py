@@ -903,7 +903,11 @@ class MaxBotHandlers:
             "about_text",
             texts.ABOUT_TEXT_FALLBACK,
         )
-        await self._api.send_message(chat_id=chat_id, text=about_text)
+        await self._api.send_message(
+            chat_id=chat_id,
+            text=about_text,
+            attachments=[MaxKeyboardManager.get_about_keyboard()],
+        )
 
     async def _handle_clear_command(self, chat_id: int) -> None:
         """Обработка команды /clear — запрос подтверждения."""
