@@ -487,6 +487,7 @@ class MaxBotHandlers:
             user_id=user.user_id,
             text=welcome_text,
             attachments=[MaxKeyboardManager.get_main_menu_with_subscription()],
+            format_type="html",
         )
 
     # ────────────────────────────────────────────
@@ -531,6 +532,7 @@ class MaxBotHandlers:
             chat_id=chat_id,
             text=texts.UNKNOWN_CONTENT_TYPE,
             attachments=[MaxKeyboardManager.get_main_menu_with_subscription()],
+            format_type="html",
         )
 
     # ────────────────────────────────────────────
@@ -787,6 +789,7 @@ class MaxBotHandlers:
             chat_id=chat_id,
             text=welcome_text,
             attachments=[MaxKeyboardManager.get_main_menu_with_subscription()],
+            format_type="html",
         )
 
     async def _handle_faq_command(self, chat_id: int) -> None:
@@ -846,47 +849,11 @@ class MaxBotHandlers:
         )
 
     async def _handle_history_command(self, message: MaxMessage, chat_id: int) -> None:
-        """Обработка команды /history."""
-        user = message.sender
-        if not user:
-            return
-
-        async for session in db_manager.get_session():
-            user_repo = UserRepository(session)
-            prediction_repo = PredictionRepository(session)
-
-            db_user = await user_repo.get_user_by_telegram_id(
-                user.user_id, source=_SOURCE,
-            )
-            if not db_user:
-                await self._api.send_message(
-                    chat_id=chat_id,
-                    text=texts.NO_USER_FOR_HISTORY,
-                )
-                return
-
-            predictions = await prediction_repo.get_user_predictions(db_user.id, limit=5)
-
-            if not predictions:
-                await self._api.send_message(
-                    chat_id=chat_id,
-                    text=texts.EMPTY_HISTORY,
-                )
-                return
-
-            history_text = f"📜 Ваши последние предсказания ({len(predictions)} из 5):\n\n"
-
-            for i, prediction in enumerate(predictions, 1):
-                date_str = prediction.created_at.strftime("%d.%m.%Y в %H:%M")
-                history_text += f"🔮 {i}. {date_str}\n"
-                history_text += f"{prediction.prediction_text}\n"
-                history_text += "─" * 30 + "\n\n"
-
-            # MAX лимит сообщения — 4000 символов
-            if len(history_text) > 3900:
-                history_text = history_text[:3900] + "\n\n...продолжение скрыто"
-
-            await self._api.send_message(chat_id=chat_id, text=history_text)
+        """Обработка команды /history — показ частых запросов."""
+        await self._api.send_message(
+            chat_id=chat_id,
+            text=texts.FREQUENT_QUERIES_TEXT,
+        )
 
     async def _handle_random_command(self, chat_id: int) -> None:
         """Обработка команды /random."""
@@ -1581,45 +1548,11 @@ class MaxBotHandlers:
     # ────────────────────────────────────────────
 
     async def _callback_show_history(self, callback: MaxCallback, chat_id: int) -> None:
-        """Callback: показать историю предсказаний."""
-        user = callback.user
-        if not user:
-            return
-
-        async for session in db_manager.get_session():
-            user_repo = UserRepository(session)
-            prediction_repo = PredictionRepository(session)
-
-            db_user = await user_repo.get_user_by_telegram_id(
-                user.user_id, source=_SOURCE,
-            )
-            if not db_user:
-                await self._api.send_message(
-                    chat_id=chat_id,
-                    text=texts.NO_USER_FOR_HISTORY,
-                )
-                return
-
-            predictions = await prediction_repo.get_user_predictions(db_user.id, limit=5)
-
-            if not predictions:
-                await self._api.send_message(
-                    chat_id=chat_id,
-                    text=texts.EMPTY_HISTORY,
-                )
-                return
-
-            history_text = f"📜 Ваши последние предсказания ({len(predictions)} из 5):\n\n"
-            for i, prediction in enumerate(predictions, 1):
-                date_str = prediction.created_at.strftime("%d.%m.%Y в %H:%M")
-                history_text += f"🔮 {i}. {date_str}\n"
-                history_text += f"{prediction.prediction_text}\n"
-                history_text += "─" * 30 + "\n\n"
-
-            if len(history_text) > 3900:
-                history_text = history_text[:3900] + "\n\n...продолжение скрыто"
-
-            await self._api.send_message(chat_id=chat_id, text=history_text)
+        """Callback: показать частые запросы."""
+        await self._api.send_message(
+            chat_id=chat_id,
+            text=texts.FREQUENT_QUERIES_TEXT,
+        )
 
     async def _callback_back_to_menu(self, callback: MaxCallback, chat_id: int) -> None:
         """Callback: возврат в главное меню."""

@@ -225,48 +225,9 @@ async def video_instruction_handler(message: Message) -> Any:
 
 
 @router.message(F.text == texts.BTN_HISTORY)
-async def history_handler(message: Message) -> Any:
-    """Обработка запроса истории предсказаний."""
-    user = message.from_user
-    if not user:
-        return
-
-    async for session in db_manager.get_session():
-        user_repo = UserRepository(session)
-        prediction_repo = PredictionRepository(session)
-
-        # Get user
-        db_user = await user_repo.get_user_by_telegram_id(user.id, source=_SOURCE)
-        if not db_user:
-            await message.answer(texts.NO_USER_FOR_HISTORY)
-            return
-
-        # Get user's predictions (limit to 5 as per requirements)
-        predictions = await prediction_repo.get_user_predictions(db_user.id, limit=5)
-
-        if not predictions:
-            await message.answer(texts.EMPTY_HISTORY)
-            return
-
-        # Format history with proper numbering and dates
-        history_text = f"📜 Ваши последние предсказания ({len(predictions)} из 5):\n\n"
-
-        for i, prediction in enumerate(predictions, 1):
-            # Format date in Russian locale style
-            date_str = prediction.created_at.strftime("%d.%m.%Y в %H:%M")
-            history_text += f"🔮 {i}. {date_str}\n"
-            # Convert stored prediction from markdown to HTML
-            formatted_pred = markdown_to_telegram_html(prediction.prediction_text)
-            history_text += f"{formatted_pred}\n"
-            history_text += "─" * 30 + "\n\n"
-
-        # Remove last separator
-        history_text = history_text.rstrip("─" * 30 + "\n\n")
-
-        # Split message if too long (Telegram limit: 4096 chars)
-        chunks = split_message(history_text)
-        for chunk in chunks:
-            await message.answer(chunk, parse_mode="HTML")
+async def frequent_queries_handler(message: Message) -> Any:
+    """Обработка кнопки «Частые запросы» — показ примеров вопросов."""
+    await message.answer(texts.FREQUENT_QUERIES_TEXT)
 
 
 @router.message(F.text == texts.BTN_ABOUT)
@@ -603,8 +564,38 @@ async def predict_command_handler(message: Message) -> Any:
 
 @router.message(Command("history"))
 async def history_command_handler(message: Message) -> Any:
-    """Обработка команды /history."""
-    await history_handler(message)
+    """Обработка команды /history — показ истории предсказаний."""
+    user = message.from_user
+    if not user:
+        return
+
+    async for session in db_manager.get_session():
+        user_repo = UserRepository(session)
+        prediction_repo = PredictionRepository(session)
+
+        db_user = await user_repo.get_user_by_telegram_id(user.id, source=_SOURCE)
+        if not db_user:
+            await message.answer(texts.NO_USER_FOR_HISTORY)
+            return
+
+        predictions = await prediction_repo.get_user_predictions(db_user.id, limit=5)
+
+        if not predictions:
+            await message.answer(texts.EMPTY_HISTORY)
+            return
+
+        history_text = f"📜 Ваши последние предсказания ({len(predictions)} из 5):\n\n"
+
+        for i, prediction in enumerate(predictions, 1):
+            date_str = prediction.created_at.strftime("%d.%m.%Y в %H:%M")
+            history_text += f"🔮 {i}. {date_str}\n"
+            formatted_pred = markdown_to_telegram_html(prediction.prediction_text)
+            history_text += f"{formatted_pred}\n"
+            history_text += "─" * 30 + "\n\n"
+
+        chunks = split_message(history_text)
+        for chunk in chunks:
+            await message.answer(chunk, parse_mode="HTML")
 
 
 @router.message(Command("about"))
@@ -666,54 +657,9 @@ async def new_prediction_callback(callback: CallbackQuery) -> Any:
 
 
 @router.callback_query(F.data == "show_history")
-async def show_history_callback(callback: CallbackQuery) -> Any:
-    """Обработка callback показа истории."""
-    user = callback.from_user
-    if not user:
-        await callback.answer()
-        return
-
-    async for session in db_manager.get_session():
-        user_repo = UserRepository(session)
-        prediction_repo = PredictionRepository(session)
-
-        # Get user
-        db_user = await user_repo.get_user_by_telegram_id(user.id, source=_SOURCE)
-        if not db_user:
-            await callback.message.answer(texts.NO_USER_FOR_HISTORY)
-            await callback.answer()
-            return
-
-        # Get user's predictions (limit to 5 as per requirements)
-        predictions = await prediction_repo.get_user_predictions(db_user.id, limit=5)
-
-        if not predictions:
-            await callback.message.answer(texts.EMPTY_HISTORY)
-            await callback.answer()
-            return
-
-        # Format history with proper numbering and dates
-        history_text = f"📜 Ваши последние предсказания ({len(predictions)} из 5):\n\n"
-
-        for i, prediction in enumerate(predictions, 1):
-            # Format date in Russian locale style
-            date_str = prediction.created_at.strftime("%d.%m.%Y в %H:%M")
-            history_text += f"🔮 {i}. {date_str}\n"
-            # Convert stored prediction from markdown to HTML
-            formatted_pred = markdown_to_telegram_html(prediction.prediction_text)
-            history_text += f"{formatted_pred}\n"
-            history_text += "─" * 30 + "\n\n"
-
-        # Remove last separator
-        history_text = history_text.rstrip("─" * 30 + "\n\n")
-
-        # Split message if too long (Telegram limit: 4096 chars)
-        chunks = split_message(history_text)
-
-        # Send all chunks as new messages to keep the prediction visible
-        for chunk in chunks:
-            await callback.message.answer(chunk, parse_mode="HTML")
-
+async def show_frequent_queries_callback(callback: CallbackQuery) -> Any:
+    """Обработка callback «Частые запросы» — показ примеров вопросов."""
+    await callback.message.answer(texts.FREQUENT_QUERIES_TEXT)
     await callback.answer()
 
 
