@@ -178,10 +178,11 @@ class MaxKeyboardManager:
         """Клавиатура «Об Оракуле» со ссылками на правовые документы.
 
         Содержит URL-кнопки для открытия страниц
-        «Условия использования» и «Политика конфиденциальности».
+        «Условия использования» и «Политика конфиденциальности»,
+        а также кнопку возврата в главное меню.
 
         Returns:
-            Вложение inline_keyboard с кнопками-ссылками.
+            Вложение inline_keyboard с кнопками-ссылками и кнопкой «Назад».
         """
         domain = config.domain
         buttons = [
@@ -197,6 +198,13 @@ class MaxKeyboardManager:
                     "type": "link",
                     "text": "🔒 Политика конфиденциальности",
                     "url": f"https://{domain}/privacy",
+                },
+            ],
+            [
+                {
+                    "type": "callback",
+                    "text": texts.BTN_BACK_TO_MENU,
+                    "payload": "action_back_to_menu",
                 },
             ],
         ]
@@ -410,6 +418,13 @@ class MaxKeyboardManager:
                     "type": "callback",
                     "text": texts.BTN_SHOW_HISTORY,
                     "payload": "action_show_history",
+                },
+            ],
+            [
+                {
+                    "type": "callback",
+                    "text": texts.BTN_BACK_TO_MENU,
+                    "payload": "action_back_to_menu",
                 },
             ],
         ]

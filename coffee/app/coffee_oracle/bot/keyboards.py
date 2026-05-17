@@ -63,18 +63,27 @@ class KeyboardManager:
 
     @staticmethod
     def get_prediction_actions() -> InlineKeyboardMarkup:
-        """Кнопки действий после предсказания."""
+        """Кнопки действий после предсказания.
+
+        Содержит быстрые действия: новое предсказание, частые запросы,
+        поделиться результатом, а также кнопку возврата в главное меню.
+        """
         keyboard = [
             [InlineKeyboardButton(text=texts.BTN_NEW_PREDICTION, callback_data="new_prediction")],
             [InlineKeyboardButton(text=texts.BTN_SHOW_HISTORY, callback_data="show_history")],
-            [InlineKeyboardButton(text=texts.BTN_SHARE, callback_data="share_prediction")]
+            [InlineKeyboardButton(text=texts.BTN_SHARE, callback_data="share_prediction")],
+            [InlineKeyboardButton(text=texts.BTN_BACK_TO_MENU, callback_data="back_to_menu")],
         ]
 
         return InlineKeyboardMarkup(inline_keyboard=keyboard)
 
     @staticmethod
     def get_about_keyboard() -> InlineKeyboardMarkup:
-        """Клавиатура «Об Оракуле» со ссылками на правовые документы."""
+        """Клавиатура «Об Оракуле» со ссылками на правовые документы.
+
+        Содержит ссылки на условия использования и политику
+        конфиденциальности, а также кнопку возврата в главное меню.
+        """
         domain = config.domain
         keyboard = [
             [InlineKeyboardButton(
@@ -84,6 +93,10 @@ class KeyboardManager:
             [InlineKeyboardButton(
                 text="🔒 Политика конфиденциальности",
                 url=f"https://{domain}/privacy",
+            )],
+            [InlineKeyboardButton(
+                text=texts.BTN_BACK_TO_MENU,
+                callback_data="back_to_menu",
             )],
         ]
         return InlineKeyboardMarkup(inline_keyboard=keyboard)
@@ -102,6 +115,21 @@ class KeyboardManager:
         keyboard.append([
             InlineKeyboardButton(text=texts.BTN_BACK_TO_MENU, callback_data="back_to_menu")
         ])
+        return InlineKeyboardMarkup(inline_keyboard=keyboard)
+
+    @staticmethod
+    def get_back_to_menu_keyboard() -> InlineKeyboardMarkup:
+        """Одиночная inline-кнопка возврата в главное меню.
+
+        Используется в текстовых ответах (FAQ, поддержка, инструкция),
+        где нет другой inline-клавиатуры, но нужен явный выход.
+
+        Returns:
+            InlineKeyboardMarkup с одной кнопкой «◀️ В меню».
+        """
+        keyboard = [
+            [InlineKeyboardButton(text=texts.BTN_BACK_TO_MENU, callback_data="back_to_menu")],
+        ]
         return InlineKeyboardMarkup(inline_keyboard=keyboard)
 
     @staticmethod

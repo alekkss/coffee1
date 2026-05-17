@@ -5,6 +5,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>🔮 Предсказания - Coffee Oracle Admin</title>
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
     <style>
         * {
             margin: 0;
@@ -65,12 +66,27 @@
             box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
         }
 
+        /* ── Панель управления ── */
         .controls {
             display: flex;
             gap: 1rem;
             margin-bottom: 1.5rem;
             flex-wrap: wrap;
-            align-items: center;
+            align-items: flex-end;
+        }
+
+        .control-group {
+            display: flex;
+            flex-direction: column;
+            gap: 0.35rem;
+        }
+
+        .control-group label {
+            font-size: 0.75rem;
+            font-weight: 600;
+            color: #718096;
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
         }
 
         .search-box input {
@@ -78,7 +94,7 @@
             border: 2px solid #e2e8f0;
             border-radius: 8px;
             font-size: 1rem;
-            min-width: 300px;
+            min-width: 280px;
         }
 
         .search-box input:focus {
@@ -86,11 +102,78 @@
             border-color: #667eea;
         }
 
+        /* ── Фильтры-кнопки ── */
+        .filter-group {
+            display: flex;
+            gap: 0.4rem;
+            flex-wrap: wrap;
+        }
+
+        .filter-btn {
+            padding: 0.5rem 0.9rem;
+            border: 2px solid #e2e8f0;
+            background: white;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 0.85rem;
+            font-weight: 500;
+            color: #4a5568;
+            transition: border-color 0.15s, background 0.15s, color 0.15s;
+            white-space: nowrap;
+        }
+
+        .filter-btn:hover {
+            border-color: #667eea;
+            color: #667eea;
+        }
+
+        .filter-btn.active {
+            background: #667eea;
+            border-color: #667eea;
+            color: white;
+        }
+
+        /* ── Сортировка ── */
+        .sort-select {
+            padding: 0.6rem 0.9rem;
+            border: 2px solid #e2e8f0;
+            border-radius: 8px;
+            font-size: 0.9rem;
+            color: #4a5568;
+            background: white;
+            cursor: pointer;
+        }
+
+        .sort-select:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        /* ── Кнопка сброса ── */
+        .btn-reset {
+            padding: 0.6rem 1rem;
+            border: 2px solid #e2e8f0;
+            background: white;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 0.85rem;
+            color: #718096;
+            align-self: flex-end;
+        }
+
+        .btn-reset:hover {
+            border-color: #fc8181;
+            color: #c53030;
+        }
+
         .stats {
             color: #718096;
             font-size: 0.9rem;
+            align-self: flex-end;
+            margin-left: auto;
         }
 
+        /* ── Таблица ── */
         .table-container {
             overflow-x: auto;
             border-radius: 8px;
@@ -116,6 +199,29 @@
             color: #4a5568;
             text-transform: uppercase;
             font-size: 0.8rem;
+            white-space: nowrap;
+        }
+
+        th.sortable {
+            cursor: pointer;
+            user-select: none;
+        }
+
+        th.sortable:hover {
+            color: #667eea;
+        }
+
+        th.sortable .sort-icon {
+            display: inline-block;
+            margin-left: 4px;
+            opacity: 0.4;
+            font-size: 0.75rem;
+        }
+
+        th.sortable.sort-asc .sort-icon,
+        th.sortable.sort-desc .sort-icon {
+            opacity: 1;
+            color: #667eea;
         }
 
         tr:hover {
@@ -123,31 +229,56 @@
         }
 
         .prediction-text {
-            max-width: 400px;
+            max-width: 320px;
+            color: #4a5568;
         }
 
+        /* ── Бейджи ── */
+        .badge {
+            display: inline-block;
+            padding: 0.25rem 0.6rem;
+            border-radius: 12px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            white-space: nowrap;
+        }
+
+        .badge-free    { background: #edf2f7; color: #718096; }
+        .badge-premium { background: #fefcbf; color: #975a16; }
+        .badge-vip     { background: #e9d8fd; color: #6b46c1; }
+        .badge-tg      { background: #ebf8ff; color: #2b6cb0; }
+        .badge-max     { background: #f0fff4; color: #276749; }
+
+        .platform-id {
+            display: flex;
+            align-items: center;
+            gap: 0.4rem;
+        }
+
+        /* ── Кнопка действия ── */
         .action-btn {
             padding: 0.4rem 0.8rem;
-            border: 1px solid #667eea;
-            background: white;
-            color: #667eea;
+            background: #667eea;
+            color: white;
+            border: none;
             border-radius: 6px;
             cursor: pointer;
             font-size: 0.85rem;
-            font-weight: 500;
+            white-space: nowrap;
         }
 
         .action-btn:hover {
-            background: #667eea;
-            color: white;
+            background: #5a67d8;
         }
 
+        /* ── Пагинация ── */
         .pagination {
             display: flex;
             gap: 0.5rem;
             margin-top: 1.5rem;
             justify-content: center;
             align-items: center;
+            flex-wrap: wrap;
         }
 
         .pagination button {
@@ -159,108 +290,101 @@
             font-weight: 500;
         }
 
-        .pagination button:hover {
-            border-color: #667eea;
+        .pagination button:hover      { border-color: #667eea; }
+        .pagination button:disabled   { opacity: 0.5; cursor: not-allowed; }
+        .pagination button.active     { background: #667eea; color: white; border-color: #667eea; }
+        .pagination span              { color: #718096; }
+
+        /* ── Состояния ── */
+        .loading { text-align: center; padding: 2rem; color: #718096; }
+        .error   { background: #fed7d7; color: #c53030; padding: 1rem; border-radius: 8px; }
+
+        /* ── Контекстное меню ── */
+        .context-menu {
+            position: fixed;
+            z-index: 2000;
+            background: white;
+            border: 1px solid #e2e8f0;
+            border-radius: 10px;
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.14);
+            padding: 0.4rem 0;
+            min-width: 210px;
+            display: none;
+            animation: ctx-fade 0.1s ease;
         }
 
-        .pagination button:disabled {
-            opacity: 0.5;
-            cursor: not-allowed;
+        @keyframes ctx-fade {
+            from { opacity: 0; transform: scale(0.97); }
+            to   { opacity: 1; transform: scale(1); }
         }
 
-        .pagination button.active {
-            background: #667eea;
-            color: white;
-            border-color: #667eea;
-        }
-
-        .pagination span {
-            color: #718096;
-        }
-
-        .badge {
-            display: inline-block;
-            padding: 0.25rem 0.6rem;
-            border-radius: 12px;
-            font-size: 0.8rem;
-            font-weight: 600;
+        .context-menu-header {
+            padding: 0.5rem 1rem 0.4rem;
+            font-size: 0.75rem;
+            font-weight: 700;
+            color: #a0aec0;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            border-bottom: 1px solid #f0f0f0;
+            margin-bottom: 0.3rem;
             white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            max-width: 200px;
         }
 
-        .badge-free {
-            background: #edf2f7;
-            color: #718096;
-        }
-
-        .badge-premium {
-            background: #fefcbf;
-            color: #975a16;
-        }
-
-        .badge-vip {
-            background: #e9d8fd;
-            color: #6b46c1;
-        }
-
-        .badge-tg {
-            background: #dbeafe;
-            color: #1e40af;
-        }
-
-        .badge-max {
-            background: #dcfce7;
-            color: #166534;
-        }
-
-        .platform-id {
+        .context-menu-item {
             display: flex;
-            flex-direction: column;
-            gap: 0.3rem;
-            font-size: 0.85rem;
-        }
-
-        .platform-id code {
-            font-family: 'SF Mono', 'Consolas', monospace;
-            font-size: 0.8rem;
+            align-items: center;
+            gap: 0.6rem;
+            padding: 0.55rem 1rem;
+            cursor: pointer;
+            font-size: 0.9rem;
             color: #2d3748;
+            text-decoration: none;
+            transition: background 0.1s;
         }
 
-        .loading {
-            text-align: center;
-            padding: 2rem;
-            color: #718096;
+        .context-menu-item:hover {
+            background: #f7fafc;
+            color: #667eea;
         }
 
-        .error {
-            background: #fed7d7;
-            color: #c53030;
-            padding: 1rem;
-            border-radius: 8px;
+        .context-menu-item.disabled {
+            color: #cbd5e0;
+            cursor: default;
+            pointer-events: none;
         }
 
-        /* Modal */
+        .context-menu-divider {
+            border: none;
+            border-top: 1px solid #f0f0f0;
+            margin: 0.3rem 0;
+        }
+
+        /* Подсветка строки при правом клике */
+        tr.ctx-highlight {
+            background: #ebf4ff !important;
+        }
+
+        /* ── Модальное окно ── */
         .modal {
             display: none;
             position: fixed;
-            z-index: 1000;
-            left: 0;
-            top: 0;
-            width: 100%;
-            height: 100%;
+            inset: 0;
             background: rgba(0, 0, 0, 0.5);
-            backdrop-filter: blur(5px);
+            z-index: 1000;
+            overflow-y: auto;
+            padding: 2rem;
         }
 
         .modal-content {
             background: white;
-            margin: 5% auto;
-            padding: 2rem;
             border-radius: 16px;
-            width: 90%;
             max-width: 800px;
-            max-height: 80vh;
-            overflow-y: auto;
-            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            margin: 0 auto;
+            padding: 2rem;
+            position: relative;
         }
 
         .modal-header {
@@ -268,32 +392,26 @@
             justify-content: space-between;
             align-items: center;
             margin-bottom: 1.5rem;
-            padding-bottom: 1rem;
-            border-bottom: 2px solid #e2e8f0;
         }
 
-        .modal-title {
-            font-size: 1.25rem;
-            font-weight: 700;
-            color: #2d3748;
-        }
+        .modal-title { font-size: 1.3rem; color: #4a5568; }
 
         .close {
-            font-size: 2rem;
-            cursor: pointer;
-            color: #718096;
             background: none;
             border: none;
+            font-size: 1.5rem;
+            cursor: pointer;
+            color: #718096;
+            padding: 0.25rem 0.5rem;
+            border-radius: 4px;
         }
 
-        .close:hover {
-            color: #2d3748;
-        }
+        .close:hover { color: #c53030; }
 
         .prediction-full {
-            white-space: pre-wrap;
-            line-height: 1.6;
-            font-size: 1rem;
+            line-height: 1.7;
+            color: #2d3748;
+            margin-bottom: 1rem;
         }
 
         .meta {
@@ -305,9 +423,6 @@
             color: #4a5568;
         }
     </style>
-
-
-    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
 </head>
 
 <body>
@@ -323,176 +438,376 @@
             {% endif %}
             <a href="/logout" style="color: #c53030;">🚪 Выйти</a>
         </div>
+    </div>
 
-    </div>
-    </div>
     <div class="container">
         <div class="data-section">
+
+            <!-- ── Строка управления ── -->
             <div class="controls">
-                <div class="search-box"><input type="text" id="search"
-                        placeholder="Поиск по тексту, имени или ID платформы..." /></div>
-                <div class="stats" id="stats">Загрузка...</div>
+
+                <!-- Поиск -->
+                <div class="control-group search-box">
+                    <label>Поиск</label>
+                    <input type="text" id="search" placeholder="Текст, имя пользователя или ID…" />
+                </div>
+
+                <!-- Фильтр: платформа -->
+                <div class="control-group">
+                    <label>Платформа</label>
+                    <div class="filter-group" id="filter-platform">
+                        <button class="filter-btn active" data-value="">Все</button>
+                        <button class="filter-btn" data-value="tg">🔵 TG</button>
+                        <button class="filter-btn" data-value="max">🟢 MAX</button>
+                    </div>
+                </div>
+
+                <!-- Фильтр: тариф -->
+                <div class="control-group">
+                    <label>Тариф</label>
+                    <div class="filter-group" id="filter-tariff">
+                        <button class="filter-btn active" data-value="">Все</button>
+                        <button class="filter-btn" data-value="free">Free</button>
+                        <button class="filter-btn" data-value="premium">💎 Premium</button>
+                        <button class="filter-btn" data-value="vip">⭐ VIP</button>
+                    </div>
+                </div>
+
+                <!-- Сортировка -->
+                <div class="control-group">
+                    <label>Сортировка</label>
+                    <select class="sort-select" id="sort-select">
+                        <option value="date_desc">Дата ↓ (новые)</option>
+                        <option value="date_asc">Дата ↑ (старые)</option>
+                    </select>
+                </div>
+
+                <!-- Сброс -->
+                <button class="btn-reset" onclick="resetFilters()">✕ Сбросить</button>
+
+                <!-- Счётчик -->
+                <div class="stats" id="stats">Загрузка…</div>
             </div>
+
+            <!-- ── Таблица ── -->
             <div class="table-container">
                 <table id="data-table">
                     <thead>
                         <tr>
                             <th>ID</th>
                             <th>Пользователь</th>
-                            <th>ID платформы</th>
+                            <th>Username</th>
+                            <th>Платформа / ID</th>
                             <th>Фото</th>
                             <th>Запрос</th>
                             <th>Тариф</th>
                             <th>Предсказание</th>
-                            <th>Дата</th>
+                            <th class="sortable" id="th-date" onclick="toggleColSort()">
+                                Дата <span class="sort-icon">↕</span>
+                            </th>
                             <th>Действия</th>
                         </tr>
                     </thead>
                     <tbody id="table-body">
                         <tr>
-                            <td colspan="9" class="loading">Загрузка...</td>
+                            <td colspan="10" class="loading">Загрузка…</td>
                         </tr>
                     </tbody>
                 </table>
             </div>
+
             <div class="pagination" id="pagination"></div>
         </div>
     </div>
+
+    <!-- ── Модальное окно просмотра предсказания ── -->
     <div id="modal" class="modal">
         <div class="modal-content">
             <div class="modal-header">
-                <h2 class="modal-title">🔮 Предсказание</h2><button class="close" onclick="closeModal()">&times;
-                </button>
+                <h2 class="modal-title">🔮 Предсказание</h2>
+                <button class="close" onclick="closeModal()">&times;</button>
             </div>
             <div id="modal-content-body">
-                <div id="modal-photo-container" style="text-align: center; margin-bottom: 1.5rem; display: none;"><img
-                        id="modal-photo" src=""
-                        style="max-width: 100%; max-height: 400px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
-                </div>
+                <div id="modal-photo-container" style="text-align:center;margin-bottom:1.5rem;display:none;"></div>
                 <div id="modal-request-container"
-                    style="margin-bottom: 1rem; padding: 1rem; background: #ebf8ff; border-radius: 8px; display: none;">
-                    <strong style="color: #2b6cb0;">Запрос пользователя:</strong>
-                    <div id="modal-request" style="margin-top: 0.5rem; color: #2c5282;"></div>
+                    style="margin-bottom:1rem;padding:1rem;background:#ebf8ff;border-radius:8px;display:none;">
+                    <strong style="color:#2b6cb0;">Запрос пользователя:</strong>
+                    <div id="modal-request" style="margin-top:0.5rem;color:#2c5282;"></div>
                 </div>
                 <div class="prediction-full" id="modal-text"></div>
                 <div class="meta" id="modal-meta"></div>
             </div>
         </div>
     </div>
-    <script>let allData = [];
+
+    <!-- ── Контекстное меню ── -->
+    <div id="context-menu" class="context-menu">
+        <div class="context-menu-header" id="ctx-user-name">Пользователь</div>
+        <a  class="context-menu-item" id="ctx-open-profile" href="#" target="_blank">
+            🔗 Открыть профиль
+        </a>
+        <div class="context-menu-item" id="ctx-copy-link" onclick="copyProfileLink()">
+            📋 Скопировать ссылку
+        </div>
+        <hr class="context-menu-divider">
+        <div class="context-menu-item" id="ctx-copy-id" onclick="copyPlatformId()">
+            🔢 Скопировать ID платформы
+        </div>
+        <div class="context-menu-item" onclick="showPredictionFromCtx()">
+            👁 Просмотреть предсказание
+        </div>
+    </div>
+
+    <script>
+        // ── Состояние ──────────────────────────────────────────────────
+        let allData      = [];
         let filteredData = [];
-        let currentPage = 1;
-        const perPage = 50;
+        let currentPage  = 1;
+        const perPage    = 50;
 
-        function getPlatformBadge(source) {
-            if (source === 'max') {
-                return '<span class="badge badge-max">MAX</span>';
-            }
-            return '<span class="badge badge-tg">TG</span>';
-        }
+        const filters = {
+            search:   '',
+            platform: '',   // '' | 'tg' | 'max'
+            tariff:   '',   // '' | 'free' | 'premium' | 'vip'
+            sort:     'date_desc',
+        };
 
+        // ── Загрузка данных ────────────────────────────────────────────
         async function loadData() {
             try {
-                const response = await fetch('/api/predictions');
-                allData = await response.json();
-                filteredData = [...allData];
-                renderTable();
-                updateStats();
-            }
+                // Грузим предсказания и пользователей параллельно
+                const [predResponse, userResponse] = await Promise.all([
+                    fetch('/api/predictions'),
+                    fetch('/api/users'),
+                ]);
 
-            catch (error) {
-                document.getElementById('table-body').innerHTML = '<tr><td colspan="9" class="error">Ошибка загрузки</td></tr>';
+                const predictions = await predResponse.json();
+                const users       = await userResponse.json();
+
+                // Строим словарь: внутренний user_id → username
+                // Это позволяет обогатить предсказания без изменений на бэкенде
+                const usernameMap = {};
+                for (const u of users) {
+                    usernameMap[u.id] = u.username || null;
+                }
+
+                // Проставляем username в каждое предсказание по user_id
+                allData = predictions.map(p => ({
+                    ...p,
+                    username: p.username ?? usernameMap[p.user_id] ?? null,
+                }));
+
+                applyFilters();
+            } catch (error) {
+                document.getElementById('table-body').innerHTML =
+                    '<tr><td colspan="10" class="error">Ошибка загрузки данных</td></tr>';
             }
         }
 
+        // ── Применение всех фильтров и сортировки ─────────────────────
+        function applyFilters() {
+            const term = filters.search.toLowerCase();
+
+            filteredData = allData.filter(p => {
+                // Текстовый поиск
+                if (term) {
+                    const inText     = (p.prediction_text || '').toLowerCase().includes(term);
+                    const inName     = (p.user_name       || '').toLowerCase().includes(term);
+                    const inRequest  = (p.user_request    || '').toLowerCase().includes(term);
+                    const inId       = String(p.telegram_id || '').includes(term);
+                    if (!inText && !inName && !inRequest && !inId) return false;
+                }
+
+                // Фильтр по платформе
+                if (filters.platform) {
+                    const src = p.source || 'tg';
+                    if (src !== filters.platform) return false;
+                }
+
+                // Фильтр по тарифу
+                if (filters.tariff) {
+                    const st = p.subscription_type || 'free';
+                    if (st !== filters.tariff) return false;
+                }
+
+                return true;
+            });
+
+            // Сортировка по дате
+            filteredData.sort((a, b) =>
+                filters.sort === 'date_asc'
+                    ? new Date(a.created_at) - new Date(b.created_at)
+                    : new Date(b.created_at) - new Date(a.created_at)
+            );
+
+            currentPage = 1;
+            renderTable();
+            updateStats();
+            syncSortHeader();
+        }
+
+        // ── Клик по заголовку «Дата» ───────────────────────────────────
+        function toggleColSort() {
+            filters.sort = filters.sort === 'date_desc' ? 'date_asc' : 'date_desc';
+            document.getElementById('sort-select').value = filters.sort;
+            applyFilters();
+        }
+
+        // ── Подсветка активного заголовка ─────────────────────────────
+        function syncSortHeader() {
+            const th   = document.getElementById('th-date');
+            const icon = th.querySelector('.sort-icon');
+            th.classList.remove('sort-asc', 'sort-desc');
+            if (filters.sort === 'date_desc') {
+                th.classList.add('sort-desc');
+                icon.textContent = '↓';
+            } else {
+                th.classList.add('sort-asc');
+                icon.textContent = '↑';
+            }
+        }
+
+        // ── Сброс фильтров ─────────────────────────────────────────────
+        function resetFilters() {
+            filters.search   = '';
+            filters.platform = '';
+            filters.tariff   = '';
+            filters.sort     = 'date_desc';
+
+            document.getElementById('search').value      = '';
+            document.getElementById('sort-select').value = 'date_desc';
+
+            setActiveBtn('filter-platform', '');
+            setActiveBtn('filter-tariff',   '');
+
+            applyFilters();
+        }
+
+        // ── Установка активной кнопки ─────────────────────────────────
+        function setActiveBtn(groupId, value) {
+            document.querySelectorAll(`#${groupId} .filter-btn`).forEach(btn => {
+                btn.classList.toggle('active', btn.dataset.value === value);
+            });
+        }
+
+        // ── Инициализация групп кнопок ────────────────────────────────
+        function initFilterGroup(groupId, filterKey) {
+            document.querySelectorAll(`#${groupId} .filter-btn`).forEach(btn => {
+                btn.addEventListener('click', () => {
+                    filters[filterKey] = btn.dataset.value;
+                    setActiveBtn(groupId, btn.dataset.value);
+                    applyFilters();
+                });
+            });
+        }
+
+        // ── Хелперы бейджей ───────────────────────────────────────────
+        function getPlatformBadge(source) {
+            return source === 'max'
+                ? '<span class="badge badge-max">MAX</span>'
+                : '<span class="badge badge-tg">TG</span>';
+        }
+
+        function getTariffBadge(st) {
+            if (st === 'vip')     return '<span class="badge badge-vip">⭐ VIP</span>';
+            if (st === 'premium') return '<span class="badge badge-premium">💎 Premium</span>';
+            return '<span class="badge badge-free">Free</span>';
+        }
+
+        // ── Обработчик ошибок фото ────────────────────────────────────
         function handleImgError(img) {
             const span = document.createElement('span');
-            span.style.color = '#cbd5e0';
-            span.style.whiteSpace = 'nowrap';
-            span.textContent = 'Нет фото';
-
-            // Try to find the gallery wrapper
+            span.style.color       = '#cbd5e0';
+            span.style.whiteSpace  = 'nowrap';
+            span.textContent       = 'Нет фото';
             const wrapper = img.closest('.gallery-wrapper');
-            if (wrapper) {
-                wrapper.replaceWith(span);
-            } else {
-                img.replaceWith(span);
-            }
+            (wrapper || img).replaceWith(span);
         }
 
+        // ── Рендер таблицы ────────────────────────────────────────────
         function renderTable() {
-            const start = (currentPage - 1) * perPage;
-            const end = start + perPage;
-            const pageData = filteredData.slice(start, end);
-            const tbody = document.getElementById('table-body');
+            const start    = (currentPage - 1) * perPage;
+            const pageData = filteredData.slice(start, start + perPage);
+            const tbody    = document.getElementById('table-body');
 
             if (pageData.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="9">Предсказания не найдены</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="10" style="text-align:center;padding:2rem;color:#718096;">Предсказания не найдены</td></tr>';
+                renderPagination();
                 return;
             }
 
             tbody.innerHTML = pageData.map(p => {
-                const st = p.subscription_type || 'free';
-                let badgeClass = 'badge-free';
-                let badgeLabel = 'Free';
-                if (st === 'vip') { badgeClass = 'badge-vip'; badgeLabel = '⭐ VIP'; }
-                else if (st === 'premium') { badgeClass = 'badge-premium'; badgeLabel = '💎 Premium'; }
-                const badge = `<span class="badge ${badgeClass}">${badgeLabel}</span>`;
-                const platformBadge = getPlatformBadge(p.source);
-                const platformId = p.telegram_id || '—';
+                const st             = p.subscription_type || 'free';
+                const tariffBadge    = getTariffBadge(st);
+                const platformBadge  = getPlatformBadge(p.source);
+                const platformId     = p.telegram_id || '—';
+
+                // Миниатюра фото
+                let photoCell;
+                if (p.photos && p.photos.length > 0) {
+                    photoCell = `
+                        <div class="gallery-wrapper" style="position:relative;display:inline-block;cursor:pointer;"
+                             onclick="showPrediction(${p.id})">
+                            <img src="/media/${p.photos[0].file_path}"
+                                 style="width:50px;height:50px;object-fit:cover;border-radius:4px;"
+                                 onerror="handleImgError(this)">
+                            ${p.photos.length > 1
+                                ? `<span style="position:absolute;bottom:-5px;right:-5px;background:#2b6cb0;color:white;font-size:10px;padding:2px 4px;border-radius:4px;">+${p.photos.length - 1}</span>`
+                                : ''}
+                        </div>`;
+                } else if (p.photo_path) {
+                    photoCell = `<img src="/media/${p.photo_path}"
+                        style="width:50px;height:50px;object-fit:cover;border-radius:4px;cursor:pointer;"
+                        onclick="showPrediction(${p.id})" onerror="handleImgError(this)">`;
+                } else {
+                    photoCell = '<span style="color:#cbd5e0;">Нет фото</span>';
+                }
+
+                const requestText = p.user_request
+                    ? (p.user_request.length > 30 ? p.user_request.substring(0, 30) + '…' : p.user_request)
+                    : '<span style="color:#cbd5e0;">—</span>';
+
+                const previewText = p.prediction_text.length > 80
+                    ? p.prediction_text.substring(0, 80) + '…'
+                    : p.prediction_text;
+
                 return `
-                <tr>
+                <tr data-pred-id="${p.id}" oncontextmenu="openContextMenu(event, ${p.id})">
                     <td>${p.id}</td>
-                    <td>${p.user_name}</td>
+                    <td>${p.user_name || '—'}</td>
+                    <td>${p.source === 'tg' && p.username
+                        ? `<a href="https://t.me/${p.username}" target="_blank" class="telegram-link">@${p.username}</a>`
+                        : '—'}</td>
                     <td>
                         <div class="platform-id">
                             ${platformBadge}
                             <code>${platformId}</code>
                         </div>
                     </td>
-                    <td>
-                        ${p.photos && p.photos.length > 0 ?
-                    `<div class="gallery-wrapper" style="position: relative; display: inline-block; cursor: pointer;" onclick="showPrediction(${p.id})">
-                                <img src="/media/${p.photos[0].file_path}" style="width: 50px; height: 50px; object-fit: cover; border-radius: 4px;" onerror="handleImgError(this)">
-                                ${p.photos.length > 1 ?
-                        `<span style="position: absolute; bottom: -5px; right: -5px; background: #2b6cb0; color: white; font-size: 10px; padding: 2px 4px; border-radius: 4px;">+${p.photos.length - 1}</span>`
-                        : ''}
-                            </div>`
-                    : (p.photo_path ?
-                        `<img src="/media/${p.photo_path}" style="width: 50px; height: 50px; object-fit: cover; border-radius: 4px; cursor: pointer;" onclick="showPrediction(${p.id})" onerror="handleImgError(this)">`
-                        : '<span style="color: #cbd5e0;">Нет фото</span>'
-                    )
-                }
-                    </td>
-                    <td>
-                        ${p.user_request ? (p.user_request.length > 30 ? p.user_request.substring(0, 30) + '...' : p.user_request) : '<span style="color: #cbd5e0;">-</span>'}
-                    </td>
-                    <td>${badge}</td>
-                    <td class="prediction-text">
-                        ${p.prediction_text.length > 80 ? p.prediction_text.substring(0, 80) + '...' : p.prediction_text}
-                    </td>
-                    <td>${new Date(p.created_at).toLocaleString('ru-RU')}</td>
+                    <td>${photoCell}</td>
+                    <td>${requestText}</td>
+                    <td>${tariffBadge}</td>
+                    <td class="prediction-text">${previewText}</td>
+                    <td style="white-space:nowrap;">${new Date(p.created_at).toLocaleString('ru-RU')}</td>
                     <td><button class="action-btn" onclick="showPrediction(${p.id})">👁 Просмотр</button></td>
-                </tr>
-            `}).join('');
+                </tr>`;
+            }).join('');
 
             renderPagination();
         }
 
+        // ── Пагинация ─────────────────────────────────────────────────
         function renderPagination() {
             const totalPages = Math.ceil(filteredData.length / perPage);
             const pagination = document.getElementById('pagination');
 
-            if (totalPages <= 1) {
-                pagination.innerHTML = '';
-                return;
-            }
+            if (totalPages <= 1) { pagination.innerHTML = ''; return; }
 
             let html = `<button onclick="goToPage(1)" ${currentPage === 1 ? 'disabled' : ''}>«</button>`;
-            html += `<button onclick="goToPage(${currentPage - 1})" ${currentPage === 1 ? 'disabled' : ''}>‹</button>`;
+            html    += `<button onclick="goToPage(${currentPage - 1})" ${currentPage === 1 ? 'disabled' : ''}>‹</button>`;
 
             const startPage = Math.max(1, currentPage - 2);
-            const endPage = Math.min(totalPages, currentPage + 2);
+            const endPage   = Math.min(totalPages, currentPage + 2);
 
             for (let i = startPage; i <= endPage; i++) {
                 html += `<button onclick="goToPage(${i})" class="${i === currentPage ? 'active' : ''}">${i}</button>`;
@@ -508,42 +823,43 @@
         function goToPage(page) {
             currentPage = page;
             renderTable();
+            window.scrollTo({ top: 0, behavior: 'smooth' });
         }
 
+        // ── Счётчик ───────────────────────────────────────────────────
         function updateStats() {
-            document.getElementById('stats').textContent = `Всего: ${allData.length} | Показано: ${filteredData.length}`;
+            document.getElementById('stats').textContent =
+                `Всего: ${allData.length} | Найдено: ${filteredData.length}`;
         }
 
+        // ── Модальное окно ────────────────────────────────────────────
         function showPrediction(id) {
             const p = allData.find(x => x.id === id);
             if (!p) return;
 
-            // Show/hide photo
             const photoContainer = document.getElementById('modal-photo-container');
 
             if (p.photos && p.photos.length > 0) {
-                // Gallery mode
-                let galleryHtml = '<div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px;">';
+                let galleryHtml = '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px;">';
                 p.photos.forEach(photo => {
-                    galleryHtml += `<img src="/media/${photo.file_path}" style="width: 100%; height: 150px; object-fit: cover; border-radius: 4px; cursor: pointer;" onclick="window.open('/media/${photo.file_path}', '_blank')">`;
+                    galleryHtml += `<img src="/media/${photo.file_path}"
+                        style="width:100%;height:150px;object-fit:cover;border-radius:4px;cursor:pointer;"
+                        onclick="window.open('/media/${photo.file_path}','_blank')">`;
                 });
                 galleryHtml += '</div>';
-                photoContainer.innerHTML = galleryHtml;
-                photoContainer.style.display = 'block';
+                photoContainer.innerHTML      = galleryHtml;
+                photoContainer.style.display  = 'block';
             } else if (p.photo_path) {
-                // Single photo legacy mode
-                photoContainer.innerHTML = `<img src="/media/${p.photo_path}" style="max-width: 100%; max-height: 400px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">`;
-                photoContainer.style.display = 'block';
+                photoContainer.innerHTML      = `<img src="/media/${p.photo_path}"
+                    style="max-width:100%;max-height:400px;border-radius:8px;box-shadow:0 4px 6px rgba(0,0,0,0.1);">`;
+                photoContainer.style.display  = 'block';
             } else {
-                photoContainer.style.display = 'none';
+                photoContainer.style.display  = 'none';
             }
 
-            // Show/hide request
             const reqContainer = document.getElementById('modal-request-container');
-            const reqText = document.getElementById('modal-request');
-
             if (p.user_request) {
-                reqText.textContent = p.user_request;
+                document.getElementById('modal-request').textContent = p.user_request;
                 reqContainer.style.display = 'block';
             } else {
                 reqContainer.style.display = 'none';
@@ -551,17 +867,22 @@
 
             document.getElementById('modal-text').innerHTML = marked.parse(p.prediction_text);
 
-            const subBadge = {'vip': '<span class="badge badge-vip">⭐ VIP</span>', 'premium': '<span class="badge badge-premium">💎 Premium</span>', 'free': '<span class="badge badge-free">Free</span>'};
+            const subBadge = {
+                vip:     '<span class="badge badge-vip">⭐ VIP</span>',
+                premium: '<span class="badge badge-premium">💎 Premium</span>',
+                free:    '<span class="badge badge-free">Free</span>',
+            };
             const platformBadge = getPlatformBadge(p.source);
-            const platformId = p.telegram_id || '—';
+
             document.getElementById('modal-meta').innerHTML = `
-                <strong>ID:</strong> ${p.id} | 
-                <strong>Пользователь:</strong> ${p.user_name} | 
-                <strong>Платформа:</strong> ${platformBadge} <code>${platformId}</code> | 
-                <strong>Тариф:</strong> ${subBadge[p.subscription_type] || subBadge['free']} | 
-                <strong>Дата:</strong> ${new Date(p.created_at).toLocaleString('ru-RU')} | 
+                <strong>ID:</strong> ${p.id} |
+                <strong>Пользователь:</strong> ${p.user_name} |
+                <strong>Платформа:</strong> ${platformBadge} <code>${p.telegram_id || '—'}</code> |
+                <strong>Тариф:</strong> ${subBadge[p.subscription_type] || subBadge['free']} |
+                <strong>Дата:</strong> ${new Date(p.created_at).toLocaleString('ru-RU')} |
                 <strong>Символов:</strong> ${p.prediction_text.length}
             `;
+
             document.getElementById('modal').style.display = 'block';
         }
 
@@ -569,20 +890,145 @@
             document.getElementById('modal').style.display = 'none';
         }
 
-        window.onclick = (e) => {
+        window.onclick = e => {
             if (e.target === document.getElementById('modal')) closeModal();
         };
 
-        document.getElementById('search').addEventListener('input', (e) => {
-            const term = e.target.value.toLowerCase();
-            filteredData = allData.filter(p =>
-                p.prediction_text.toLowerCase().includes(term) ||
-                (p.user_name || '').toLowerCase().includes(term) ||
-                String(p.telegram_id || '').includes(term)
+        // ── Инициализация ─────────────────────────────────────────────
+        initFilterGroup('filter-platform', 'platform');
+        initFilterGroup('filter-tariff',   'tariff');
+
+        document.getElementById('search').addEventListener('input', e => {
+            filters.search = e.target.value;
+            applyFilters();
+        });
+
+        document.getElementById('sort-select').addEventListener('change', e => {
+            filters.sort = e.target.value;
+            applyFilters();
+        });
+
+        // ── Контекстное меню ──────────────────────────────────────
+        // Храним данные строки, на которой вызвано меню
+        let ctxPrediction = null;
+
+        const ctxMenu = document.getElementById('context-menu');
+
+        function openContextMenu(event, predictionId) {
+            event.preventDefault();
+
+            // Снимаем подсветку с предыдущей строки
+            document.querySelectorAll('tr.ctx-highlight').forEach(r =>
+                r.classList.remove('ctx-highlight')
             );
-            currentPage = 1;
-            renderTable();
-            updateStats();
+
+            // Находим данные предсказания
+            ctxPrediction = allData.find(p => p.id === predictionId);
+            if (!ctxPrediction) return;
+
+            // Подсвечиваем текущую строку
+            event.currentTarget.classList.add('ctx-highlight');
+
+            // Заголовок меню — имя пользователя
+            document.getElementById('ctx-user-name').textContent =
+                ctxPrediction.user_name || 'Пользователь';
+
+            // Строим ссылку на профиль
+            const openItem = document.getElementById('ctx-open-profile');
+            const copyItem = document.getElementById('ctx-copy-link');
+
+            if (ctxPrediction.source === 'tg' && ctxPrediction.username) {
+                // Telegram — есть username, ссылка работает
+                const link = `https://t.me/${ctxPrediction.username}`;
+                openItem.href = link;
+                openItem.classList.remove('disabled');
+                copyItem.classList.remove('disabled');
+            } else if (ctxPrediction.source === 'tg' && !ctxPrediction.username) {
+                // Telegram — нет username, ссылки нет
+                openItem.href = '#';
+                openItem.classList.add('disabled');
+                copyItem.classList.add('disabled');
+            } else {
+                // MAX — публичных ссылок на профиль нет
+                openItem.href = '#';
+                openItem.classList.add('disabled');
+                copyItem.classList.add('disabled');
+            }
+
+            // Позиционируем меню относительно курсора
+            const menuW  = 220;
+            const menuH  = 160;
+            const left   = (event.clientX + menuW > window.innerWidth)
+                ? event.clientX - menuW
+                : event.clientX;
+            const top    = (event.clientY + menuH > window.innerHeight)
+                ? event.clientY - menuH
+                : event.clientY;
+
+            ctxMenu.style.left    = left + 'px';
+            ctxMenu.style.top     = top  + 'px';
+            ctxMenu.style.display = 'block';
+        }
+
+        function closeContextMenu() {
+            ctxMenu.style.display = 'none';
+            document.querySelectorAll('tr.ctx-highlight').forEach(r =>
+                r.classList.remove('ctx-highlight')
+            );
+            ctxPrediction = null;
+        }
+
+        function copyProfileLink() {
+            if (!ctxPrediction || !ctxPrediction.username) return;
+            const link = `https://t.me/${ctxPrediction.username}`;
+            navigator.clipboard.writeText(link).then(() => {
+                showCopyToast('Ссылка скопирована');
+            });
+            closeContextMenu();
+        }
+
+        function copyPlatformId() {
+            if (!ctxPrediction) return;
+            navigator.clipboard.writeText(String(ctxPrediction.telegram_id || '')).then(() => {
+                showCopyToast('ID скопирован');
+            });
+            closeContextMenu();
+        }
+
+        function showPredictionFromCtx() {
+            if (!ctxPrediction) return;
+            const id = ctxPrediction.id;
+            closeContextMenu();
+            showPrediction(id);
+        }
+
+        // Тост-уведомление о копировании
+        function showCopyToast(text) {
+            let toast = document.getElementById('copy-toast');
+            if (!toast) {
+                toast = document.createElement('div');
+                toast.id = 'copy-toast';
+                toast.style.cssText = `
+                    position: fixed; bottom: 2rem; left: 50%; transform: translateX(-50%);
+                    background: #2d3748; color: white; padding: 0.6rem 1.2rem;
+                    border-radius: 8px; font-size: 0.9rem; z-index: 3000;
+                    box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+                    transition: opacity 0.3s;
+                `;
+                document.body.appendChild(toast);
+            }
+            toast.textContent  = text;
+            toast.style.opacity = '1';
+            clearTimeout(toast._timer);
+            toast._timer = setTimeout(() => { toast.style.opacity = '0'; }, 2000);
+        }
+
+        // Закрытие меню при клике/скролле вне его
+        document.addEventListener('click',      closeContextMenu);
+        document.addEventListener('scroll',     closeContextMenu, true);
+        document.addEventListener('contextmenu', e => {
+            // Закрываем меню, если правый клик вне строки таблицы
+            if (!e.target.closest('tr[data-pred-id]')) closeContextMenu();
         });
 
         loadData();

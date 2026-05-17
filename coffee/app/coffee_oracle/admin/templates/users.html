@@ -65,12 +65,27 @@
             box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
         }
 
+        /* ── Панель управления ── */
         .controls {
             display: flex;
             gap: 1rem;
             margin-bottom: 1.5rem;
             flex-wrap: wrap;
-            align-items: center;
+            align-items: flex-end;
+        }
+
+        .control-group {
+            display: flex;
+            flex-direction: column;
+            gap: 0.35rem;
+        }
+
+        .control-group label {
+            font-size: 0.75rem;
+            font-weight: 600;
+            color: #718096;
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
         }
 
         .search-box input {
@@ -78,7 +93,7 @@
             border: 2px solid #e2e8f0;
             border-radius: 8px;
             font-size: 1rem;
-            min-width: 300px;
+            min-width: 280px;
         }
 
         .search-box input:focus {
@@ -86,11 +101,78 @@
             border-color: #667eea;
         }
 
+        /* ── Фильтры-кнопки ── */
+        .filter-group {
+            display: flex;
+            gap: 0.4rem;
+            flex-wrap: wrap;
+        }
+
+        .filter-btn {
+            padding: 0.5rem 0.9rem;
+            border: 2px solid #e2e8f0;
+            background: white;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 0.85rem;
+            font-weight: 500;
+            color: #4a5568;
+            transition: border-color 0.15s, background 0.15s, color 0.15s;
+            white-space: nowrap;
+        }
+
+        .filter-btn:hover {
+            border-color: #667eea;
+            color: #667eea;
+        }
+
+        .filter-btn.active {
+            background: #667eea;
+            border-color: #667eea;
+            color: white;
+        }
+
+        /* ── Сортировка ── */
+        .sort-select {
+            padding: 0.6rem 0.9rem;
+            border: 2px solid #e2e8f0;
+            border-radius: 8px;
+            font-size: 0.9rem;
+            color: #4a5568;
+            background: white;
+            cursor: pointer;
+        }
+
+        .sort-select:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        /* ── Кнопка сброса ── */
+        .btn-reset {
+            padding: 0.6rem 1rem;
+            border: 2px solid #e2e8f0;
+            background: white;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 0.85rem;
+            color: #718096;
+            align-self: flex-end;
+        }
+
+        .btn-reset:hover {
+            border-color: #fc8181;
+            color: #c53030;
+        }
+
         .stats {
             color: #718096;
             font-size: 0.9rem;
+            align-self: flex-end;
+            margin-left: auto;
         }
 
+        /* ── Таблица ── */
         .table-container {
             overflow-x: auto;
             border-radius: 8px;
@@ -116,6 +198,30 @@
             color: #4a5568;
             text-transform: uppercase;
             font-size: 0.8rem;
+            white-space: nowrap;
+        }
+
+        /* Заголовки-сортировщики */
+        th.sortable {
+            cursor: pointer;
+            user-select: none;
+        }
+
+        th.sortable:hover {
+            color: #667eea;
+        }
+
+        th.sortable .sort-icon {
+            display: inline-block;
+            margin-left: 4px;
+            opacity: 0.4;
+            font-size: 0.75rem;
+        }
+
+        th.sortable.sort-asc .sort-icon,
+        th.sortable.sort-desc .sort-icon {
+            opacity: 1;
+            color: #667eea;
         }
 
         tr:hover {
@@ -131,12 +237,49 @@
             text-decoration: underline;
         }
 
+        /* ── Бейджи ── */
+        .badge {
+            display: inline-block;
+            padding: 0.25rem 0.6rem;
+            border-radius: 12px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            white-space: nowrap;
+        }
+
+        .badge-free {
+            background: #edf2f7;
+            color: #718096;
+        }
+
+        .badge-premium {
+            background: #fefcbf;
+            color: #975a16;
+        }
+
+        .badge-vip {
+            background: #e9d8fd;
+            color: #6b46c1;
+        }
+
+        .badge-tg {
+            background: #ebf8ff;
+            color: #2b6cb0;
+        }
+
+        .badge-max {
+            background: #f0fff4;
+            color: #276749;
+        }
+
+        /* ── Пагинация ── */
         .pagination {
             display: flex;
             gap: 0.5rem;
             margin-top: 1.5rem;
             justify-content: center;
             align-items: center;
+            flex-wrap: wrap;
         }
 
         .pagination button {
@@ -167,30 +310,7 @@
             color: #718096;
         }
 
-        .badge {
-            display: inline-block;
-            padding: 0.25rem 0.6rem;
-            border-radius: 12px;
-            font-size: 0.8rem;
-            font-weight: 600;
-            white-space: nowrap;
-        }
-
-        .badge-free {
-            background: #edf2f7;
-            color: #718096;
-        }
-
-        .badge-premium {
-            background: #fefcbf;
-            color: #975a16;
-        }
-
-        .badge-vip {
-            background: #e9d8fd;
-            color: #6b46c1;
-        }
-
+        /* ── Состояния ── */
         .loading {
             text-align: center;
             padding: 2rem;
@@ -220,87 +340,285 @@
             <a href="/logout" style="color: #c53030;">🚪 Выйти</a>
         </div>
     </div>
+
     <div class="container">
         <div class="data-section">
+
+            <!-- ── Строка управления ── -->
             <div class="controls">
-                <div class="search-box">
-                    <input type="text" id="search" placeholder="Поиск по имени или username..." />
+
+                <!-- Поиск -->
+                <div class="control-group search-box">
+                    <label>Поиск</label>
+                    <input type="text" id="search" placeholder="Имя, username или ID…" />
                 </div>
-                <div class="stats" id="stats">Загрузка...</div>
+
+                <!-- Фильтр: платформа -->
+                <div class="control-group">
+                    <label>Платформа</label>
+                    <div class="filter-group" id="filter-platform">
+                        <button class="filter-btn active" data-value="">Все</button>
+                        <button class="filter-btn" data-value="tg">🔵 TG</button>
+                        <button class="filter-btn" data-value="max">🟢 MAX</button>
+                    </div>
+                </div>
+
+                <!-- Фильтр: статус подписки -->
+                <div class="control-group">
+                    <label>Статус</label>
+                    <div class="filter-group" id="filter-status">
+                        <button class="filter-btn active" data-value="">Все</button>
+                        <button class="filter-btn" data-value="free">Free</button>
+                        <button class="filter-btn" data-value="premium">💎 Premium</button>
+                        <button class="filter-btn" data-value="vip">⭐ VIP</button>
+                    </div>
+                </div>
+
+                <!-- Сортировка -->
+                <div class="control-group">
+                    <label>Сортировка</label>
+                    <select class="sort-select" id="sort-select">
+                        <option value="date_desc">Дата регистрации ↓ (новые)</option>
+                        <option value="date_asc">Дата регистрации ↑ (старые)</option>
+                        <option value="predictions_desc">Предсказаний ↓ (больше)</option>
+                        <option value="predictions_asc">Предсказаний ↑ (меньше)</option>
+                    </select>
+                </div>
+
+                <!-- Сброс фильтров -->
+                <button class="btn-reset" onclick="resetFilters()">✕ Сбросить</button>
+
+                <!-- Счётчик -->
+                <div class="stats" id="stats">Загрузка…</div>
             </div>
+
+            <!-- ── Таблица ── -->
             <div class="table-container">
                 <table id="data-table">
                     <thead>
                         <tr>
                             <th>ID</th>
-                            <th>Telegram ID</th>
+                            <th>Платформа</th>
+                            <th>ID платформы</th>
                             <th>Username</th>
                             <th>Полное имя</th>
                             <th>Статус</th>
-                            <th>Предсказаний</th>
-                            <th>Дата регистрации</th>
+                            <th class="sortable" id="th-predictions" onclick="toggleColSort('predictions')">
+                                Предсказаний <span class="sort-icon">↕</span>
+                            </th>
+                            <th class="sortable" id="th-date" onclick="toggleColSort('date')">
+                                Дата регистрации <span class="sort-icon">↕</span>
+                            </th>
                         </tr>
                     </thead>
                     <tbody id="table-body">
                         <tr>
-                            <td colspan="7" class="loading">Загрузка...</td>
+                            <td colspan="8" class="loading">Загрузка…</td>
                         </tr>
                     </tbody>
                 </table>
             </div>
+
             <div class="pagination" id="pagination"></div>
         </div>
     </div>
-    <script>
-        let allData = [];
-        let filteredData = [];
-        let currentPage = 1;
-        const perPage = 50;
 
+    <script>
+        // ── Состояние ──────────────────────────────────────────────────
+        let allData      = [];
+        let filteredData = [];
+        let currentPage  = 1;
+        const perPage    = 50;
+
+        // Активные значения фильтров
+        const filters = {
+            search:   '',
+            platform: '',   // '' | 'tg' | 'max'
+            status:   '',   // '' | 'free' | 'premium' | 'vip'
+            sort:     'date_desc',
+        };
+
+        // ── Загрузка данных ────────────────────────────────────────────
         async function loadData() {
             try {
                 const response = await fetch('/api/users');
                 allData = await response.json();
-                filteredData = [...allData];
-                renderTable();
-                updateStats();
+                applyFilters();
             } catch (error) {
                 document.getElementById('table-body').innerHTML =
-                    '<tr><td colspan="7" class="error">Ошибка загрузки</td></tr>';
+                    '<tr><td colspan="8" class="error">Ошибка загрузки данных</td></tr>';
             }
         }
 
+        // ── Применение всех фильтров и сортировки ─────────────────────
+        function applyFilters() {
+            const term = filters.search.toLowerCase();
+
+            filteredData = allData.filter(u => {
+                // Текстовый поиск
+                if (term) {
+                    const inName     = (u.full_name || '').toLowerCase().includes(term);
+                    const inUsername = (u.username  || '').toLowerCase().includes(term);
+                    const inId       = String(u.telegram_id).includes(term);
+                    if (!inName && !inUsername && !inId) return false;
+                }
+
+                // Фильтр по платформе
+                if (filters.platform && u.source !== filters.platform) return false;
+
+                // Фильтр по статусу
+                if (filters.status) {
+                    const st = u.subscription_type || 'free';
+                    if (st !== filters.status) return false;
+                }
+
+                return true;
+            });
+
+            // Сортировка
+            filteredData = sortData(filteredData, filters.sort);
+
+            currentPage = 1;
+            renderTable();
+            updateStats();
+            syncSortHeader();
+        }
+
+        // ── Сортировка массива ─────────────────────────────────────────
+        function sortData(data, sortKey) {
+            const sorted = [...data];
+            switch (sortKey) {
+                case 'date_desc':
+                    return sorted.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+                case 'date_asc':
+                    return sorted.sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
+                case 'predictions_desc':
+                    return sorted.sort((a, b) => (b.predictions_count || 0) - (a.predictions_count || 0));
+                case 'predictions_asc':
+                    return sorted.sort((a, b) => (a.predictions_count || 0) - (b.predictions_count || 0));
+                default:
+                    return sorted;
+            }
+        }
+
+        // ── Клик по заголовку колонки ──────────────────────────────────
+        function toggleColSort(col) {
+            if (col === 'date') {
+                filters.sort = filters.sort === 'date_desc' ? 'date_asc' : 'date_desc';
+            } else if (col === 'predictions') {
+                filters.sort = filters.sort === 'predictions_desc' ? 'predictions_asc' : 'predictions_desc';
+            }
+            document.getElementById('sort-select').value = filters.sort;
+            applyFilters();
+        }
+
+        // ── Подсветка активного заголовка ─────────────────────────────
+        function syncSortHeader() {
+            ['th-predictions', 'th-date'].forEach(id => {
+                const th = document.getElementById(id);
+                th.classList.remove('sort-asc', 'sort-desc');
+            });
+
+            if (filters.sort === 'date_desc') {
+                const th = document.getElementById('th-date');
+                th.classList.add('sort-desc');
+                th.querySelector('.sort-icon').textContent = '↓';
+            } else if (filters.sort === 'date_asc') {
+                const th = document.getElementById('th-date');
+                th.classList.add('sort-asc');
+                th.querySelector('.sort-icon').textContent = '↑';
+            } else if (filters.sort === 'predictions_desc') {
+                const th = document.getElementById('th-predictions');
+                th.classList.add('sort-desc');
+                th.querySelector('.sort-icon').textContent = '↓';
+            } else if (filters.sort === 'predictions_asc') {
+                const th = document.getElementById('th-predictions');
+                th.classList.add('sort-asc');
+                th.querySelector('.sort-icon').textContent = '↑';
+            }
+        }
+
+        // ── Сброс всех фильтров ────────────────────────────────────────
+        function resetFilters() {
+            filters.search   = '';
+            filters.platform = '';
+            filters.status   = '';
+            filters.sort     = 'date_desc';
+
+            document.getElementById('search').value          = '';
+            document.getElementById('sort-select').value     = 'date_desc';
+
+            setActiveBtn('filter-platform', '');
+            setActiveBtn('filter-status', '');
+
+            applyFilters();
+        }
+
+        // ── Установка активной кнопки в группе фильтров ───────────────
+        function setActiveBtn(groupId, value) {
+            document.querySelectorAll(`#${groupId} .filter-btn`).forEach(btn => {
+                btn.classList.toggle('active', btn.dataset.value === value);
+            });
+        }
+
+        // ── Инициализация групп кнопок-фильтров ───────────────────────
+        function initFilterGroup(groupId, filterKey) {
+            document.querySelectorAll(`#${groupId} .filter-btn`).forEach(btn => {
+                btn.addEventListener('click', () => {
+                    filters[filterKey] = btn.dataset.value;
+                    setActiveBtn(groupId, btn.dataset.value);
+                    applyFilters();
+                });
+            });
+        }
+
+        // ── Рендер таблицы ────────────────────────────────────────────
         function renderTable() {
-            const start = (currentPage - 1) * perPage;
-            const end = start + perPage;
-            const pageData = filteredData.slice(start, end);
-            const tbody = document.getElementById('table-body');
+            const start    = (currentPage - 1) * perPage;
+            const pageData = filteredData.slice(start, start + perPage);
+            const tbody    = document.getElementById('table-body');
 
             if (pageData.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="7">Пользователи не найдены</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;padding:2rem;color:#718096;">Пользователи не найдены</td></tr>';
+                renderPagination();
                 return;
             }
 
             tbody.innerHTML = pageData.map(user => {
                 const st = user.subscription_type || 'free';
-                let badgeClass = 'badge-free';
-                let badgeLabel = 'Free';
-                if (st === 'vip') { badgeClass = 'badge-vip'; badgeLabel = '⭐ VIP'; }
-                else if (st === 'premium') { badgeClass = 'badge-premium'; badgeLabel = '💎 Premium'; }
+
+                // Бейдж статуса
+                let badgeClass = 'badge-free', badgeLabel = 'Free';
+                if (st === 'vip')     { badgeClass = 'badge-vip';     badgeLabel = '⭐ VIP';      }
+                if (st === 'premium') { badgeClass = 'badge-premium'; badgeLabel = '💎 Premium';  }
 
                 let statusExtra = '';
                 if (st === 'premium' && user.subscription_until) {
                     statusExtra = `<br><small style="color:#718096">до ${new Date(user.subscription_until).toLocaleDateString('ru-RU')}</small>`;
                 }
 
+                // Бейдж платформы
+                const platformBadge = user.source === 'max'
+                    ? '<span class="badge badge-max">MAX</span>'
+                    : '<span class="badge badge-tg">TG</span>';
+
+                // Ссылка username (только для Telegram)
+                let usernameCell = '—';
+                if (user.username) {
+                    usernameCell = user.source === 'tg'
+                        ? `<a href="https://t.me/${user.username}" target="_blank" class="telegram-link">@${user.username}</a>`
+                        : `@${user.username}`;
+                }
+
                 return `
                 <tr>
                     <td>${user.id}</td>
-                    <td>${user.telegram_id}</td>
-                    <td>${user.username ? `<a href="https://t.me/${user.username}" target="_blank" class="telegram-link">@${user.username}</a>` : '—'}</td>
-                    <td>${user.full_name}</td>
+                    <td>${platformBadge}</td>
+                    <td><code>${user.telegram_id}</code></td>
+                    <td>${usernameCell}</td>
+                    <td>${user.full_name || '—'}</td>
                     <td><span class="badge ${badgeClass}">${badgeLabel}</span>${statusExtra}</td>
-                    <td>${user.predictions_count || 0}</td>
+                    <td style="text-align:center;">${user.predictions_count || 0}</td>
                     <td>${new Date(user.created_at).toLocaleString('ru-RU')}</td>
                 </tr>`;
             }).join('');
@@ -308,6 +626,7 @@
             renderPagination();
         }
 
+        // ── Пагинация ─────────────────────────────────────────────────
         function renderPagination() {
             const totalPages = Math.ceil(filteredData.length / perPage);
             const pagination = document.getElementById('pagination');
@@ -315,10 +634,10 @@
             if (totalPages <= 1) { pagination.innerHTML = ''; return; }
 
             let html = `<button onclick="goToPage(1)" ${currentPage === 1 ? 'disabled' : ''}>«</button>`;
-            html += `<button onclick="goToPage(${currentPage - 1})" ${currentPage === 1 ? 'disabled' : ''}>‹</button>`;
+            html    += `<button onclick="goToPage(${currentPage - 1})" ${currentPage === 1 ? 'disabled' : ''}>‹</button>`;
 
             const startPage = Math.max(1, currentPage - 2);
-            const endPage = Math.min(totalPages, currentPage + 2);
+            const endPage   = Math.min(totalPages, currentPage + 2);
 
             for (let i = startPage; i <= endPage; i++) {
                 html += `<button onclick="goToPage(${i})" class="${i === currentPage ? 'active' : ''}">${i}</button>`;
@@ -334,23 +653,27 @@
         function goToPage(page) {
             currentPage = page;
             renderTable();
+            window.scrollTo({ top: 0, behavior: 'smooth' });
         }
 
+        // ── Счётчик ───────────────────────────────────────────────────
         function updateStats() {
             document.getElementById('stats').textContent =
-                `Всего: ${allData.length} | Показано: ${filteredData.length}`;
+                `Всего: ${allData.length} | Найдено: ${filteredData.length}`;
         }
 
-        document.getElementById('search').addEventListener('input', (e) => {
-            const term = e.target.value.toLowerCase();
-            filteredData = allData.filter(u =>
-                (u.username || '').toLowerCase().includes(term) ||
-                (u.full_name || '').toLowerCase().includes(term) ||
-                String(u.telegram_id).includes(term)
-            );
-            currentPage = 1;
-            renderTable();
-            updateStats();
+        // ── Инициализация ─────────────────────────────────────────────
+        initFilterGroup('filter-platform', 'platform');
+        initFilterGroup('filter-status',   'status');
+
+        document.getElementById('search').addEventListener('input', e => {
+            filters.search = e.target.value;
+            applyFilters();
+        });
+
+        document.getElementById('sort-select').addEventListener('change', e => {
+            filters.sort = e.target.value;
+            applyFilters();
         });
 
         loadData();

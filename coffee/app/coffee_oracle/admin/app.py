@@ -602,6 +602,7 @@ async def get_predictions(
                     if prediction.user
                     else None,
                     "source": prediction.user.source if prediction.user else "tg",
+                    "username": prediction.user.username if prediction.user else None,
                     "user_name": prediction.user.full_name
                     if prediction.user
                     else "Unknown",

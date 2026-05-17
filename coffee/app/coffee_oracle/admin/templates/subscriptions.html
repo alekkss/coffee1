@@ -57,6 +57,7 @@
             padding: 0 2rem 2rem;
         }
 
+        /* ── KPI-карточки ── */
         .stats-grid {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
@@ -84,18 +85,11 @@
             margin-top: 0.5rem;
         }
 
-        .stat-card.premium .value {
-            color: #d69e2e;
-        }
+        .stat-card.premium .value { color: #d69e2e; }
+        .stat-card.vip     .value { color: #ed64a6; }
+        .stat-card.revenue .value { color: #38a169; }
 
-        .stat-card.vip .value {
-            color: #ed64a6;
-        }
-
-        .stat-card.revenue .value {
-            color: #38a169;
-        }
-
+        /* ── Секции ── */
         .section {
             background: rgba(255, 255, 255, 0.95);
             backdrop-filter: blur(10px);
@@ -106,10 +100,155 @@
         }
 
         .section h2 {
-            margin-bottom: 1.5rem;
             color: #4a5568;
+            margin-bottom: 1.5rem;
+            font-size: 1.2rem;
         }
 
+        /* ── Форма добавления VIP ── */
+        .form-inline {
+            display: flex;
+            gap: 1rem;
+            align-items: flex-end;
+            flex-wrap: wrap;
+        }
+
+        .form-group {
+            display: flex;
+            flex-direction: column;
+            gap: 0.35rem;
+        }
+
+        .form-group label {
+            font-size: 0.8rem;
+            font-weight: 600;
+            color: #718096;
+            text-transform: uppercase;
+        }
+
+        .form-group input,
+        .form-group select {
+            padding: 0.65rem 1rem;
+            border: 2px solid #e2e8f0;
+            border-radius: 8px;
+            font-size: 0.95rem;
+            color: #2d3748;
+            background: white;
+        }
+
+        .form-group input:focus,
+        .form-group select:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        /* ── Панель фильтров таблицы ── */
+        .table-controls {
+            display: flex;
+            gap: 1rem;
+            margin-bottom: 1rem;
+            flex-wrap: wrap;
+            align-items: flex-end;
+        }
+
+        .control-group {
+            display: flex;
+            flex-direction: column;
+            gap: 0.35rem;
+        }
+
+        .control-group label {
+            font-size: 0.75rem;
+            font-weight: 600;
+            color: #718096;
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+        }
+
+        .search-input {
+            padding: 0.6rem 1rem;
+            border: 2px solid #e2e8f0;
+            border-radius: 8px;
+            font-size: 0.9rem;
+            min-width: 220px;
+            color: #2d3748;
+        }
+
+        .search-input:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        /* ── Кнопки-фильтры ── */
+        .filter-group {
+            display: flex;
+            gap: 0.4rem;
+        }
+
+        .filter-btn {
+            padding: 0.45rem 0.85rem;
+            border: 2px solid #e2e8f0;
+            background: white;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 0.82rem;
+            font-weight: 500;
+            color: #4a5568;
+            transition: border-color 0.15s, background 0.15s, color 0.15s;
+            white-space: nowrap;
+        }
+
+        .filter-btn:hover {
+            border-color: #667eea;
+            color: #667eea;
+        }
+
+        .filter-btn.active {
+            background: #667eea;
+            border-color: #667eea;
+            color: white;
+        }
+
+        /* ── Сортировка в подписках ── */
+        .sort-select {
+            padding: 0.55rem 0.85rem;
+            border: 2px solid #e2e8f0;
+            border-radius: 8px;
+            font-size: 0.88rem;
+            color: #4a5568;
+            background: white;
+            cursor: pointer;
+        }
+
+        .sort-select:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .btn-reset-sm {
+            padding: 0.45rem 0.85rem;
+            border: 2px solid #e2e8f0;
+            background: white;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 0.82rem;
+            color: #718096;
+            align-self: flex-end;
+        }
+
+        .btn-reset-sm:hover {
+            border-color: #fc8181;
+            color: #c53030;
+        }
+
+        .table-stats {
+            font-size: 0.82rem;
+            color: #a0aec0;
+            align-self: flex-end;
+            margin-left: auto;
+        }
+
+        /* ── Таблица ── */
         .table-container {
             overflow-x: auto;
             border-radius: 8px;
@@ -122,9 +261,8 @@
             background: white;
         }
 
-        th,
-        td {
-            padding: 1rem;
+        th, td {
+            padding: 0.9rem 1rem;
             text-align: left;
             border-bottom: 1px solid #e2e8f0;
         }
@@ -134,160 +272,95 @@
             font-weight: 600;
             color: #4a5568;
             text-transform: uppercase;
-            font-size: 0.8rem;
+            font-size: 0.78rem;
+            white-space: nowrap;
         }
 
-        tr:hover {
-            background: #f7fafc;
+        th.sortable {
+            cursor: pointer;
+            user-select: none;
         }
 
+        th.sortable:hover { color: #667eea; }
+
+        th.sortable .sort-icon {
+            display: inline-block;
+            margin-left: 4px;
+            opacity: 0.4;
+            font-size: 0.72rem;
+        }
+
+        th.sortable.sort-asc .sort-icon,
+        th.sortable.sort-desc .sort-icon {
+            opacity: 1;
+            color: #667eea;
+        }
+
+        tr:hover { background: #f7fafc; }
+
+        .telegram-link { color: #667eea; text-decoration: none; }
+        .telegram-link:hover { text-decoration: underline; }
+
+        /* ── Бейджи ── */
         .badge {
             display: inline-block;
-            padding: 0.25rem 0.75rem;
-            border-radius: 9999px;
-            font-size: 0.75rem;
+            padding: 0.25rem 0.6rem;
+            border-radius: 12px;
+            font-size: 0.8rem;
             font-weight: 600;
             white-space: nowrap;
         }
 
-        .badge-vip {
-            background: #fce7f3;
-            color: #be185d;
-        }
-
-        .badge-premium {
-            background: #fef3c7;
-            color: #d97706;
-        }
-
-        .badge-tg {
-            background: #dbeafe;
-            color: #1e40af;
-        }
-
-        .badge-max {
-            background: #dcfce7;
-            color: #166534;
-        }
+        .badge-vip     { background: #e9d8fd; color: #6b46c1; }
+        .badge-premium { background: #fefcbf; color: #975a16; }
+        .badge-tg      { background: #ebf8ff; color: #2b6cb0; }
+        .badge-max     { background: #f0fff4; color: #276749; }
 
         .platform-id {
             display: flex;
-            flex-direction: column;
-            gap: 0.3rem;
-            font-size: 0.85rem;
+            align-items: center;
+            gap: 0.4rem;
         }
 
-        .platform-id code {
-            font-family: 'SF Mono', 'Consolas', monospace;
-            font-size: 0.8rem;
-            color: #2d3748;
+        .empty-message {
+            text-align: center;
+            color: #a0aec0;
+            padding: 2rem;
         }
 
+        /* ── Кнопки действий ── */
         .btn {
             padding: 0.5rem 1rem;
             border: none;
             border-radius: 8px;
             cursor: pointer;
             font-weight: 500;
-            transition: all 0.2s;
+            font-size: 0.9rem;
         }
 
-        .btn-primary {
-            background: #667eea;
-            color: white;
-        }
+        .btn-primary { background: #667eea; color: white; }
+        .btn-primary:hover { background: #5a67d8; }
+        .btn-success { background: #48bb78; color: white; }
+        .btn-success:hover { background: #38a169; }
+        .btn-danger  { background: #fc8181; color: white; }
+        .btn-danger:hover  { background: #e53e3e; }
 
-        .btn-primary:hover {
-            background: #5a67d8;
-        }
-
-        .btn-danger {
-            background: #fc8181;
-            color: white;
-        }
-
-        .btn-danger:hover {
-            background: #f56565;
-        }
-
-        .btn-success {
-            background: #68d391;
-            color: white;
-        }
-
-        .btn-success:hover {
-            background: #48bb78;
-        }
-
-        .form-inline {
-            display: flex;
-            gap: 1rem;
-            margin-bottom: 1rem;
-            flex-wrap: wrap;
-            align-items: flex-end;
-        }
-
-        .form-group {
-            display: flex;
-            flex-direction: column;
-            gap: 0.25rem;
-        }
-
-        .form-group label {
-            font-size: 0.85rem;
-            color: #718096;
-        }
-
-        .form-group input,
-        .form-group select {
-            padding: 0.5rem 1rem;
-            border: 2px solid #e2e8f0;
-            border-radius: 8px;
-            font-size: 1rem;
-        }
-
-        .form-group input:focus,
-        .form-group select:focus {
-            outline: none;
-            border-color: #667eea;
-        }
-
-        .empty-message {
-            text-align: center;
-            padding: 2rem;
-            color: #718096;
-        }
-
-        .telegram-link {
-            color: #667eea;
-            text-decoration: none;
-        }
-
-        .telegram-link:hover {
-            text-decoration: underline;
-        }
-
+        /* ── Алерты ── */
         .alert {
-            padding: 1rem;
+            padding: 1rem 1.5rem;
             border-radius: 8px;
             margin-bottom: 1rem;
+            font-weight: 500;
         }
 
-        .alert-success {
-            background: #c6f6d5;
-            color: #22543d;
-        }
-
-        .alert-error {
-            background: #fed7d7;
-            color: #c53030;
-        }
+        .alert-success { background: #c6f6d5; color: #276749; }
+        .alert-error   { background: #fed7d7; color: #c53030; }
     </style>
 </head>
 
 <body>
     <div class="header">
-        <h1>💎 Управление подписками</h1>
+        <h1>💎 Подписки</h1>
         <div class="nav-links">
             <a href="/">← Дашборд</a>
             <a href="/users">👥 Пользователи</a>
@@ -303,6 +376,7 @@
     <div class="container">
         <div id="alert-container"></div>
 
+        <!-- ── KPI-карточки ── -->
         <div class="stats-grid">
             <div class="stat-card">
                 <div class="value" id="free-count">-</div>
@@ -322,6 +396,7 @@
             </div>
         </div>
 
+        <!-- ── Форма добавления VIP (только superadmin) ── -->
         {% if user.role == 'superadmin' %}
         <div class="section">
             <h2>➕ Добавить VIP-пользователя</h2>
@@ -357,8 +432,30 @@
         </div>
         {% endif %}
 
+        <!-- ── Таблица VIP ── -->
         <div class="section">
             <h2>⭐ VIP-пользователи</h2>
+
+            <!-- Панель фильтров VIP -->
+            <div class="table-controls">
+                <div class="control-group">
+                    <label>Поиск</label>
+                    <input type="text" class="search-input" id="vip-search"
+                           placeholder="Имя или username…"
+                           oninput="applyVipFilters()" />
+                </div>
+                <div class="control-group">
+                    <label>Платформа</label>
+                    <div class="filter-group" id="vip-filter-platform">
+                        <button class="filter-btn active" data-value="">Все</button>
+                        <button class="filter-btn" data-value="tg">🔵 TG</button>
+                        <button class="filter-btn" data-value="max">🟢 MAX</button>
+                    </div>
+                </div>
+                <button class="btn-reset-sm" onclick="resetVipFilters()">✕ Сбросить</button>
+                <div class="table-stats" id="vip-stats"></div>
+            </div>
+
             <div class="table-container">
                 <table>
                     <thead>
@@ -372,16 +469,43 @@
                         </tr>
                     </thead>
                     <tbody id="vip-table-body">
-                        <tr>
-                            <td colspan="6" class="empty-message">Загрузка...</td>
-                        </tr>
+                        <tr><td colspan="6" class="empty-message">Загрузка…</td></tr>
                     </tbody>
                 </table>
             </div>
         </div>
 
+        <!-- ── Таблица Premium ── -->
         <div class="section">
             <h2>💫 Premium-подписчики</h2>
+
+            <!-- Панель фильтров Premium -->
+            <div class="table-controls">
+                <div class="control-group">
+                    <label>Поиск</label>
+                    <input type="text" class="search-input" id="premium-search"
+                           placeholder="Имя или username…"
+                           oninput="applyPremiumFilters()" />
+                </div>
+                <div class="control-group">
+                    <label>Платформа</label>
+                    <div class="filter-group" id="premium-filter-platform">
+                        <button class="filter-btn active" data-value="">Все</button>
+                        <button class="filter-btn" data-value="tg">🔵 TG</button>
+                        <button class="filter-btn" data-value="max">🟢 MAX</button>
+                    </div>
+                </div>
+                <div class="control-group">
+                    <label>Сортировка</label>
+                    <select class="sort-select" id="premium-sort" onchange="applyPremiumFilters()">
+                        <option value="date_desc">Истекает ↓ (позже)</option>
+                        <option value="date_asc">Истекает ↑ (скоро)</option>
+                    </select>
+                </div>
+                <button class="btn-reset-sm" onclick="resetPremiumFilters()">✕ Сбросить</button>
+                <div class="table-stats" id="premium-stats"></div>
+            </div>
+
             <div class="table-container">
                 <table>
                     <thead>
@@ -390,14 +514,14 @@
                             <th>ID платформы</th>
                             <th>Username</th>
                             <th>Имя</th>
-                            <th>Действует до</th>
+                            <th class="sortable" id="th-premium-date" onclick="togglePremiumSort()">
+                                Действует до <span class="sort-icon">↕</span>
+                            </th>
                             {% if user.role == 'superadmin' %}<th>Действия</th>{% endif %}
                         </tr>
                     </thead>
                     <tbody id="premium-table-body">
-                        <tr>
-                            <td colspan="6" class="empty-message">Загрузка...</td>
-                        </tr>
+                        <tr><td colspan="6" class="empty-message">Загрузка…</td></tr>
                     </tbody>
                 </table>
             </div>
@@ -407,11 +531,35 @@
     <script>
         const isSuperadmin = {{ 'true' if user.role == 'superadmin' else 'false' }};
 
+        // ── Исходные данные ────────────────────────────────────────────
+        let vipAll     = [];
+        let premiumAll = [];
+
+        // ── Состояние фильтров VIP ─────────────────────────────────────
+        const vipFilters = {
+            search:   '',
+            platform: '',
+        };
+
+        // ── Состояние фильтров Premium ─────────────────────────────────
+        const premiumFilters = {
+            search:   '',
+            platform: '',
+            sort:     'date_desc',
+        };
+
+        // ── Хелперы ───────────────────────────────────────────────────
         function getPlatformBadge(source) {
-            if (source === 'max') {
-                return '<span class="badge badge-max">MAX</span>';
-            }
-            return '<span class="badge badge-tg">TG</span>';
+            return source === 'max'
+                ? '<span class="badge badge-tg" style="background:#f0fff4;color:#276749;">MAX</span>'
+                : '<span class="badge badge-tg">TG</span>';
+        }
+
+        function getUsernameLink(u) {
+            if (!u.username) return '—';
+            return u.source === 'tg'
+                ? `<a href="https://t.me/${u.username}" target="_blank" class="telegram-link">@${u.username}</a>`
+                : `@${u.username}`;
         }
 
         function showAlert(message, type = 'success') {
@@ -420,98 +568,214 @@
             setTimeout(() => container.innerHTML = '', 5000);
         }
 
+        function setActiveBtn(groupId, value) {
+            document.querySelectorAll(`#${groupId} .filter-btn`).forEach(btn => {
+                btn.classList.toggle('active', btn.dataset.value === value);
+            });
+        }
+
+        function initFilterGroup(groupId, filtersObj, filterKey, applyFn) {
+            document.querySelectorAll(`#${groupId} .filter-btn`).forEach(btn => {
+                btn.addEventListener('click', () => {
+                    filtersObj[filterKey] = btn.dataset.value;
+                    setActiveBtn(groupId, btn.dataset.value);
+                    applyFn();
+                });
+            });
+        }
+
+        // ── Загрузка статистики ────────────────────────────────────────
         async function loadStats() {
             try {
                 const response = await fetch('/api/subscriptions/stats');
-                const data = await response.json();
+                const data     = await response.json();
                 if (data.success) {
-                    document.getElementById('free-count').textContent = data.stats.free_users;
+                    document.getElementById('free-count').textContent    = data.stats.free_users;
                     document.getElementById('premium-count').textContent = data.stats.premium_users;
-                    document.getElementById('vip-count').textContent = data.stats.vip_users;
-                    document.getElementById('revenue').textContent = data.stats.total_revenue || 0;
+                    document.getElementById('vip-count').textContent     = data.stats.vip_users;
+                    document.getElementById('revenue').textContent       = data.stats.total_revenue || 0;
                 }
             } catch (e) {
-                console.error('Error loading stats:', e);
+                console.error('Ошибка загрузки статистики:', e);
             }
         }
 
+        // ── VIP: загрузка и фильтрация ────────────────────────────────
         async function loadVipUsers() {
             try {
                 const response = await fetch('/api/subscriptions/vip');
-                const data = await response.json();
-                const tbody = document.getElementById('vip-table-body');
-
-                if (!data.users || data.users.length === 0) {
-                    tbody.innerHTML = '<tr><td colspan="6" class="empty-message">Нет VIP-пользователей</td></tr>';
-                    return;
-                }
-
-                tbody.innerHTML = data.users.map(u => {
-                    const platformBadge = getPlatformBadge(u.source);
-                    const usernameLink = u.username
-                        ? (u.source === 'tg'
-                            ? `<a href="https://t.me/${u.username}" target="_blank" class="telegram-link">@${u.username}</a>`
-                            : `@${u.username}`)
-                        : '—';
-                    return `
-                    <tr>
-                        <td>${u.id}</td>
-                        <td>
-                            <div class="platform-id">
-                                ${platformBadge}
-                                <code>${u.telegram_id}</code>
-                            </div>
-                        </td>
-                        <td>${usernameLink}</td>
-                        <td>${u.full_name}</td>
-                        <td><span class="badge badge-vip">${u.vip_reason || 'Не указана'}</span></td>
-                        ${isSuperadmin ? `<td><button class="btn btn-danger" onclick="removeVip(${u.id})">Удалить</button></td>` : ''}
-                    </tr>
-                `}).join('');
+                const data     = await response.json();
+                vipAll         = data.users || [];
+                applyVipFilters();
             } catch (e) {
-                console.error('Error loading VIP users:', e);
+                document.getElementById('vip-table-body').innerHTML =
+                    '<tr><td colspan="6" class="empty-message">Ошибка загрузки</td></tr>';
             }
         }
 
+        function applyVipFilters() {
+            vipFilters.search = document.getElementById('vip-search').value.toLowerCase();
+
+            let filtered = vipAll.filter(u => {
+                if (vipFilters.platform && u.source !== vipFilters.platform) return false;
+                if (vipFilters.search) {
+                    const inName     = (u.full_name || '').toLowerCase().includes(vipFilters.search);
+                    const inUsername = (u.username  || '').toLowerCase().includes(vipFilters.search);
+                    const inId       = String(u.telegram_id || '').includes(vipFilters.search);
+                    if (!inName && !inUsername && !inId) return false;
+                }
+                return true;
+            });
+
+            renderVipTable(filtered);
+            document.getElementById('vip-stats').textContent =
+                `Всего: ${vipAll.length} | Найдено: ${filtered.length}`;
+        }
+
+        function resetVipFilters() {
+            vipFilters.search   = '';
+            vipFilters.platform = '';
+            document.getElementById('vip-search').value = '';
+            setActiveBtn('vip-filter-platform', '');
+            applyVipFilters();
+        }
+
+        function renderVipTable(users) {
+            const tbody   = document.getElementById('vip-table-body');
+            const colspan = isSuperadmin ? '6' : '5';
+
+            if (users.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="${colspan}" class="empty-message">Нет VIP-пользователей</td></tr>`;
+                return;
+            }
+
+            tbody.innerHTML = users.map(u => `
+                <tr>
+                    <td>${u.id}</td>
+                    <td>
+                        <div class="platform-id">
+                            ${getPlatformBadge(u.source)}
+                            <code>${u.telegram_id}</code>
+                        </div>
+                    </td>
+                    <td>${getUsernameLink(u)}</td>
+                    <td>${u.full_name || '—'}</td>
+                    <td><span class="badge badge-vip">${u.vip_reason || 'Не указана'}</span></td>
+                    ${isSuperadmin
+                        ? `<td><button class="btn btn-danger" onclick="removeVip(${u.id})">Удалить</button></td>`
+                        : ''}
+                </tr>
+            `).join('');
+        }
+
+        // ── Premium: загрузка и фильтрация ────────────────────────────
         async function loadPremiumUsers() {
             try {
                 const response = await fetch('/api/subscriptions/premium');
-                const data = await response.json();
-                const tbody = document.getElementById('premium-table-body');
-
-                const colspan = isSuperadmin ? '6' : '5';
-                if (!data.users || data.users.length === 0) {
-                    tbody.innerHTML = `<tr><td colspan="${colspan}" class="empty-message">Нет Premium-подписчиков</td></tr>`;
-                    return;
-                }
-
-                tbody.innerHTML = data.users.map(u => {
-                    const platformBadge = getPlatformBadge(u.source);
-                    const usernameLink = u.username
-                        ? (u.source === 'tg'
-                            ? `<a href="https://t.me/${u.username}" target="_blank" class="telegram-link">@${u.username}</a>`
-                            : `@${u.username}`)
-                        : '—';
-                    return `
-                    <tr>
-                        <td>${u.id}</td>
-                        <td>
-                            <div class="platform-id">
-                                ${platformBadge}
-                                <code>${u.telegram_id}</code>
-                            </div>
-                        </td>
-                        <td>${usernameLink}</td>
-                        <td>${u.full_name}</td>
-                        <td>${u.subscription_until ? new Date(u.subscription_until).toLocaleDateString('ru-RU') : '—'}</td>
-                        ${isSuperadmin ? `<td><button class="btn btn-danger" onclick="removePremium(${u.id})">Удалить</button></td>` : ''}
-                    </tr>
-                `}).join('');
+                const data     = await response.json();
+                premiumAll     = data.users || [];
+                applyPremiumFilters();
             } catch (e) {
-                console.error('Error loading premium users:', e);
+                document.getElementById('premium-table-body').innerHTML =
+                    '<tr><td colspan="6" class="empty-message">Ошибка загрузки</td></tr>';
             }
         }
 
+        function applyPremiumFilters() {
+            premiumFilters.search = document.getElementById('premium-search').value.toLowerCase();
+            premiumFilters.sort   = document.getElementById('premium-sort').value;
+
+            let filtered = premiumAll.filter(u => {
+                if (premiumFilters.platform && u.source !== premiumFilters.platform) return false;
+                if (premiumFilters.search) {
+                    const inName     = (u.full_name || '').toLowerCase().includes(premiumFilters.search);
+                    const inUsername = (u.username  || '').toLowerCase().includes(premiumFilters.search);
+                    const inId       = String(u.telegram_id || '').includes(premiumFilters.search);
+                    if (!inName && !inUsername && !inId) return false;
+                }
+                return true;
+            });
+
+            // Сортировка по дате истечения
+            filtered.sort((a, b) => {
+                const da = a.subscription_until ? new Date(a.subscription_until) : 0;
+                const db = b.subscription_until ? new Date(b.subscription_until) : 0;
+                return premiumFilters.sort === 'date_asc' ? da - db : db - da;
+            });
+
+            renderPremiumTable(filtered);
+            syncPremiumSortHeader();
+            document.getElementById('premium-stats').textContent =
+                `Всего: ${premiumAll.length} | Найдено: ${filtered.length}`;
+        }
+
+        function togglePremiumSort() {
+            premiumFilters.sort = premiumFilters.sort === 'date_desc' ? 'date_asc' : 'date_desc';
+            document.getElementById('premium-sort').value = premiumFilters.sort;
+            applyPremiumFilters();
+        }
+
+        function syncPremiumSortHeader() {
+            const th   = document.getElementById('th-premium-date');
+            const icon = th.querySelector('.sort-icon');
+            th.classList.remove('sort-asc', 'sort-desc');
+            if (premiumFilters.sort === 'date_desc') {
+                th.classList.add('sort-desc');
+                icon.textContent = '↓';
+            } else {
+                th.classList.add('sort-asc');
+                icon.textContent = '↑';
+            }
+        }
+
+        function resetPremiumFilters() {
+            premiumFilters.search   = '';
+            premiumFilters.platform = '';
+            premiumFilters.sort     = 'date_desc';
+            document.getElementById('premium-search').value = '';
+            document.getElementById('premium-sort').value   = 'date_desc';
+            setActiveBtn('premium-filter-platform', '');
+            applyPremiumFilters();
+        }
+
+        function renderPremiumTable(users) {
+            const tbody   = document.getElementById('premium-table-body');
+            const colspan = isSuperadmin ? '6' : '5';
+
+            if (users.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="${colspan}" class="empty-message">Нет Premium-подписчиков</td></tr>`;
+                return;
+            }
+
+            tbody.innerHTML = users.map(u => {
+                const until = u.subscription_until
+                    ? new Date(u.subscription_until).toLocaleDateString('ru-RU')
+                    : '—';
+
+                // Подсвечиваем тех, у кого подписка истекает в течение 3 дней
+                const isExpiring = u.subscription_until
+                    && (new Date(u.subscription_until) - Date.now()) < 3 * 24 * 60 * 60 * 1000;
+
+                return `
+                <tr>
+                    <td>${u.id}</td>
+                    <td>
+                        <div class="platform-id">
+                            ${getPlatformBadge(u.source)}
+                            <code>${u.telegram_id}</code>
+                        </div>
+                    </td>
+                    <td>${getUsernameLink(u)}</td>
+                    <td>${u.full_name || '—'}</td>
+                    <td style="${isExpiring ? 'color:#c05621;font-weight:600;' : ''}">${until}${isExpiring ? ' ⚠️' : ''}</td>
+                    ${isSuperadmin
+                        ? `<td><button class="btn btn-danger" onclick="removePremium(${u.id})">Удалить</button></td>`
+                        : ''}
+                </tr>`;
+            }).join('');
+        }
+
+        // ── Действия superadmin ───────────────────────────────────────
         async function addVip() {
             const userId = document.getElementById('vip-user-id').value;
             const reason = document.getElementById('vip-reason').value;
@@ -524,18 +788,18 @@
 
             try {
                 const response = await fetch('/api/subscriptions/vip', {
-                    method: 'POST',
+                    method:  'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ user_id: parseInt(userId), reason, source })
+                    body:    JSON.stringify({ user_id: parseInt(userId), reason, source }),
                 });
                 const data = await response.json();
 
                 if (data.success) {
                     showAlert('VIP-статус успешно присвоен');
                     document.getElementById('vip-user-id').value = '';
-                    document.getElementById('vip-reason').value = '';
-                    loadVipUsers();
-                    loadStats();
+                    document.getElementById('vip-reason').value  = '';
+                    await loadVipUsers();
+                    await loadStats();
                 } else {
                     showAlert(data.detail || 'Ошибка', 'error');
                 }
@@ -546,15 +810,13 @@
 
         async function removeVip(userId) {
             if (!confirm('Удалить VIP-статус?')) return;
-
             try {
                 const response = await fetch(`/api/subscriptions/vip/${userId}`, { method: 'DELETE' });
-                const data = await response.json();
-
+                const data     = await response.json();
                 if (data.success) {
                     showAlert('VIP-статус удалён');
-                    loadVipUsers();
-                    loadStats();
+                    await loadVipUsers();
+                    await loadStats();
                 } else {
                     showAlert(data.detail || 'Ошибка', 'error');
                 }
@@ -565,25 +827,20 @@
 
         async function completePayment() {
             const label = document.getElementById('payment-label').value;
-
-            if (!label) {
-                showAlert('Введите метку платежа', 'error');
-                return;
-            }
+            if (!label) { showAlert('Введите метку платежа', 'error'); return; }
 
             try {
                 const response = await fetch('/api/subscriptions/complete-payment', {
-                    method: 'POST',
+                    method:  'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ label })
+                    body:    JSON.stringify({ label }),
                 });
                 const data = await response.json();
-
                 if (data.success) {
                     showAlert('Платёж подтверждён, подписка активирована');
                     document.getElementById('payment-label').value = '';
-                    loadPremiumUsers();
-                    loadStats();
+                    await loadPremiumUsers();
+                    await loadStats();
                 } else {
                     showAlert(data.detail || 'Ошибка', 'error');
                 }
@@ -594,15 +851,13 @@
 
         async function removePremium(userId) {
             if (!confirm('Удалить Premium-подписку? Пользователь вернётся на бесплатный тариф.')) return;
-
             try {
                 const response = await fetch(`/api/subscriptions/premium/${userId}`, { method: 'DELETE' });
-                const data = await response.json();
-
+                const data     = await response.json();
                 if (data.success) {
                     showAlert('Premium-подписка удалена');
-                    loadPremiumUsers();
-                    loadStats();
+                    await loadPremiumUsers();
+                    await loadStats();
                 } else {
                     showAlert(data.detail || 'Ошибка', 'error');
                 }
@@ -611,7 +866,10 @@
             }
         }
 
-        // Load data on page load
+        // ── Инициализация ─────────────────────────────────────────────
+        initFilterGroup('vip-filter-platform',     vipFilters,     'platform', applyVipFilters);
+        initFilterGroup('premium-filter-platform', premiumFilters, 'platform', applyPremiumFilters);
+
         loadStats();
         loadVipUsers();
         loadPremiumUsers();

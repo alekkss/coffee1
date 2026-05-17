@@ -795,7 +795,11 @@ class MaxBotHandlers:
     async def _handle_faq_command(self, chat_id: int) -> None:
         """Обработка команды /help и кнопки «FAQ» — показ FAQ напрямую."""
         faq_text = texts.HELP_SECTIONS.get("faq", "Информация не найдена")
-        await self._api.send_message(chat_id=chat_id, text=faq_text)
+        await self._api.send_message(
+            chat_id=chat_id,
+            text=faq_text,
+            attachments=[MaxKeyboardManager.get_back_to_menu_button()],
+        )
 
     async def _handle_predict_command(self, chat_id: int) -> None:
         """Обработка команды /predict."""
@@ -804,7 +808,11 @@ class MaxBotHandlers:
             texts.PHOTO_INSTRUCTION_FALLBACK,
         )
 
-        await self._api.send_message(chat_id=chat_id, text=instruction)
+        await self._api.send_message(
+            chat_id=chat_id,
+            text=instruction,
+            attachments=[MaxKeyboardManager.get_back_to_menu_button()],
+        )
     
     async def _handle_video_instruction(self, chat_id: int) -> None:
         """Обработка кнопки «Видеоинструкция» — отправка видео из локального файла.
@@ -831,6 +839,12 @@ class MaxBotHandlers:
                     chat_id=chat_id,
                     text=texts.VIDEO_INSTRUCTION_CAPTION,
                 )
+                # После видео показываем кнопку возврата в меню
+                await self._api.send_message(
+                    chat_id=chat_id,
+                    text=texts.BTN_BACK_SHORT,
+                    attachments=[MaxKeyboardManager.get_back_to_menu_button()],
+                )
                 return
 
             except Exception as e:
@@ -846,6 +860,7 @@ class MaxBotHandlers:
         await self._api.send_message(
             chat_id=chat_id,
             text=texts.VIDEO_NOT_CONFIGURED,
+            attachments=[MaxKeyboardManager.get_back_to_menu_button()],
         )
 
     async def _handle_history_command(self, message: MaxMessage, chat_id: int) -> None:
@@ -853,6 +868,7 @@ class MaxBotHandlers:
         await self._api.send_message(
             chat_id=chat_id,
             text=texts.FREQUENT_QUERIES_TEXT,
+            attachments=[MaxKeyboardManager.get_back_to_menu_button()],
         )
 
     async def _handle_random_command(self, chat_id: int) -> None:
@@ -886,7 +902,11 @@ class MaxBotHandlers:
 
     async def _handle_support_command(self, chat_id: int) -> None:
         """Обработка команды /support."""
-        await self._api.send_message(chat_id=chat_id, text=texts.SUPPORT_TEXT)
+        await self._api.send_message(
+            chat_id=chat_id,
+            text=texts.SUPPORT_TEXT,
+            attachments=[MaxKeyboardManager.get_back_to_menu_button()],
+        )
 
     async def _handle_subscription_command(
         self,
@@ -1552,6 +1572,7 @@ class MaxBotHandlers:
         await self._api.send_message(
             chat_id=chat_id,
             text=texts.FREQUENT_QUERIES_TEXT,
+            attachments=[MaxKeyboardManager.get_back_to_menu_button()],
         )
 
     async def _callback_back_to_menu(self, callback: MaxCallback, chat_id: int) -> None:

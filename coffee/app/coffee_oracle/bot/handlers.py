@@ -185,7 +185,10 @@ async def start_handler(message: Message) -> Any:
 async def help_handler(message: Message) -> Any:
     """Обработка команды /help — показ FAQ."""
     faq_text = texts.HELP_SECTIONS.get("faq", "Информация не найдена")
-    await message.answer(faq_text)
+    await message.answer(
+        faq_text,
+        reply_markup=KeyboardManager.get_back_to_menu_keyboard(),
+    )
 
 
 @router.message(F.text == texts.BTN_PREDICT)
@@ -194,7 +197,10 @@ async def prediction_request_handler(message: Message) -> Any:
     instruction_text = await get_bot_text(
         "photo_instruction", texts.PHOTO_INSTRUCTION_FALLBACK,
     )
-    await message.answer(instruction_text)
+    await message.answer(
+        instruction_text,
+        reply_markup=KeyboardManager.get_back_to_menu_keyboard(),
+    )
 
 
 @router.message(F.text == texts.BTN_VIDEO_INSTRUCTION)
@@ -213,6 +219,7 @@ async def video_instruction_handler(message: Message) -> Any:
             await message.answer_video(
                 video=video_file,
                 caption=texts.VIDEO_INSTRUCTION_CAPTION,
+                reply_markup=KeyboardManager.get_back_to_menu_keyboard(),
             )
             return
         except Exception as e:
@@ -221,13 +228,19 @@ async def video_instruction_handler(message: Message) -> Any:
     # Fallback: видео не настроено, файл не найден или ошибка отправки
     if video_path:
         logger.warning(texts.VIDEO_NOT_CONFIGURED)
-    await message.answer(texts.VIDEO_NOT_CONFIGURED)
+    await message.answer(
+        texts.VIDEO_NOT_CONFIGURED,
+        reply_markup=KeyboardManager.get_back_to_menu_keyboard(),
+    )
 
 
 @router.message(F.text == texts.BTN_HISTORY)
 async def frequent_queries_handler(message: Message) -> Any:
     """Обработка кнопки «Частые запросы» — показ примеров вопросов."""
-    await message.answer(texts.FREQUENT_QUERIES_TEXT)
+    await message.answer(
+        texts.FREQUENT_QUERIES_TEXT,
+        reply_markup=KeyboardManager.get_back_to_menu_keyboard(),
+    )
 
 
 @router.message(F.text == texts.BTN_ABOUT)
@@ -484,7 +497,10 @@ async def photo_handler(
 @router.message(F.content_type.in_({"document", "video", "audio", "voice", "sticker"}))
 async def non_photo_handler(message: Message) -> Any:
     """Обработка нефото контента."""
-    await message.answer(texts.NON_PHOTO_CONTENT)
+    await message.answer(
+        texts.NON_PHOTO_CONTENT,
+        reply_markup=KeyboardManager.get_back_to_menu_keyboard(),
+    )
 
 
 @router.message(F.text == texts.BTN_RANDOM)
@@ -501,7 +517,10 @@ async def random_prediction_handler(message: Message) -> Any:
 async def faq_handler(message: Message) -> Any:
     """Обработка кнопки «FAQ» — показ FAQ напрямую."""
     faq_text = texts.HELP_SECTIONS.get("faq", "Информация не найдена")
-    await message.answer(faq_text)
+    await message.answer(
+        faq_text,
+        reply_markup=KeyboardManager.get_back_to_menu_keyboard(),
+    )
 
 
 @router.message(F.text == texts.BTN_CLEAR)
@@ -516,7 +535,10 @@ async def clear_history_handler(message: Message) -> Any:
 @router.message(F.text == texts.BTN_SUPPORT)
 async def support_handler(message: Message) -> Any:
     """Обработка запроса поддержки."""
-    await message.answer(texts.SUPPORT_TEXT)
+    await message.answer(
+        texts.SUPPORT_TEXT,
+        reply_markup=KeyboardManager.get_back_to_menu_keyboard(),
+    )
 
 
 @router.message(Command("menu"))
@@ -642,9 +664,33 @@ async def update_menu_command_handler(message: Message, bot: Bot) -> Any:
 # Callback handlers
 @router.callback_query(F.data == "back_to_menu")
 async def back_to_menu_callback(callback: CallbackQuery, state: FSMContext) -> Any:
-    """Обработка callback возврата в меню."""
+    """Обработка callback возврата в меню.
+
+    edit_text работает только на текстовых сообщениях.
+    Если кнопка «Назад» пришла с видео или фото (только caption) —
+    редактируем caption, а если и это невозможно — шлём новое сообщение.
+    """
     await state.clear()
-    await callback.message.edit_text(texts.MAIN_MENU_EDIT_TEXT)
+
+    from aiogram.exceptions import TelegramBadRequest
+
+    try:
+        # Стандартный случай: сообщение с текстом (FAQ, поддержка и т.д.)
+        await callback.message.edit_text(
+            texts.MAIN_MENU_EDIT_TEXT,
+            reply_markup=None,
+        )
+    except TelegramBadRequest:
+        try:
+            # Сообщение с медиа (видео, фото) — редактируем caption
+            await callback.message.edit_caption(
+                caption=texts.MAIN_MENU_EDIT_TEXT,
+                reply_markup=None,
+            )
+        except TelegramBadRequest:
+            # Крайний случай: ни edit_text, ни edit_caption не сработали
+            await callback.message.answer(texts.MAIN_MENU_EDIT_TEXT)
+
     await callback.answer()
 
 
