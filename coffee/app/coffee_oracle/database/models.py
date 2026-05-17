@@ -296,6 +296,15 @@ class Partner(Base):
     description: Mapped[Optional[str]] = mapped_column(
         String(500), nullable=True
     )  # Описание партнёра (компания, канал, блогер и т.д.)
+
+    # Маркетинговые поля
+    campaign_name: Mapped[Optional[str]] = mapped_column(
+        String(255), nullable=True
+    )  # Название рекламной кампании (inline-редактирование в разделе Маркетинг)
+    ad_cost: Mapped[Optional[int]] = mapped_column(
+        Integer, nullable=True, default=0
+    )  # Затраты на размещение в рублях
+
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         server_default=func.now(),

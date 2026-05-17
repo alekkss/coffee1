@@ -221,6 +221,17 @@ async def subscriptions_page(
     )
 
 
+@app.get("/marketing", response_class=HTMLResponse)
+async def marketing_page(
+    request: Request,
+    user: Annotated[AdminUser, Depends(require_admin_role)],
+) -> HTMLResponse:
+    """Страница маркетинговой аналитики."""
+    return templates.TemplateResponse(
+        "marketing.html", {"request": request, "user": user}
+    )
+
+
 # ===== Кабинет партнёра =====
 
 
@@ -808,6 +819,13 @@ class PaymentCompleteRequest(BaseModel):
     label: str
 
 
+class UpdateMarketingRequest(BaseModel):
+    """Модель запроса на обновление маркетинговых полей партнёра."""
+
+    campaign_name: str | None = None
+    ad_cost: int | None = None
+
+
 @app.get("/api/subscriptions/stats")
 async def get_subscription_stats(
     user: Annotated[AdminUser, Depends(require_admin_role)],
@@ -966,6 +984,61 @@ async def get_user_subscription(
                 for p in payments
             ],
         }
+
+
+# ===== Маркетинговая аналитика =====
+
+
+@app.get("/api/marketing/stats")
+async def get_marketing_stats(
+    _: Annotated[AdminUser, Depends(require_admin_role)],
+) -> List[Dict[str, Any]]:
+    """Агрегированная маркетинговая статистика по всем партнёрам.
+
+    Возвращает все метрики для сводной таблицы раздела «Маркетинг»:
+    клики, новые пользователи, предсказания когорты, покупки, выручка,
+    а также поля для inline-редактирования (campaign_name, ad_cost).
+    """
+    try:
+        async for session in db_manager.get_session():
+            partner_repo = PartnerRepository(session)
+            return await partner_repo.get_marketing_stats()
+    except Exception as e:
+        logger.error("Ошибка получения маркетинговой статистики: %s", e)
+        return []
+
+
+@app.patch("/api/marketing/{partner_id}")
+async def update_marketing(
+    partner_id: int,
+    data: UpdateMarketingRequest,
+    user: Annotated[AdminUser, Depends(require_admin_role)],
+) -> Dict[str, Any]:
+    """Обновление маркетинговых полей партнёра (inline-редактирование).
+
+    Позволяет задать название рекламной кампании и затраты на размещение.
+    Доступно всем ролям кроме partner.
+
+    Args:
+        partner_id: ID партнёра.
+        data:       Поля для обновления (campaign_name и/или ad_cost).
+    """
+    async for session in db_manager.get_session():
+        partner_repo = PartnerRepository(session)
+        ok = await partner_repo.update_partner_marketing(
+            partner_id=partner_id,
+            campaign_name=data.campaign_name,
+            ad_cost=data.ad_cost,
+        )
+    if not ok:
+        raise HTTPException(status_code=404, detail="Партнёр не найден")
+
+    logger.info(
+        "Обновлены маркетинговые поля партнёра %d (admin: %s)",
+        partner_id,
+        user.username,
+    )
+    return {"success": True}
 
 
 # ===== YooKassa Webhook =====

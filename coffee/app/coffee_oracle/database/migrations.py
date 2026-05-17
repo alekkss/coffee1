@@ -400,6 +400,55 @@ async def apply_referral_clicks_table_migration(session: AsyncSession) -> None:
 # ────────────────────────────────────────────────────────
 
 
+# ────────────────────────────────────────────────────────────
+#  Миграция: маркетинговые поля в таблице partners
+# ────────────────────────────────────────────────────────────
+
+
+async def check_partner_marketing_fields_migration(session: AsyncSession) -> bool:
+    """Проверка необходимости добавления маркетинговых полей в partners.
+
+    Миграция нужна, если колонки campaign_name или ad_cost ещё не существуют.
+    """
+    try:
+        await session.execute(text(
+            "SELECT campaign_name, ad_cost FROM partners LIMIT 1"
+        ))
+        return False
+    except Exception:
+        return True
+
+
+async def apply_partner_marketing_fields_migration(session: AsyncSession) -> None:
+    """Добавление полей campaign_name и ad_cost в таблицу partners.
+
+    campaign_name — название рекламной кампании (inline-редактирование).
+    ad_cost       — затраты на размещение в рублях (целое число).
+    """
+    logger.info("Применение миграции: маркетинговые поля в partners...")
+
+    try:
+        await session.execute(text(
+            "ALTER TABLE partners ADD COLUMN campaign_name VARCHAR(255)"
+        ))
+        logger.info("Добавлено campaign_name в partners")
+    except Exception as e:
+        if "duplicate column name" not in str(e).lower():
+            raise
+
+    try:
+        await session.execute(text(
+            "ALTER TABLE partners ADD COLUMN ad_cost INTEGER DEFAULT 0"
+        ))
+        logger.info("Добавлено ad_cost в partners")
+    except Exception as e:
+        if "duplicate column name" not in str(e).lower():
+            raise
+
+    await session.commit()
+    logger.info("✅ Миграция маркетинговых полей в partners завершена")
+
+
 async def check_user_referred_by_partner_migration(session: AsyncSession) -> bool:
     """Проверка необходимости добавления поля referred_by_partner_id в users.
 
@@ -485,6 +534,11 @@ MIGRATIONS: List[Migration] = [
         name="user_referred_by_partner",
         check_fn=check_user_referred_by_partner_migration,
         apply_fn=apply_user_referred_by_partner_migration,
+    ),
+    Migration(
+        name="partner_marketing_fields",
+        check_fn=check_partner_marketing_fields_migration,
+        apply_fn=apply_partner_marketing_fields_migration,
     ),
 ]
 

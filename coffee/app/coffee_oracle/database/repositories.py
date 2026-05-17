@@ -1410,3 +1410,134 @@ class PartnerRepository:
             "referred_users": referred_users,
             "clicks_by_day": clicks_by_day,
         }
+
+    async def get_marketing_stats(self) -> List[Dict[str, Any]]:
+        """Агрегированная маркетинговая статистика по всем партнёрам.
+
+        Один SQL-запрос возвращает все метрики для сводной таблицы
+        раздела «Маркетинг»: клики, новые пользователи, предсказания
+        когорты, покупки (succeeded-платежи) и выручку.
+
+        Returns:
+            Список словарей, по одному на каждого партнёра.
+            Поля: partner_id, referral_code, campaign_name, ad_cost,
+            description, partner_username, created_at, clicks,
+            new_users, predictions_count, purchases, revenue.
+        """
+        result = await self.session.execute(text("""
+            SELECT
+                p.id               AS partner_id,
+                p.referral_code,
+                p.campaign_name,
+                p.ad_cost,
+                p.description,
+                p.created_at,
+                au.username        AS partner_username,
+
+                -- Переходы (все активации /start с реф. кодом)
+                (
+                    SELECT COUNT(*)
+                    FROM referral_clicks rc
+                    WHERE rc.partner_id = p.id
+                ) AS clicks,
+
+                -- Новые пользователи, привлечённые ссылкой
+                (
+                    SELECT COUNT(*)
+                    FROM users u
+                    WHERE u.referred_by_partner_id = p.id
+                      AND u.deleted_at IS NULL
+                ) AS new_users,
+
+                -- Предсказания когорты (качество канала)
+                (
+                    SELECT COUNT(*)
+                    FROM predictions pr
+                    JOIN users u ON u.id = pr.user_id
+                    WHERE u.referred_by_partner_id = p.id
+                      AND u.deleted_at IS NULL
+                ) AS predictions_count,
+
+                -- Покупки: успешные платежи от пользователей когорты
+                (
+                    SELECT COUNT(*)
+                    FROM payments pay
+                    JOIN users u ON u.id = pay.user_id
+                    WHERE u.referred_by_partner_id = p.id
+                      AND pay.status = 'succeeded'
+                      AND u.deleted_at IS NULL
+                ) AS purchases,
+
+                -- Выручка в копейках (делим на 100 при сериализации)
+                (
+                    SELECT COALESCE(SUM(pay.amount), 0)
+                    FROM payments pay
+                    JOIN users u ON u.id = pay.user_id
+                    WHERE u.referred_by_partner_id = p.id
+                      AND pay.status = 'succeeded'
+                      AND u.deleted_at IS NULL
+                ) AS revenue_kopecks
+
+            FROM partners p
+            JOIN admin_users au ON au.id = p.admin_user_id
+            ORDER BY p.created_at DESC
+        """))
+
+        rows = result.fetchall()
+        return [
+            {
+                "partner_id":        row.partner_id,
+                "referral_code":     row.referral_code,
+                "campaign_name":     row.campaign_name or "",
+                "ad_cost":           row.ad_cost or 0,
+                "description":       row.description or "",
+                "partner_username":  row.partner_username,
+                "created_at":        row.created_at.isoformat() if row.created_at else None,
+                "clicks":            row.clicks,
+                "new_users":         row.new_users,
+                "predictions_count": row.predictions_count,
+                "purchases":         row.purchases,
+                "revenue":           round(row.revenue_kopecks / 100, 2),
+            }
+            for row in rows
+        ]
+
+    async def update_partner_marketing(
+        self,
+        partner_id: int,
+        campaign_name: Optional[str] = None,
+        ad_cost: Optional[int] = None,
+    ) -> bool:
+        """Обновление маркетинговых полей партнёра.
+
+        Используется для inline-редактирования в разделе «Маркетинг».
+        Обновляет только переданные поля (None = не трогать).
+
+        Args:
+            partner_id:    ID партнёра.
+            campaign_name: Новое название кампании (None — без изменений).
+            ad_cost:       Новые затраты в рублях (None — без изменений).
+
+        Returns:
+            True если партнёр найден и обновлён, False если не найден.
+        """
+        result = await self.session.execute(
+            select(Partner).where(Partner.id == partner_id)
+        )
+        partner = result.scalar_one_or_none()
+
+        if not partner:
+            return False
+
+        if campaign_name is not None:
+            partner.campaign_name = campaign_name.strip() or None
+        if ad_cost is not None:
+            partner.ad_cost = max(0, int(ad_cost))
+
+        await self.session.commit()
+
+        logger.info(
+            "Обновлены маркетинговые поля партнёра %d: campaign_name=%r, ad_cost=%r",
+            partner_id, campaign_name, ad_cost,
+        )
+        return True

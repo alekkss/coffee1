@@ -1,0 +1,616 @@
+<!DOCTYPE html>
+<html lang="ru">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>📊 Маркетинг - Coffee Oracle Admin</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            color: #333;
+        }
+
+        /* ── Шапка ── */
+        .header {
+            background: rgba(255,255,255,0.95);
+            backdrop-filter: blur(10px);
+            padding: 1rem 2rem;
+            box-shadow: 0 2px 20px rgba(0,0,0,.1);
+            margin-bottom: 2rem;
+            text-align: center;
+        }
+        .header h1 { color: #4a5568; font-size: 1.5rem; }
+        .header .nav-links {
+            margin-top: .5rem;
+            display: flex; flex-wrap: wrap;
+            justify-content: center; gap: 1rem 1.5rem;
+        }
+        .header .nav-links a { color: #667eea; text-decoration: none; font-weight: 500; }
+        .header .nav-links a:hover { text-decoration: underline; }
+
+        .container { max-width: 1600px; margin: 0 auto; padding: 0 2rem 2rem; }
+
+        /* ── KPI-карточки ── */
+        .kpi-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+            gap: 1.25rem;
+            margin-bottom: 2rem;
+        }
+        .kpi-card {
+            background: rgba(255,255,255,.95);
+            border-radius: 16px;
+            padding: 1.4rem 1.6rem;
+            box-shadow: 0 8px 32px rgba(0,0,0,.1);
+            text-align: center;
+        }
+        .kpi-card .value {
+            font-size: 2rem; font-weight: 700; color: #667eea;
+            line-height: 1.2;
+        }
+        .kpi-card .label { color: #718096; margin-top: .4rem; font-size: .9rem; }
+        .kpi-card.green .value  { color: #38a169; }
+        .kpi-card.red   .value  { color: #e53e3e; }
+        .kpi-card.amber .value  { color: #d69e2e; }
+
+        /* ── Секция ── */
+        .section {
+            background: rgba(255,255,255,.95);
+            border-radius: 16px;
+            padding: 2rem;
+            box-shadow: 0 8px 32px rgba(0,0,0,.1);
+        }
+        .section-header {
+            display: flex; justify-content: space-between; align-items: center;
+            margin-bottom: 1.5rem; flex-wrap: wrap; gap: 1rem;
+        }
+        .section-header h2 { color: #4a5568; font-size: 1.15rem; }
+
+        /* ── Кнопки ── */
+        .btn {
+            padding: .55rem 1.1rem; border: none; border-radius: 8px;
+            cursor: pointer; font-size: .88rem; font-weight: 500;
+        }
+        .btn-outline {
+            background: white; border: 2px solid #e2e8f0; color: #4a5568;
+        }
+        .btn-outline:hover { border-color: #667eea; color: #667eea; }
+        .btn-primary { background: #667eea; color: white; }
+        .btn-primary:hover { background: #5a67d8; }
+
+        /* ── Таблица ── */
+        .table-wrap { overflow-x: auto; border-radius: 8px; border: 1px solid #e2e8f0; }
+        table { width: 100%; border-collapse: collapse; background: white; min-width: 1200px; }
+        th, td { padding: .85rem 1rem; text-align: left; border-bottom: 1px solid #e2e8f0; }
+        th {
+            background: #f7fafc; font-weight: 600; color: #4a5568;
+            text-transform: uppercase; font-size: .75rem; white-space: nowrap;
+            cursor: pointer; user-select: none;
+        }
+        th:hover { color: #667eea; }
+        th .sort-icon { margin-left: 3px; opacity: .4; font-size: .7rem; }
+        th.sort-asc .sort-icon, th.sort-desc .sort-icon { opacity: 1; color: #667eea; }
+        tr:hover td { background: #f7fafc; }
+
+        /* ── Inline-editing ── */
+        .editable {
+            cursor: text;
+            border-bottom: 1px dashed #cbd5e0;
+            display: inline-block;
+            min-width: 60px;
+            padding: 1px 2px;
+            border-radius: 3px;
+            transition: background .15s;
+        }
+        .editable:hover { background: #ebf8ff; border-bottom-color: #667eea; }
+        .editable.empty { color: #a0aec0; font-style: italic; }
+
+        .edit-input {
+            border: 2px solid #667eea; border-radius: 6px;
+            padding: 3px 8px; font-size: .9rem; width: 100%;
+            outline: none; background: #fff;
+        }
+        .save-indicator {
+            font-size: .7rem; color: #38a169;
+            margin-left: 4px; opacity: 0;
+            transition: opacity .3s;
+        }
+        .save-indicator.show { opacity: 1; }
+
+        /* ── Бейджи метрик ── */
+        .roi-badge {
+            display: inline-block; padding: .2rem .55rem;
+            border-radius: 20px; font-size: .82rem; font-weight: 600;
+            white-space: nowrap;
+        }
+        .roi-pos { background: #c6f6d5; color: #276749; }
+        .roi-neg { background: #fed7d7; color: #c53030; }
+        .roi-na  { background: #edf2f7; color: #718096; }
+
+        .cr-badge {
+            display: inline-block; padding: .2rem .55rem;
+            border-radius: 20px; font-size: .82rem; font-weight: 600;
+        }
+        .cr-high { background: #bee3f8; color: #2c5282; }
+        .cr-mid  { background: #fefcbf; color: #975a16; }
+        .cr-low  { background: #edf2f7; color: #718096; }
+
+        /* ── Tooltip ── */
+        .tip { position: relative; cursor: help; }
+        .tip::after {
+            content: attr(data-tip);
+            position: absolute; bottom: 130%; left: 50%;
+            transform: translateX(-50%);
+            background: #2d3748; color: #fff; font-size: .75rem;
+            padding: .35rem .65rem; border-radius: 6px;
+            white-space: nowrap; pointer-events: none;
+            opacity: 0; transition: opacity .2s; z-index: 10;
+        }
+        .tip:hover::after { opacity: 1; }
+
+        /* ── Состояния ── */
+        .loading { text-align: center; padding: 2rem; color: #718096; }
+        .empty   { text-align: center; padding: 3rem; color: #a0aec0; font-size: 1.1rem; }
+
+        /* ── Тост ── */
+        #toast {
+            position: fixed; bottom: 2rem; left: 50%;
+            transform: translateX(-50%);
+            background: #2d3748; color: #fff;
+            padding: .6rem 1.4rem; border-radius: 8px;
+            font-size: .9rem; z-index: 9999;
+            opacity: 0; transition: opacity .3s;
+            pointer-events: none;
+        }
+        #toast.show { opacity: 1; }
+    </style>
+</head>
+
+<body>
+    <div class="header">
+        <h1>📊 Маркетинг</h1>
+        <div class="nav-links">
+            <a href="/">← Дашборд</a>
+            <a href="/users">👥 Пользователи</a>
+            <a href="/predictions">🔮 Предсказания</a>
+            <a href="/subscriptions">💎 Подписки</a>
+            {% if user.role == 'superadmin' %}
+            <a href="/settings">⚙️ Настройки</a>
+            {% endif %}
+            <a href="/logout" style="color:#c53030;">🚪 Выйти</a>
+        </div>
+    </div>
+
+    <div class="container">
+
+        <!-- KPI-карточки -->
+        <div class="kpi-grid" id="kpi-grid">
+            <div class="kpi-card">
+                <div class="value" id="kpi-campaigns">—</div>
+                <div class="label">Кампаний</div>
+            </div>
+            <div class="kpi-card amber">
+                <div class="value" id="kpi-spend">—</div>
+                <div class="label">Суммарные затраты, ₽</div>
+            </div>
+            <div class="kpi-card">
+                <div class="value" id="kpi-clicks">—</div>
+                <div class="label">Переходов</div>
+            </div>
+            <div class="kpi-card">
+                <div class="value" id="kpi-users">—</div>
+                <div class="label">Новых пользователей</div>
+            </div>
+            <div class="kpi-card">
+                <div class="value" id="kpi-purchases">—</div>
+                <div class="label">Покупок</div>
+            </div>
+            <div class="kpi-card green">
+                <div class="value" id="kpi-revenue">—</div>
+                <div class="label">Суммарная выручка, ₽</div>
+            </div>
+            <div class="kpi-card" id="kpi-roi-card">
+                <div class="value" id="kpi-roi">—</div>
+                <div class="label">Средний ROI</div>
+            </div>
+        </div>
+
+        <!-- Сводная таблица -->
+        <div class="section">
+            <div class="section-header">
+                <h2>📋 Сводная таблица кампаний</h2>
+                <div style="display:flex;gap:.75rem;align-items:center;flex-wrap:wrap;">
+                    <span style="font-size:.8rem;color:#a0aec0;">
+                        Кликните по <u>названию</u> или <u>затратам</u> для редактирования
+                    </span>
+                    <button class="btn btn-outline" onclick="exportCSV()">⬇ Экспорт CSV</button>
+                </div>
+            </div>
+
+            <div class="table-wrap">
+                <table id="main-table">
+                    <thead>
+                        <tr>
+                            <th onclick="sortBy('campaign_name')" class="tip" data-tip="Inline-редактирование">
+                                Название кампании <span class="sort-icon">↕</span>
+                            </th>
+                            <th onclick="sortBy('referral_code')">
+                                Реф. код <span class="sort-icon">↕</span>
+                            </th>
+                            <th onclick="sortBy('ad_cost')" class="tip" data-tip="Inline-редактирование, ₽">
+                                Затраты ₽ <span class="sort-icon">↕</span>
+                            </th>
+                            <th onclick="sortBy('clicks')" class="tip" data-tip="Активаций /start ref_code">
+                                Переходы <span class="sort-icon">↕</span>
+                            </th>
+                            <th onclick="sortBy('new_users')" class="tip" data-tip="Уникальных зарегистрировавшихся">
+                                Новые пользователи <span class="sort-icon">↕</span>
+                            </th>
+                            <th onclick="sortBy('cr1')" class="tip" data-tip="new_users / clicks × 100%">
+                                CR1, % <span class="sort-icon">↕</span>
+                            </th>
+                            <th onclick="sortBy('predictions_count')" class="tip" data-tip="Предсказаний от когорты канала">
+                                Предсказаний <span class="sort-icon">↕</span>
+                            </th>
+                            <th onclick="sortBy('purchases')" class="tip" data-tip="Успешных платежей от когорты">
+                                Покупки <span class="sort-icon">↕</span>
+                            </th>
+                            <th onclick="sortBy('revenue')" class="tip" data-tip="Сумма платежей от когорты, ₽">
+                                Выручка ₽ <span class="sort-icon">↕</span>
+                            </th>
+                            <th onclick="sortBy('cac')" class="tip" data-tip="Затраты / Покупки. Если покупок нет — Затраты / Новые (CPA)">
+                                CAC / CPA ₽ <span class="sort-icon">↕</span>
+                            </th>
+                            <th onclick="sortBy('roi')" class="tip" data-tip="(Выручка − Затраты) / Затраты × 100%">
+                                ROI % <span class="sort-icon">↕</span>
+                            </th>
+                        </tr>
+                    </thead>
+                    <tbody id="table-body">
+                        <tr><td colspan="11" class="loading">Загрузка…</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <div id="toast"></div>
+
+    <script>
+        // ── Данные ────────────────────────────────────────────────────
+        let rawData   = [];   // данные с сервера
+        let tableData = [];   // с вычисленными полями, после сортировки
+        let sortKey   = 'created_at';
+        let sortDir   = -1;   // -1 = desc, 1 = asc
+
+        // ── Загрузка ──────────────────────────────────────────────────
+        async function loadData() {
+            try {
+                const res = await fetch('/api/marketing/stats');
+                rawData = await res.json();
+                buildTableData();
+                renderKPI();
+                renderTable();
+            } catch (e) {
+                document.getElementById('table-body').innerHTML =
+                    '<tr><td colspan="11" style="color:#c53030;padding:2rem;text-align:center;">Ошибка загрузки данных</td></tr>';
+            }
+        }
+
+        // ── Вычисление производных метрик ─────────────────────────────
+        function buildTableData() {
+            tableData = rawData.map(r => {
+                const cr1 = r.clicks > 0
+                    ? parseFloat((r.new_users / r.clicks * 100).toFixed(1))
+                    : 0;
+
+                let cac = null;
+                if (r.purchases > 0) {
+                    cac = parseFloat((r.ad_cost / r.purchases).toFixed(0));
+                } else if (r.new_users > 0 && r.ad_cost > 0) {
+                    cac = parseFloat((r.ad_cost / r.new_users).toFixed(0)); // CPA
+                }
+
+                const roi = r.ad_cost > 0
+                    ? parseFloat(((r.revenue - r.ad_cost) / r.ad_cost * 100).toFixed(1))
+                    : null;
+
+                return { ...r, cr1, cac, roi };
+            });
+
+            // Сортировка
+            tableData.sort((a, b) => {
+                let va = a[sortKey] ?? -Infinity;
+                let vb = b[sortKey] ?? -Infinity;
+                if (typeof va === 'string') va = va.toLowerCase();
+                if (typeof vb === 'string') vb = vb.toLowerCase();
+                return va < vb ? -sortDir : va > vb ? sortDir : 0;
+            });
+        }
+
+        // ── KPI-карточки ──────────────────────────────────────────────
+        function renderKPI() {
+            const totalSpend    = rawData.reduce((s, r) => s + (r.ad_cost || 0), 0);
+            const totalClicks   = rawData.reduce((s, r) => s + r.clicks, 0);
+            const totalUsers    = rawData.reduce((s, r) => s + r.new_users, 0);
+            const totalPurchases= rawData.reduce((s, r) => s + r.purchases, 0);
+            const totalRevenue  = rawData.reduce((s, r) => s + r.revenue, 0);
+
+            // Средний ROI только по кампаниям с ненулевыми затратами
+            const roiValues = tableData
+                .filter(r => r.roi !== null)
+                .map(r => r.roi);
+            const avgROI = roiValues.length > 0
+                ? (roiValues.reduce((a, b) => a + b, 0) / roiValues.length).toFixed(1)
+                : null;
+
+            document.getElementById('kpi-campaigns').textContent  = rawData.length;
+            document.getElementById('kpi-spend').textContent      = fmtMoney(totalSpend);
+            document.getElementById('kpi-clicks').textContent     = fmtNum(totalClicks);
+            document.getElementById('kpi-users').textContent      = fmtNum(totalUsers);
+            document.getElementById('kpi-purchases').textContent  = fmtNum(totalPurchases);
+            document.getElementById('kpi-revenue').textContent    = fmtMoney(totalRevenue);
+
+            const roiEl   = document.getElementById('kpi-roi');
+            const roiCard = document.getElementById('kpi-roi-card');
+            if (avgROI !== null) {
+                roiEl.textContent = avgROI + '%';
+                roiCard.classList.toggle('green', parseFloat(avgROI) >= 0);
+                roiCard.classList.toggle('red',   parseFloat(avgROI) < 0);
+            } else {
+                roiEl.textContent = '—';
+            }
+        }
+
+        // ── Рендер таблицы ─────────────────────────────────────────────
+        function renderTable() {
+            const tbody = document.getElementById('table-body');
+
+            if (tableData.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="11" class="empty">Нет кампаний. Создайте партнёров в разделе <a href="/settings">⚙️ Настройки</a>.</td></tr>';
+                return;
+            }
+
+            tbody.innerHTML = tableData.map(r => {
+                // Название кампании (inline-edit)
+                const nameVal = r.campaign_name || '';
+                const nameHtml = `
+                    <span class="editable ${nameVal ? '' : 'empty'}"
+                          data-field="campaign_name" data-id="${r.partner_id}"
+                          onclick="startEdit(this, 'text')"
+                          title="Нажмите для редактирования">
+                        ${escHtml(nameVal || 'Без названия')}
+                    </span>
+                    <span class="save-indicator" id="si-name-${r.partner_id}">✓</span>`;
+
+                // Затраты (inline-edit)
+                const costHtml = `
+                    <span class="editable"
+                          data-field="ad_cost" data-id="${r.partner_id}"
+                          onclick="startEdit(this, 'number')"
+                          title="Нажмите для редактирования">
+                        ${fmtMoney(r.ad_cost)}
+                    </span>
+                    <span class="save-indicator" id="si-cost-${r.partner_id}">✓</span>`;
+
+                // CR1
+                const cr1Class = r.cr1 >= 30 ? 'cr-high' : r.cr1 >= 10 ? 'cr-mid' : 'cr-low';
+                const cr1Html  = `<span class="cr-badge ${cr1Class}">${r.cr1}%</span>`;
+
+                // CAC / CPA
+                let cacHtml;
+                if (r.cac !== null) {
+                    const label = r.purchases > 0 ? 'CAC' : 'CPA';
+                    cacHtml = `<span class="tip" data-tip="${label}">${fmtMoney(r.cac)}</span>`;
+                } else {
+                    cacHtml = '<span style="color:#a0aec0">—</span>';
+                }
+
+                // ROI
+                let roiHtml;
+                if (r.roi !== null) {
+                    const cls = r.roi >= 0 ? 'roi-pos' : 'roi-neg';
+                    roiHtml = `<span class="roi-badge ${cls}">${r.roi > 0 ? '+' : ''}${r.roi}%</span>`;
+                } else {
+                    roiHtml = '<span class="roi-badge roi-na">н/д</span>';
+                }
+
+                return `
+                <tr>
+                    <td>${nameHtml}</td>
+                    <td><code style="background:#f7fafc;padding:2px 6px;border-radius:4px;font-size:.85rem;">${escHtml(r.referral_code)}</code></td>
+                    <td>${costHtml}</td>
+                    <td style="text-align:center;">${fmtNum(r.clicks)}</td>
+                    <td style="text-align:center;">${fmtNum(r.new_users)}</td>
+                    <td style="text-align:center;">${cr1Html}</td>
+                    <td style="text-align:center;">${fmtNum(r.predictions_count)}</td>
+                    <td style="text-align:center;">${fmtNum(r.purchases)}</td>
+                    <td style="text-align:right;">${fmtMoney(r.revenue)}</td>
+                    <td style="text-align:right;">${cacHtml}</td>
+                    <td style="text-align:center;">${roiHtml}</td>
+                </tr>`;
+            }).join('');
+
+            syncSortHeaders();
+        }
+
+        // ── Inline-editing ─────────────────────────────────────────────
+        function startEdit(span, type) {
+            if (span.querySelector('input')) return; // уже редактируется
+
+            const field    = span.dataset.field;
+            const partnerId= parseInt(span.dataset.id);
+            const row      = rawData.find(r => r.partner_id === partnerId);
+            const curVal   = field === 'ad_cost'
+                ? (row?.ad_cost || 0)
+                : (row?.campaign_name || '');
+
+            const input = document.createElement('input');
+            input.className   = 'edit-input';
+            input.type        = type;
+            input.value       = curVal;
+            if (type === 'number') { input.min = '0'; input.style.width = '100px'; }
+
+            span.innerHTML = '';
+            span.appendChild(input);
+            input.focus();
+            input.select();
+
+            const save = async () => {
+                const newVal = type === 'number'
+                    ? Math.max(0, parseInt(input.value) || 0)
+                    : input.value.trim();
+
+                // Обновляем rawData
+                if (row) {
+                    if (field === 'ad_cost') row.ad_cost = newVal;
+                    else row.campaign_name = newVal;
+                }
+
+                // Восстанавливаем span
+                const displayVal = field === 'ad_cost'
+                    ? fmtMoney(newVal)
+                    : (newVal || 'Без названия');
+                span.innerHTML = escHtml(displayVal);
+                span.classList.toggle('empty', !newVal && field === 'campaign_name');
+
+                // PATCH на сервер
+                try {
+                    const body = {};
+                    if (field === 'ad_cost')       body.ad_cost       = newVal;
+                    if (field === 'campaign_name') body.campaign_name = newVal;
+
+                    const res = await fetch(`/api/marketing/${partnerId}`, {
+                        method:  'PATCH',
+                        headers: { 'Content-Type': 'application/json' },
+                        body:    JSON.stringify(body),
+                    });
+
+                    if (res.ok) {
+                        const siId = field === 'ad_cost'
+                            ? `si-cost-${partnerId}`
+                            : `si-name-${partnerId}`;
+                        const si = document.getElementById(siId);
+                        if (si) {
+                            si.classList.add('show');
+                            setTimeout(() => si.classList.remove('show'), 1800);
+                        }
+                        // Пересчитываем производные метрики
+                        buildTableData();
+                        renderKPI();
+                    } else {
+                        showToast('Ошибка сохранения', true);
+                    }
+                } catch {
+                    showToast('Ошибка сети', true);
+                }
+            };
+
+            input.addEventListener('blur',  save);
+            input.addEventListener('keydown', e => {
+                if (e.key === 'Enter')  { input.blur(); }
+                if (e.key === 'Escape') {
+                    // Отмена — восстанавливаем без сохранения
+                    const oldVal = field === 'ad_cost'
+                        ? fmtMoney(row?.ad_cost || 0)
+                        : escHtml(row?.campaign_name || 'Без названия');
+                    span.innerHTML = oldVal;
+                    input.removeEventListener('blur', save);
+                }
+            });
+        }
+
+        // ── Сортировка ────────────────────────────────────────────────
+        function sortBy(key) {
+            if (sortKey === key) sortDir *= -1;
+            else { sortKey = key; sortDir = -1; }
+            buildTableData();
+            renderTable();
+        }
+
+        function syncSortHeaders() {
+            document.querySelectorAll('#main-table th').forEach(th => {
+                th.classList.remove('sort-asc', 'sort-desc');
+                const icon = th.querySelector('.sort-icon');
+                if (icon) icon.textContent = '↕';
+            });
+
+            // Найти th по onclick
+            const ths = document.querySelectorAll('#main-table th[onclick]');
+            ths.forEach(th => {
+                const match = th.getAttribute('onclick').match(/sortBy\('(.+?)'\)/);
+                if (match && match[1] === sortKey) {
+                    th.classList.add(sortDir === 1 ? 'sort-asc' : 'sort-desc');
+                    const icon = th.querySelector('.sort-icon');
+                    if (icon) icon.textContent = sortDir === 1 ? '↑' : '↓';
+                }
+            });
+        }
+
+        // ── Экспорт CSV ───────────────────────────────────────────────
+        function exportCSV() {
+            const headers = [
+                'Название кампании', 'Реф. код', 'Описание',
+                'Затраты (руб.)', 'Переходы', 'Новые пользователи', 'CR1 (%)',
+                'Предсказаний', 'Покупки', 'Выручка (руб.)', 'CAC/CPA (руб.)', 'ROI (%)',
+            ];
+
+            const rows = tableData.map(r => [
+                `"${(r.campaign_name || '').replace(/"/g, '""')}"`,
+                r.referral_code,
+                `"${(r.description || '').replace(/"/g, '""')}"`,
+                r.ad_cost || 0,
+                r.clicks,
+                r.new_users,
+                r.cr1,
+                r.predictions_count,
+                r.purchases,
+                r.revenue,
+                r.cac !== null ? r.cac : '',
+                r.roi !== null ? r.roi : '',
+            ].join(','));
+
+            const csv  = '\uFEFF' + [headers.join(','), ...rows].join('\n');
+            const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+            const url  = URL.createObjectURL(blob);
+            const a    = document.createElement('a');
+            a.href     = url;
+            a.download = `marketing_${new Date().toISOString().slice(0,10)}.csv`;
+            a.click();
+            URL.revokeObjectURL(url);
+        }
+
+        // ── Утилиты ───────────────────────────────────────────────────
+        function fmtMoney(v) {
+            if (v == null || v === '') return '0';
+            return Number(v).toLocaleString('ru-RU');
+        }
+        function fmtNum(v) {
+            return Number(v || 0).toLocaleString('ru-RU');
+        }
+        function escHtml(str) {
+            return String(str)
+                .replace(/&/g,'&amp;').replace(/</g,'&lt;')
+                .replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+        }
+
+        let toastTimer;
+        function showToast(msg, isErr = false) {
+            const t = document.getElementById('toast');
+            t.textContent = msg;
+            t.style.background = isErr ? '#c53030' : '#2d3748';
+            t.classList.add('show');
+            clearTimeout(toastTimer);
+            toastTimer = setTimeout(() => t.classList.remove('show'), 2500);
+        }
+
+        // ── Старт ─────────────────────────────────────────────────────
+        loadData();
+    </script>
+</body>
+</html>
