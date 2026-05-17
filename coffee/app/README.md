@@ -16,6 +16,7 @@
 - [Функциональность бота](#функциональность-бота)
 - [Система подписок и платежей](#система-подписок-и-платежей)
 - [Админ-панель](#админ-панель)
+- [Маркетинговая аналитика](#маркетинговая-аналитика)
 - [База данных](#база-данных)
 - [API админ-панели](#api-админ-панели)
 - [Обработка фотографий](#обработка-фотографий)
@@ -271,6 +272,7 @@ coffee_oracle/
 │       ├── users.html                   # Пользователи: поиск, фильтры по платформе/статусу, сортировка, пагинация
 │       ├── predictions.html             # Предсказания: фильтры, столбец Username, контекстное меню ПКМ, модалка
 │       ├── subscriptions.html           # Подписки: поиск и фильтр платформы для VIP и Premium, сортировка
+│       ├── marketing.html               # Маркетинг: сводная таблица кампаний с KPI и inline-редактированием
 │       ├── settings.html                # Редактор настроек + управление партнёрами
 │       ├── partner_cabinet.html         # Кабинет партнёра (реф. ссылка, статистика)
 │       ├── admins.html                  # CRUD администраторов (временно отключено)
@@ -716,6 +718,7 @@ FastAPI-приложение (`Coffee Oracle Admin v2.0`) на порту `ADMIN
 | `/users` | `users.html` | Пользователи: поиск, фильтры по платформе и статусу подписки, сортировка по дате и кол-ву предсказаний, пагинация (50/стр) | admin+ |
 | `/predictions` | `predictions.html` | Предсказания: фильтры по платформе и тарифу, столбец Username, контекстное меню ПКМ, модалка с фото и Markdown | admin+ |
 | `/subscriptions` | `subscriptions.html` | Подписки: KPI, поиск и фильтр платформы для VIP и Premium, сортировка по дате истечения, подсветка истекающих | admin+ |
+| `/marketing` | `marketing.html` | Маркетинг: сводная таблица кампаний, KPI-карточки, inline-редактирование затрат и названий, экспорт CSV | admin+ |
 | `/settings` | `settings.html` | Редактор настроек: промпт, температура, тексты, цены, условия, конфиденциальность | superadmin |
 | `/admins` | `admins.html` | Управление администраторами (временно отключено — редирект на `/`) | superadmin |
 | `/terms` | `legal_page.html` | Условия использования (текст из `bot_settings`) | публичная |
@@ -790,6 +793,52 @@ FastAPI-приложение (`Coffee Oracle Admin v2.0`) на порту `ADMIN
 
 ---
 
+## Маркетинговая аналитика
+
+Раздел `/marketing` — аналитический дашборд для оценки эффективности рекламных кампаний. Доступен всем ролям кроме `partner`.
+
+### Сводная таблица кампаний
+
+Каждая строка — один партнёр (рекламный канал/посев). Данные загружаются одним агрегирующим SQL-запросом через `PartnerRepository.get_marketing_stats()`.
+
+| Метрика | Описание и логика расчёта |
+|---------|--------------------------|
+| **Название кампании** | Inline-редактирование: клик по ячейке → `<input>` → сохранение по `blur` / `Enter`, отмена по `Escape`. Хранится в `partners.campaign_name` |
+| **Реф. код** | Уникальный идентификатор ссылки (`partners.referral_code`) |
+| **Затраты ₽** | Inline-редактирование стоимости размещения. Хранится в `partners.ad_cost` (рубли, целое число) |
+| **Переходы** | `COUNT(referral_clicks)` для данного партнёра |
+| **Новые пользователи** | `COUNT(users WHERE referred_by_partner_id = partner.id)` |
+| **CR1 %** | `new_users / clicks × 100` — конверсия в регистрацию. Цветовые бейджи: синий ≥30%, жёлтый ≥10%, серый <10% |
+| **Предсказаний** | `COUNT(predictions)` по когорте — показатель вовлечённости канала |
+| **Покупки** | `COUNT(payments WHERE status IN ('succeeded', 'completed'))` по когорте |
+| **Выручка ₽** | `SUM(payments.amount)` по когорте (конвертация из копеек в рубли) |
+| **CAC / CPA ₽** | Если покупки > 0: `Затраты / Покупки` (CAC). Если покупок нет, но есть пользователи: `Затраты / Новые пользователи` (CPA) |
+| **ROI %** | `(Выручка − Затраты) / Затраты × 100`. Зелёный бейдж — положительный, красный — отрицательный, серый — нет данных |
+
+### KPI-карточки
+
+Над таблицей — суммарные показатели по всем кампаниям: количество кампаний, суммарные затраты, переходы, новые пользователи, покупки, выручка, средний ROI.
+
+### Inline-редактирование
+
+Поля «Название кампании» и «Затраты ₽» редактируются прямо в таблице без перехода на другую страницу. После сохранения `PATCH /api/marketing/{partner_id}` KPI-карточки и вычисляемые метрики (CAC, ROI) пересчитываются мгновенно на клиенте.
+
+### Экспорт
+
+Кнопка «⬇ Экспорт CSV» выгружает текущее состояние таблицы в UTF-8 CSV с BOM (корректное открытие в Excel). Файл именуется `marketing_YYYY-MM-DD.csv`.
+
+### Сортировка
+
+Клик по любому заголовку столбца — сортировка по этой метрике (↑↓). Сортировка работает на клиенте по уже загруженным данным.
+
+### Технические детали
+
+- `PartnerRepository.get_marketing_stats()` использует один `text()`-запрос с пятью подзапросами. Доступ к полям строк — через `row._mapping` (совместимо с SQLAlchemy 2.x + aiosqlite).
+- Статусы успешных платежей: `'succeeded'` (YooKassa webhook) и `'completed'` (ручное подтверждение через `complete_payment()`). Оба учитываются в расчёте покупок и выручки.
+- Поля `campaign_name` и `ad_cost` добавлены в таблицу `partners` миграцией `partner_marketing_fields`.
+
+---
+
 ## База данных
 
 SQLite с асинхронным доступом через `aiosqlite`. WAL-режим включён для конкурентных чтений. Автоматические миграции при старте приложения.
@@ -804,6 +853,8 @@ SQLite с асинхронным доступом через `aiosqlite`. WAL-р
 | `admin_user_id` | Integer, FK → admin_users.id, UNIQUE | Связь с AdminUser (роль partner) |
 | `referral_code` | String(50), UNIQUE, INDEX | Уникальный реферальный код |
 | `description` | String(500), nullable | Описание партнёра (компания, канал, блогер) |
+| `campaign_name` | String(255), nullable | Название рекламной кампании (inline-редактирование в разделе Маркетинг) |
+| `ad_cost` | Integer, nullable, default 0 | Затраты на размещение в рублях |
 | `created_at` | DateTime | Дата создания |
 
 #### ReferralClick
@@ -869,7 +920,7 @@ SQLite с асинхронным доступом через `aiosqlite`. WAL-р
 | `amount` | Integer | Сумма в копейках |
 | `label` | String(100), UNIQUE | Уникальный идентификатор платежа |
 | `payment_id` | String(100), nullable | YooKassa payment ID |
-| `status` | String(50), default `pending` | Статус: pending, succeeded, canceled, failed |
+| `status` | String(50), default `pending` | Статус: `pending`, `succeeded` (YooKassa webhook), `completed` (ручное подтверждение), `canceled`, `failed` |
 | `is_recurring` | Integer, default 0 | Рекуррентный платёж (0/1) |
 | `telegram_recurring_payment_charge_id` | String(255), nullable | ID рекуррентного платежа |
 | `created_at` | DateTime | Дата создания |
@@ -924,6 +975,7 @@ Partner 1 ──── * User (referred_by_partner_id)
 | `partners_table` | Создание таблицы partners (реферальная система) |
 | `referral_clicks_table` | Создание таблицы referral_clicks (учёт переходов) |
 | `user_referred_by_partner` | Добавление referred_by_partner_id в users |
+| `partner_marketing_fields` | Добавление campaign_name и ad_cost в partners (маркетинговая аналитика) |
 
 Дополнительно `DatabaseManager.check_and_migrate_db()` выполняет legacy-миграции через `ALTER TABLE` с проверкой существования колонок.
 
@@ -941,6 +993,13 @@ Partner 1 ──── * User (referred_by_partner_id)
 | `POST` | `/api/partners` | superadmin | Создать партнёра. Body: `{username, password, description}` |
 | `DELETE` | `/api/partners/{partner_id}` | superadmin | Удалить партнёра (каскадно удаляет AdminUser и ReferralClicks) |
 | `GET` | `/api/partner/stats` | partner | Статистика кабинета: реф. ссылка, total_clicks, today_clicks, referred_users, clicks_by_day |
+
+### Маркетинговая аналитика
+
+| Метод | URL | Доступ | Описание |
+|-------|-----|--------|----------|
+| `GET` | `/api/marketing/stats` | admin+ | Агрегированные метрики по всем кампаниям: клики, новые пользователи, предсказания, покупки, выручка |
+| `PATCH` | `/api/marketing/{partner_id}` | admin+ | Inline-обновление маркетинговых полей. Body: `{campaign_name?, ad_cost?}` |
 
 ### Аутентификация
 

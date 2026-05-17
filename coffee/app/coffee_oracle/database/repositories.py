@@ -1416,13 +1416,10 @@ class PartnerRepository:
 
         Один SQL-запрос возвращает все метрики для сводной таблицы
         раздела «Маркетинг»: клики, новые пользователи, предсказания
-        когорты, покупки (succeeded-платежи) и выручку.
+        когорты, покупки (succeeded/completed-платежи) и выручку.
 
         Returns:
             Список словарей, по одному на каждого партнёра.
-            Поля: partner_id, referral_code, campaign_name, ad_cost,
-            description, partner_username, created_at, clicks,
-            new_users, predictions_count, purchases, revenue.
         """
         result = await self.session.execute(text("""
             SELECT
@@ -1458,13 +1455,13 @@ class PartnerRepository:
                       AND u.deleted_at IS NULL
                 ) AS predictions_count,
 
-                -- Покупки: успешные платежи от пользователей когорты
+                -- Покупки: и ручные (completed) и через webhook (succeeded)
                 (
                     SELECT COUNT(*)
                     FROM payments pay
                     JOIN users u ON u.id = pay.user_id
                     WHERE u.referred_by_partner_id = p.id
-                      AND pay.status = 'succeeded'
+                      AND pay.status IN ('succeeded', 'completed')
                       AND u.deleted_at IS NULL
                 ) AS purchases,
 
@@ -1474,7 +1471,7 @@ class PartnerRepository:
                     FROM payments pay
                     JOIN users u ON u.id = pay.user_id
                     WHERE u.referred_by_partner_id = p.id
-                      AND pay.status = 'succeeded'
+                      AND pay.status IN ('succeeded', 'completed')
                       AND u.deleted_at IS NULL
                 ) AS revenue_kopecks
 
@@ -1484,23 +1481,35 @@ class PartnerRepository:
         """))
 
         rows = result.fetchall()
-        return [
-            {
-                "partner_id":        row.partner_id,
-                "referral_code":     row.referral_code,
-                "campaign_name":     row.campaign_name or "",
-                "ad_cost":           row.ad_cost or 0,
-                "description":       row.description or "",
-                "partner_username":  row.partner_username,
-                "created_at":        row.created_at.isoformat() if row.created_at else None,
-                "clicks":            row.clicks,
-                "new_users":         row.new_users,
-                "predictions_count": row.predictions_count,
-                "purchases":         row.purchases,
-                "revenue":           round(row.revenue_kopecks / 100, 2),
-            }
-            for row in rows
-        ]
+        stats = []
+        for row in rows:
+            # _mapping гарантирует доступ по имени колонки в любой версии SQLAlchemy/aiosqlite
+            m = row._mapping
+
+            # created_at может прийти строкой из SQLite — обрабатываем оба варианта
+            created_at_val = m["created_at"]
+            if created_at_val is None:
+                created_at_str = None
+            elif hasattr(created_at_val, "isoformat"):
+                created_at_str = created_at_val.isoformat()
+            else:
+                created_at_str = str(created_at_val)
+
+            stats.append({
+                "partner_id":        m["partner_id"],
+                "referral_code":     m["referral_code"],
+                "campaign_name":     m["campaign_name"] or "",
+                "ad_cost":           m["ad_cost"] or 0,
+                "description":       m["description"] or "",
+                "partner_username":  m["partner_username"],
+                "created_at":        created_at_str,
+                "clicks":            m["clicks"],
+                "new_users":         m["new_users"],
+                "predictions_count": m["predictions_count"],
+                "purchases":         m["purchases"],
+                "revenue":           round((m["revenue_kopecks"] or 0) / 100, 2),
+            })
+        return stats
 
     async def update_partner_marketing(
         self,
