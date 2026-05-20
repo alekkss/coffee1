@@ -11,7 +11,7 @@ import string
 from datetime import datetime, timedelta
 from typing import Any, Dict, List, Optional
 
-from sqlalchemy import desc, func, select, text, delete, or_, exists
+from sqlalchemy import desc, func, select, text, delete, or_, and_, exists
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.exc import IntegrityError
 
