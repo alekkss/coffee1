@@ -124,6 +124,22 @@ class MaxOracleBot:
                 logger.info("MAX-бот: polling отменён")
                 break
 
+            except asyncio.TimeoutError:
+                if not self._running:
+                    break
+                # Таймаут при long polling — нормальное поведение, когда нет новых сообщений
+                logger.debug("MAX-бот: таймаут long polling, продолжаю ожидание...")
+                continue
+
+            except OSError as e:
+                if not self._running:
+                    break
+                logger.warning(
+                    "MAX-бот: сетевая ошибка (повтор через %.1f сек): %s",
+                    self._retry_delay, e,
+                )
+                await self._wait_before_retry()
+
             except Exception as e:
                 if not self._running:
                     break
