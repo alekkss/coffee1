@@ -1,7 +1,7 @@
 """Репозитории для работы с базой данных.
 
 Содержит репозитории для всех сущностей: пользователи,
-предсказания, настройки, подписки, платежи и партнёры.
+предсказания, настройки, подписки, платежи, партнёры и ремайндеры.
 """
 
 import os
@@ -11,7 +11,7 @@ import string
 from datetime import datetime, timedelta
 from typing import Any, Dict, List, Optional
 
-from sqlalchemy import desc, func, select, text
+from sqlalchemy import desc, func, select, text, delete, or_, exists
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.exc import IntegrityError
 
@@ -24,6 +24,7 @@ from coffee_oracle.database.models import (
     PredictionPhoto,
     ReferralClick,
     User,
+    UserReminder,
 )
 
 MEDIA_DIR = "/opt/oracle-bot/media"
@@ -1084,6 +1085,116 @@ class SubscriptionRepository:
         return list(result.scalars().all())
 
 
+class ReminderRepository:
+    """Репозиторий для управления ремайндерами неактивных пользователей.
+
+    Отвечает за поиск пользователей, которым нужно отправить
+    напоминание через 1, 3 или 7 дней после последнего предсказания,
+    фиксацию факта отправки и сброс цепочки при новой активности.
+    """
+
+    def __init__(self, session: AsyncSession):
+        self.session = session
+
+    async def get_users_for_reminder(self, day: int) -> List[User]:
+        """Получение пользователей для отправки ремайндера.
+
+        Находит активных пользователей, у которых последнее предсказание
+        (или дата регистрации, если предсказаний не было) попадает
+        в суточный диапазон [day, day+1) дней назад, и у которых
+        ещё нет записи об отправке ремайндера этого дня.
+
+        Args:
+            day: День неактивности (1, 3 или 7).
+
+        Returns:
+            Список объектов User, которым нужно отправить ремайндер.
+        """
+        now = datetime.utcnow()
+        lower_bound = now - timedelta(days=day + 1)
+        upper_bound = now - timedelta(days=day)
+
+        # Подзапрос: дата последнего предсказания пользователя
+        last_pred_subq = (
+            select(
+                Prediction.user_id,
+                func.max(Prediction.created_at).label("last_pred_at"),
+            )
+            .group_by(Prediction.user_id)
+            .subquery()
+        )
+
+        # Подзапрос: проверка, что ремайндер уже отправлялся
+        reminder_exists = exists().where(
+            UserReminder.user_id == User.id,
+            UserReminder.reminder_day == day,
+        )
+
+        stmt = (
+            select(User)
+            .outerjoin(last_pred_subq, User.id == last_pred_subq.c.user_id)
+            .where(
+                User.deleted_at.is_(None),
+                ~reminder_exists,
+                or_(
+                    # Есть предсказания — смотрим на последнее
+                    and_(
+                        last_pred_subq.c.last_pred_at.isnot(None),
+                        last_pred_subq.c.last_pred_at >= lower_bound,
+                        last_pred_subq.c.last_pred_at < upper_bound,
+                    ),
+                    # Нет предсказаний — смотрим на дату регистрации
+                    and_(
+                        last_pred_subq.c.last_pred_at.is_(None),
+                        User.created_at >= lower_bound,
+                        User.created_at < upper_bound,
+                    ),
+                ),
+            )
+        )
+
+        result = await self.session.execute(stmt)
+        return list(result.scalars().all())
+
+    async def mark_reminder_sent(self, user_id: int, day: int) -> None:
+        """Фиксация отправки ремайндера.
+
+        Создаёт запись в user_reminders, чтобы в следующих циклах
+        планировщика этот ремайндер не дублировался.
+
+        Args:
+            user_id: Внутренний ID пользователя.
+            day: День неактивности (1, 3 или 7).
+        """
+        reminder = UserReminder(user_id=user_id, reminder_day=day)
+        self.session.add(reminder)
+        await self.session.commit()
+        logger.info(
+            "Ремайндер дня %d зафиксирован для пользователя %d", day, user_id
+        )
+
+    async def reset_reminders(self, user_id: int) -> None:
+        """Сброс цепочки ремайндеров пользователя.
+
+        Вызывается при новом предсказании — удаляет все записи
+        ремайндеров, чтобы цепочка 1→3→7 началась заново.
+
+        Args:
+            user_id: Внутренний ID пользователя.
+        """
+        result = await self.session.execute(
+            delete(UserReminder).where(UserReminder.user_id == user_id)
+        )
+        await self.session.commit()
+
+        deleted = result.rowcount or 0
+        if deleted > 0:
+            logger.info(
+                "Сброшена цепочка ремайндеров для пользователя %d (удалено %d)",
+                user_id, deleted,
+            )
+
+
 class PartnerRepository:
     """Репозиторий для операций с партнёрами и реферальными переходами.
 
@@ -1409,6 +1520,119 @@ class PartnerRepository:
             "today_clicks": today_clicks,
             "referred_users": referred_users,
             "clicks_by_day": clicks_by_day,
+        }
+
+    async def get_partner_earnings_stats(self, partner_id: int) -> Dict[str, Any]:
+        """Получение статистики выручки и заработка партнёра.
+
+        Рассчитывает выручку от успешных платежей пользователей,
+        привлечённых партнёром, и заработок по фиксированной
+        комиссии 25%. Возвращает общие показатели, показатели
+        за текущий месяц и помесячную разбивку за последние 6 месяцев.
+
+        Args:
+            partner_id: ID партнёра.
+
+        Returns:
+            Словарь с выручкой, заработком, количеством покупок
+            и помесячной разбивкой.
+        """
+        commission_rate = 0.25
+
+        # Общая выручка (сумма в копейках)
+        total_revenue_result = await self.session.execute(
+            text("""
+                SELECT COALESCE(SUM(pay.amount), 0)
+                FROM payments pay
+                JOIN users u ON u.id = pay.user_id
+                WHERE u.referred_by_partner_id = :partner_id
+                  AND pay.status IN ('succeeded', 'completed')
+                  AND u.deleted_at IS NULL
+            """),
+            {"partner_id": partner_id},
+        )
+        total_revenue_kopecks = total_revenue_result.scalar() or 0
+
+        # Выручка за текущий месяц
+        month_revenue_result = await self.session.execute(
+            text("""
+                SELECT COALESCE(SUM(pay.amount), 0)
+                FROM payments pay
+                JOIN users u ON u.id = pay.user_id
+                WHERE u.referred_by_partner_id = :partner_id
+                  AND pay.status IN ('succeeded', 'completed')
+                  AND u.deleted_at IS NULL
+                  AND pay.created_at >= date('now', 'start of month')
+            """),
+            {"partner_id": partner_id},
+        )
+        month_revenue_kopecks = month_revenue_result.scalar() or 0
+
+        # Общее количество покупок
+        total_purchases_result = await self.session.execute(
+            text("""
+                SELECT COUNT(*)
+                FROM payments pay
+                JOIN users u ON u.id = pay.user_id
+                WHERE u.referred_by_partner_id = :partner_id
+                  AND pay.status IN ('succeeded', 'completed')
+                  AND u.deleted_at IS NULL
+            """),
+            {"partner_id": partner_id},
+        )
+        total_purchases = total_purchases_result.scalar() or 0
+
+        # Покупки за текущий месяц
+        month_purchases_result = await self.session.execute(
+            text("""
+                SELECT COUNT(*)
+                FROM payments pay
+                JOIN users u ON u.id = pay.user_id
+                WHERE u.referred_by_partner_id = :partner_id
+                  AND pay.status IN ('succeeded', 'completed')
+                  AND u.deleted_at IS NULL
+                  AND pay.created_at >= date('now', 'start of month')
+            """),
+            {"partner_id": partner_id},
+        )
+        month_purchases = month_purchases_result.scalar() or 0
+
+        # Помесячная разбивка за последние 6 месяцев
+        monthly_result = await self.session.execute(
+            text("""
+                SELECT 
+                    strftime('%Y-%m', pay.created_at) as month,
+                    COALESCE(SUM(pay.amount), 0) as revenue
+                FROM payments pay
+                JOIN users u ON u.id = pay.user_id
+                WHERE u.referred_by_partner_id = :partner_id
+                  AND pay.status IN ('succeeded', 'completed')
+                  AND u.deleted_at IS NULL
+                  AND pay.created_at >= date('now', '-6 months')
+                GROUP BY strftime('%Y-%m', pay.created_at)
+                ORDER BY month DESC
+            """),
+            {"partner_id": partner_id},
+        )
+        monthly_rows = monthly_result.fetchall()
+        monthly_breakdown = [
+            {
+                "month": row[0],
+                "revenue": round((row[1] or 0) / 100, 2),
+                "earnings": round((row[1] or 0) / 100 * commission_rate, 2),
+            }
+            for row in monthly_rows
+        ]
+
+        return {
+            "revenue_total": round(total_revenue_kopecks / 100, 2),
+            "revenue_this_month": round(month_revenue_kopecks / 100, 2),
+            "earnings_total": round(total_revenue_kopecks / 100 * commission_rate, 2),
+            "earnings_this_month": round(month_revenue_kopecks / 100 * commission_rate, 2),
+            "purchases_total": total_purchases,
+            "purchases_this_month": month_purchases,
+            "commission_percent": 25,
+            "monthly_breakdown": monthly_breakdown,
         }
 
     async def get_marketing_stats(self) -> List[Dict[str, Any]]:

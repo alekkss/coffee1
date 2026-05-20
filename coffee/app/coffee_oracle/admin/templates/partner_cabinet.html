@@ -280,6 +280,40 @@
             letter-spacing: 0.5px;
         }
 
+        /* Финансовые KPI — акцентные цвета */
+        .kpi-card.revenue .kpi-value {
+            background: linear-gradient(135deg, #11998e, #38ef7d);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .kpi-card.earnings .kpi-value {
+            background: linear-gradient(135deg, #f093fb, #f5576c);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .kpi-card.purchases .kpi-value {
+            background: linear-gradient(135deg, #4facfe, #00f2fe);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        /* Комиссия — бейдж */
+        .commission-badge {
+            display: inline-block;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            padding: 4px 14px;
+            border-radius: 20px;
+            font-size: 13px;
+            font-weight: 600;
+            margin-bottom: 20px;
+        }
+
         /* Таблица */
         .table-container {
             overflow-x: auto;
@@ -362,6 +396,13 @@
             font-style: italic;
         }
 
+        /* Разделитель секций */
+        .section-divider {
+            height: 1px;
+            background: rgba(255, 255, 255, 0.2);
+            margin: 30px 0;
+        }
+
         /* Адаптивность */
         @media (max-width: 600px) {
             .navbar {
@@ -409,7 +450,7 @@
     <div class="container">
         <!-- Заголовок -->
         <h1 class="page-title">👋 Добро пожаловать, {{ user.username }}!</h1>
-        <p class="page-subtitle">Здесь вы можете отслеживать переходы по вашим реферальным ссылкам</p>
+        <p class="page-subtitle">Здесь вы можете отслеживать переходы, выручку и заработок по вашим реферальным ссылкам</p>
 
         <!-- Состояние загрузки -->
         <div id="loading" class="loading">
@@ -475,7 +516,12 @@
                 </div>
             </div>
 
-            <!-- KPI-карточки -->
+            <!-- Комиссия -->
+            <div style="text-align: center;">
+                <span class="commission-badge" id="commission-badge">Комиссия: 25%</span>
+            </div>
+
+            <!-- KPI: Трафик -->
             <div class="kpi-grid">
                 <div class="kpi-card">
                     <div class="kpi-value" id="kpi-total">0</div>
@@ -491,7 +537,37 @@
                 </div>
             </div>
 
-            <!-- Таблица по дням -->
+            <div class="section-divider"></div>
+
+            <!-- KPI: Финансы -->
+            <div class="kpi-grid">
+                <div class="kpi-card revenue">
+                    <div class="kpi-value" id="kpi-revenue-total">0 ₽</div>
+                    <div class="kpi-label">Выручка всего</div>
+                </div>
+                <div class="kpi-card revenue">
+                    <div class="kpi-value" id="kpi-revenue-month">0 ₽</div>
+                    <div class="kpi-label">Выручка за месяц</div>
+                </div>
+                <div class="kpi-card earnings">
+                    <div class="kpi-value" id="kpi-earnings-total">0 ₽</div>
+                    <div class="kpi-label">Заработок всего</div>
+                </div>
+                <div class="kpi-card earnings">
+                    <div class="kpi-value" id="kpi-earnings-month">0 ₽</div>
+                    <div class="kpi-label">Заработок за месяц</div>
+                </div>
+                <div class="kpi-card purchases">
+                    <div class="kpi-value" id="kpi-purchases-total">0</div>
+                    <div class="kpi-label">Покупок всего</div>
+                </div>
+                <div class="kpi-card purchases">
+                    <div class="kpi-value" id="kpi-purchases-month">0</div>
+                    <div class="kpi-label">Покупок за месяц</div>
+                </div>
+            </div>
+
+            <!-- Таблица: Переходы по дням -->
             <div class="card">
                 <div class="card-title">📊 Переходы по дням (последние 30 дней)</div>
                 <div class="table-container">
@@ -511,10 +587,80 @@
                 </div>
             </div>
 
+            <!-- Таблица: Помесячная разбивка -->
+            <div class="card">
+                <div class="card-title">📈 Помесячная разбивка (последние 6 месяцев)</div>
+                <div class="table-container">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Месяц</th>
+                                <th>Выручка</th>
+                                <th>Заработок</th>
+                            </tr>
+                        </thead>
+                        <tbody id="monthly-table-body">
+                            <tr>
+                                <td colspan="3" class="no-data">Загрузка...</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
         </div>
     </div>
 
     <script>
+        /**
+         * Форматирование числа как валюты (рубли).
+         *
+         * @param {number} value - Сумма в рублях.
+         * @returns {string} Отформатированная строка.
+         */
+        function formatCurrency(value) {
+            if (value === undefined || value === null) return '0 ₽';
+            return new Intl.NumberFormat('ru-RU', {
+                style: 'currency',
+                currency: 'RUB',
+                maximumFractionDigits: 0,
+            }).format(value);
+        }
+
+        /**
+         * Форматирование даты YYYY-MM-DD в ДД.ММ.ГГГГ.
+         *
+         * @param {string} dateStr - Дата в формате YYYY-MM-DD.
+         * @returns {string} Отформатированная дата.
+         */
+        function formatDate(dateStr) {
+            if (!dateStr) return '—';
+            const parts = dateStr.split('-');
+            if (parts.length !== 3) return dateStr;
+            return `${parts[2]}.${parts[1]}.${parts[0]}`;
+        }
+
+        /**
+         * Форматирование месяца YYYY-MM в название месяца и год.
+         *
+         * @param {string} monthStr - Месяц в формате YYYY-MM.
+         * @returns {string} Название месяца и год.
+         */
+        function formatMonth(monthStr) {
+            if (!monthStr) return '—';
+            const parts = monthStr.split('-');
+            if (parts.length !== 2) return monthStr;
+
+            const year = parts[0];
+            const monthNum = parseInt(parts[1], 10);
+            const monthNames = [
+                'Январь', 'Февраль', 'Март', 'Апрель', 'Май', 'Июнь',
+                'Июль', 'Август', 'Сентябрь', 'Октябрь', 'Ноябрь', 'Декабрь'
+            ];
+            const monthName = monthNames[monthNum - 1] || monthStr;
+            return `${monthName} ${year}`;
+        }
+
         /**
          * Загрузка данных кабинета партнёра.
          */
@@ -585,13 +731,33 @@
                     descEl.style.display = 'block';
                 }
 
-                // KPI
+                // Комиссия
+                if (data.commission_percent) {
+                    const badge = document.getElementById('commission-badge');
+                    badge.textContent = `Комиссия: ${data.commission_percent}%`;
+                }
+
+                // KPI: Трафик
                 document.getElementById('kpi-total').textContent =
                     (data.total_clicks || 0).toLocaleString('ru-RU');
                 document.getElementById('kpi-today').textContent =
                     (data.today_clicks || 0).toLocaleString('ru-RU');
                 document.getElementById('kpi-users').textContent =
                     (data.referred_users || 0).toLocaleString('ru-RU');
+
+                // KPI: Финансы
+                document.getElementById('kpi-revenue-total').textContent =
+                    formatCurrency(data.revenue_total || 0);
+                document.getElementById('kpi-revenue-month').textContent =
+                    formatCurrency(data.revenue_this_month || 0);
+                document.getElementById('kpi-earnings-total').textContent =
+                    formatCurrency(data.earnings_total || 0);
+                document.getElementById('kpi-earnings-month').textContent =
+                    formatCurrency(data.earnings_this_month || 0);
+                document.getElementById('kpi-purchases-total').textContent =
+                    (data.purchases_total || 0).toLocaleString('ru-RU');
+                document.getElementById('kpi-purchases-month').textContent =
+                    (data.purchases_this_month || 0).toLocaleString('ru-RU');
 
                 // Таблица по дням
                 const tableBody = document.getElementById('clicks-table-body');
@@ -612,6 +778,24 @@
                     }).join('');
                 }
 
+                // Таблица помесячной разбивки
+                const monthlyBody = document.getElementById('monthly-table-body');
+                const monthlyBreakdown = data.monthly_breakdown || [];
+
+                if (monthlyBreakdown.length === 0) {
+                    monthlyBody.innerHTML =
+                        '<tr><td colspan="3" class="no-data">Покупок пока нет. Как только пользователи совершат оплату, данные появятся здесь.</td></tr>';
+                } else {
+                    monthlyBody.innerHTML = monthlyBreakdown.map(row => {
+                        const month = formatMonth(row.month);
+                        return `<tr>
+                            <td>${month}</td>
+                            <td><strong>${formatCurrency(row.revenue)}</strong></td>
+                            <td><strong>${formatCurrency(row.earnings)}</strong></td>
+                        </tr>`;
+                    }).join('');
+                }
+
                 // Показываем контент
                 loadingEl.style.display = 'none';
                 contentEl.style.display = 'block';
@@ -622,16 +806,6 @@
                 errorContainer.style.display = 'block';
                 errorText.textContent = error.message || 'Произошла ошибка при загрузке данных';
             }
-        }
-
-        /**
-         * Форматирование даты YYYY-MM-DD в ДД.ММ.ГГГГ.
-         */
-        function formatDate(dateStr) {
-            if (!dateStr) return '—';
-            const parts = dateStr.split('-');
-            if (parts.length !== 3) return dateStr;
-            return `${parts[2]}.${parts[1]}.${parts[0]}`;
         }
 
         /**

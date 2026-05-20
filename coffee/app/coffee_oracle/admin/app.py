@@ -260,8 +260,9 @@ async def get_partner_stats(
     """Получение статистики для кабинета партнёра.
 
     Возвращает реферальные ссылки (Telegram + MAX), общее число переходов,
-    переходы за сегодня, количество привлечённых пользователей
-    и разбивку по дням за 30 дней.
+    переходы за сегодня, количество привлечённых пользователей,
+    разбивку по дням за 30 дней, а также данные о выручке,
+    заработке и покупках привлечённых пользователей.
     """
     if user.role != "partner":
         raise HTTPException(status_code=403, detail="Доступ запрещён")
@@ -276,7 +277,10 @@ async def get_partner_stats(
             )
 
         # Получаем статистику кликов
-        stats = await partner_repo.get_click_stats(partner.id)
+        click_stats = await partner_repo.get_click_stats(partner.id)
+
+        # Получаем статистику выручки и заработка
+        earnings_stats = await partner_repo.get_partner_earnings_stats(partner.id)
 
         # Формируем реферальные ссылки для обеих платформ
         referral_link = _build_tg_referral_link(partner.referral_code)
@@ -288,10 +292,19 @@ async def get_partner_stats(
             "referral_link": referral_link,
             "max_referral_link": max_referral_link,
             "description": partner.description,
-            "total_clicks": stats["total_clicks"],
-            "today_clicks": stats["today_clicks"],
-            "referred_users": stats["referred_users"],
-            "clicks_by_day": stats["clicks_by_day"],
+            "total_clicks": click_stats["total_clicks"],
+            "today_clicks": click_stats["today_clicks"],
+            "referred_users": click_stats["referred_users"],
+            "clicks_by_day": click_stats["clicks_by_day"],
+            # Финансовая статистика
+            "revenue_total": earnings_stats["revenue_total"],
+            "revenue_this_month": earnings_stats["revenue_this_month"],
+            "earnings_total": earnings_stats["earnings_total"],
+            "earnings_this_month": earnings_stats["earnings_this_month"],
+            "purchases_total": earnings_stats["purchases_total"],
+            "purchases_this_month": earnings_stats["purchases_this_month"],
+            "commission_percent": earnings_stats["commission_percent"],
+            "monthly_breakdown": earnings_stats["monthly_breakdown"],
         }
 
 

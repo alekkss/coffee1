@@ -33,6 +33,7 @@ from coffee_oracle.database.connection import db_manager
 from coffee_oracle.database.repositories import (
     PartnerRepository,
     PredictionRepository,
+    ReminderRepository,
     SettingsRepository,
     SubscriptionRepository,
     UserRepository,
@@ -398,6 +399,7 @@ async def photo_handler(
             async for session in db_manager.get_session():
                 user_repo = UserRepository(session)
                 prediction_repo = PredictionRepository(session)
+                reminder_repo = ReminderRepository(session)
 
                 # Get or create user
                 db_user = await user_repo.get_user_by_telegram_id(user.id, source=_SOURCE)
@@ -419,6 +421,10 @@ async def photo_handler(
                     photos=photos_data,
                     subscription_type=db_user.subscription_type
                 )
+
+                # Сбрасываем цепочку ремайндеров — пользователь активен
+                await reminder_repo.reset_reminders(db_user.id)
+
         except Exception as e:
             logger.error("Ошибка сохранения предсказания в БД: %s", e)
             # Still send prediction to user even if saving fails

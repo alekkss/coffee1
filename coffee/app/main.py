@@ -15,6 +15,7 @@ import uvicorn
 from coffee_oracle.admin.app import app as admin_app
 from coffee_oracle.config import config
 from coffee_oracle.database.connection import db_manager
+from coffee_oracle.services.reminder_scheduler import ReminderScheduler
 from coffee_oracle.services.subscription_scheduler import SubscriptionScheduler
 from coffee_oracle.utils.logging import setup_logging, get_logger
 
@@ -28,7 +29,7 @@ class ApplicationOrchestrator:
 
     Управляет жизненным циклом всех компонентов:
     Telegram-бот (опционально), MAX-бот (опционально),
-    админ-панель, планировщик подписок.
+    админ-панель, планировщик подписок, планировщик ремайндеров.
     Запускает их параллельно и обеспечивает корректное завершение.
     """
 
@@ -37,6 +38,7 @@ class ApplicationOrchestrator:
         self.max_bot = None
         self.admin_server = None
         self.scheduler = None
+        self.reminder_scheduler = None
         self.shutdown_event = asyncio.Event()
 
         # Инициализация Telegram-бота (если токен задан)
@@ -176,6 +178,15 @@ class ApplicationOrchestrator:
             )
             await self.scheduler.start()
 
+        # Запуск планировщика ремайндеров неактивным пользователям
+        # Отправляет сообщения через 1, 3 и 7 дней после последнего предсказания
+        if self.telegram_bot or self.max_bot:
+            self.reminder_scheduler = ReminderScheduler(
+                bot=self.telegram_bot.bot if self.telegram_bot else None,
+                max_api_client=self.max_bot.api_client if self.max_bot else None,
+            )
+            await self.reminder_scheduler.start()
+
         # Логируем итоговый состав запущенных компонентов
         component_names = [t.get_name() for t in tasks]
         logger.info(
@@ -218,9 +229,13 @@ class ApplicationOrchestrator:
             if self.max_bot:
                 await self.max_bot.stop()
 
-            # Остановка планировщика
+            # Остановка планировщика подписок
             if self.scheduler:
                 await self.scheduler.stop()
+
+            # Остановка планировщика ремайндеров
+            if self.reminder_scheduler:
+                await self.reminder_scheduler.stop()
 
             # Остановка админ-сервера
             if self.admin_server:

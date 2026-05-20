@@ -19,6 +19,7 @@ from coffee_oracle.database.connection import db_manager
 from coffee_oracle.database.repositories import (
     PartnerRepository,
     PredictionRepository,
+    ReminderRepository,
     SettingsRepository,
     SubscriptionRepository,
     UserRepository,
@@ -1096,6 +1097,7 @@ class MaxBotHandlers:
             async for session in db_manager.get_session():
                 user_repo = UserRepository(session)
                 prediction_repo = PredictionRepository(session)
+                reminder_repo = ReminderRepository(session)
 
                 db_user = await user_repo.get_user_by_telegram_id(
                     user.user_id, source=_SOURCE,
@@ -1112,6 +1114,10 @@ class MaxBotHandlers:
                     photos=photos_data,
                     subscription_type=db_user.subscription_type,
                 )
+
+                # Сбрасываем цепочку ремайндеров — пользователь активен
+                await reminder_repo.reset_reminders(db_user.id)
+
         except Exception as e:
             logger.error("MAX: ошибка сохранения предсказания в БД: %s", e)
             # Всё равно отправляем предсказание пользователю

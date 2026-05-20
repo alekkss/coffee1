@@ -2,7 +2,7 @@
 
 Содержит SQLAlchemy-модели для всех сущностей приложения:
 пользователи, предсказания, фото, платежи, настройки, администраторы,
-партнёры и реферальные переходы.
+партнёры, реферальные переходы и ремайндеры.
 """
 
 from datetime import datetime
@@ -87,6 +87,11 @@ class User(Base):
         "Partner",
         back_populates="referred_users",
         foreign_keys=[referred_by_partner_id],
+    )
+    reminders: Mapped[list["UserReminder"]] = relationship(
+        "UserReminder",
+        back_populates="user",
+        cascade="all, delete-orphan",
     )
 
     def __repr__(self) -> str:
@@ -371,4 +376,46 @@ class ReferralClick(Base):
         return (
             f"<ReferralClick(id={self.id}, partner_id={self.partner_id}, "
             f"telegram_id={self.telegram_id})>"
+        )
+
+
+class UserReminder(Base):
+    """Модель отправленных ремайндеров пользователям.
+
+    Хранит записи о том, какие ремайндеры (1, 3, 7 дней)
+    уже были отправлены пользователю, чтобы избежать
+    дублирования сообщений. При новом предсказании
+    все записи пользователя удаляются — цепочка начинается
+    заново.
+    """
+
+    __tablename__ = "user_reminders"
+
+    __table_args__ = (
+        UniqueConstraint("user_id", "reminder_day", name="uq_user_reminder_day"),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    user_id: Mapped[int] = mapped_column(
+        Integer,
+        ForeignKey("users.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    reminder_day: Mapped[int] = mapped_column(
+        Integer,
+        nullable=False,
+    )  # 1, 3 или 7 дней неактивности
+    sent_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+        nullable=False,
+    )
+
+    # Связи
+    user: Mapped["User"] = relationship("User", back_populates="reminders")
+
+    def __repr__(self) -> str:
+        return (
+            f"<UserReminder(user_id={self.user_id}, "
+            f"day={self.reminder_day}, sent_at={self.sent_at})>"
         )

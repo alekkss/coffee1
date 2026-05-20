@@ -51,6 +51,11 @@
 │                  │                  │    │ Scheduler          │   │
 │                  │                  │    │ (6h interval)      │   │
 │                  │                  │    └─────────┬──────────┘   │
+│                  │                  │    ┌────────────────────┐   │
+│                  │                  │    │ Reminder           │   │
+│                  │                  │    │ Scheduler          │   │
+│                  │                  │    │ (6h interval)      │   │
+│                  │                  │    └─────────┬──────────┘   │
 │          ┌───────▼──────────┐       │              │              │
 │          │  LLM API         │    ┌──▼──────────────▼──────────┐  │
 │          │  (OpenAI-compat) │    │  YooKassa API              │  │
@@ -72,6 +77,7 @@
 - MAX Bot — если задан MAX_BOT_TOKEN
 - Admin Panel — запускается всегда
 - Subscription Scheduler — запускается при наличии хотя бы одного бота (Telegram и/или MAX)
+- Reminder Scheduler — запускается при наличии хотя бы одного бота (Telegram и/или MAX)
 - WebhookHandler YooKassa — инициализируется при наличии хотя бы одного бота
 ```
 
@@ -239,6 +245,8 @@ PaymentService.create_first_payment() → YooKassa API
 | MAX Bot API       | aiohttp            | Long polling, отправка сообщений в MAX   |
 | MAX Bot Platform  | platform-api.max.ru | REST API мессенджера MAX                |
 | FSM (MAX) |	in-memory dict |	Управление состояниями пользователей MAX-бота (ожидание email) |
+| Subscription Scheduler | `subscription_scheduler.py` | Фоновый планировщик автопродления подписок |
+| Reminder Scheduler | `reminder_scheduler.py` | Фоновый планировщик ремайндеров неактивным пользователям (1/3/7 дней) |
 
 ---
 
@@ -289,6 +297,7 @@ coffee_oracle/
 │   ├── photo_processor.py               # PhotoProcessor — скачивание, ресайз, сохранение
 │   ├── payment_service.py               # PaymentService — YooKassa API (httpx)
 │   ├── subscription_scheduler.py        # Фоновый планировщик автопродления подписок
+│   ├── reminder_scheduler.py            # Фоновый планировщик ремайндеров неактивным пользователям
 │   ├── error_notifier.py                # Отправка ERROR-логов в Telegram админам
 │   └── webhook_handler.py              # Обработка вебхуков YooKassa
 │
@@ -867,6 +876,16 @@ SQLite с асинхронным доступом через `aiosqlite`. WAL-р
 | `source` | String(10), default `tg` | Платформа перехода (tg/max) |
 | `created_at` | DateTime | Дата перехода |
 
+#### UserReminder
+| Поле | Тип | Описание |
+|------|-----|----------|
+| `id` | Integer, PK | Автоинкрементный ID |
+| `user_id` | Integer, FK → users.id | Связь с пользователем |
+| `reminder_day` | Integer | День неактивности (1, 3 или 7) |
+| `sent_at` | DateTime | Дата отправки ремайндера |
+
+**Unique constraint:** `(user_id, reminder_day)` — предотвращает повторную отправку того же ремайндера.
+
 #### User
 
 | Поле | Тип | Описание |
@@ -952,6 +971,7 @@ SQLite с асинхронным доступом через `aiosqlite`. WAL-р
 ```
 User 1 ──── * Prediction 1 ──── * PredictionPhoto
 User 1 ──── * Payment
+User 1 ──── * UserReminder
 AdminUser 1 ──── 1 Partner 1 ──── * ReferralClick
 Partner 1 ──── * User (referred_by_partner_id)
 ```
@@ -1372,6 +1392,7 @@ grep MAX_BOT_TOKEN /opt/oracle-bot/app/.env
 - Pending-платежи хранятся in-memory (`_pending_payments`) — при перезапуске теряются. Вебхук YooKassa компенсирует это. Аналогично, FSM-состояния MAX-бота (ожидание email) хранятся in-memory и сбрасываются при перезапуске.
 - Кэш настроек LLM не имеет TTL — очищается только вручную или при сохранении настроек.
 - Поле `subscription_type` в предсказаниях автоматически подтягивается из текущего статуса пользователя в момент создания предсказания (`PredictionRepository.create_prediction`). Если статус был изменён после создания предсказания, ранее записанные предсказания сохраняют старый тип.
+- Ремайндеры неактивности хранятся в таблице `user_reminders` (БД), поэтому переживают перезапуск приложения. При новом предсказании цепочка ремайндеров пользователя сбрасывается.
 
 ---
 
