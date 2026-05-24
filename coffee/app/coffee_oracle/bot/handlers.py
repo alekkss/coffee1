@@ -650,12 +650,11 @@ async def update_menu_command_handler(message: Message, bot: Bot) -> Any:
     try:
         commands = [
             BotCommand(command="start", description="🔮 Начать работу с ботом"),
-            BotCommand(command="help", description="❓ FAQ"),
+            BotCommand(command="help", description="❓ Частые вопросы"),
             BotCommand(command="predict", description="🔮 Получить предсказание"),
-            BotCommand(command="history", description="📜 Моя история"),
             BotCommand(command="random", description="🎯 Случайное предсказание"),
-            BotCommand(command="about", description="ℹ️ Об Оракуле"),
-            BotCommand(command="clear", description="🗑️ Очистить историю"),
+            BotCommand(command="subscribe", description="💎 Подписка"),
+            BotCommand(command="about", description="ℹ️ О боте"),
             BotCommand(command="support", description="📞 Поддержка"),
         ]
 
@@ -714,13 +713,6 @@ async def show_frequent_queries_callback(callback: CallbackQuery) -> Any:
     await callback.message.answer(texts.FREQUENT_QUERIES_TEXT)
     await callback.answer()
 
-
-@router.callback_query(F.data == "share_prediction")
-async def share_prediction_callback(callback: CallbackQuery) -> Any:
-    """Обработка callback «Поделиться предсказанием»."""
-    # Send instructions as a separate message, keeping the prediction visible
-    await callback.message.answer(texts.SHARE_PREDICTION)
-    await callback.answer()
 
 
 @router.callback_query(F.data.startswith("help_"))

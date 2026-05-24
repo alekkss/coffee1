@@ -23,15 +23,15 @@ class KeyboardManager:
         keyboard = [
             [KeyboardButton(text=texts.BTN_PREDICT)],
             [KeyboardButton(text=texts.BTN_VIDEO_INSTRUCTION)],
-            [KeyboardButton(text=texts.BTN_HISTORY), KeyboardButton(text=texts.BTN_RANDOM)],
-            [KeyboardButton(text=texts.BTN_FAQ), KeyboardButton(text=texts.BTN_ABOUT)],
-            [KeyboardButton(text=texts.BTN_CLEAR), KeyboardButton(text=texts.BTN_SUPPORT)]
+            [KeyboardButton(text=texts.BTN_RANDOM), KeyboardButton(text=texts.BTN_FAQ)],
+            [KeyboardButton(text=texts.BTN_ABOUT), KeyboardButton(text=texts.BTN_SUPPORT)],
         ]
 
         return ReplyKeyboardMarkup(
             keyboard=keyboard,
             resize_keyboard=True,
-            one_time_keyboard=False
+            one_time_keyboard=False,
+            is_persistent=True,
         )
 
     @staticmethod
@@ -41,14 +41,15 @@ class KeyboardManager:
             [KeyboardButton(text=texts.BTN_PREDICT)],
             [KeyboardButton(text=texts.BTN_VIDEO_INSTRUCTION)],
             [KeyboardButton(text=texts.BTN_SUBSCRIPTION), KeyboardButton(text=texts.BTN_RANDOM)],
-            [KeyboardButton(text=texts.BTN_HISTORY), KeyboardButton(text=texts.BTN_FAQ)],
-            [KeyboardButton(text=texts.BTN_ABOUT), KeyboardButton(text=texts.BTN_SUPPORT)]
+            [KeyboardButton(text=texts.BTN_FAQ), KeyboardButton(text=texts.BTN_ABOUT)],
+            [KeyboardButton(text=texts.BTN_SUPPORT)],
         ]
 
         return ReplyKeyboardMarkup(
             keyboard=keyboard,
             resize_keyboard=True,
-            one_time_keyboard=False
+            one_time_keyboard=False,
+            is_persistent=True,
         )
 
     @staticmethod
@@ -66,12 +67,11 @@ class KeyboardManager:
         """Кнопки действий после предсказания.
 
         Содержит быстрые действия: новое предсказание, частые запросы,
-        поделиться результатом, а также кнопку возврата в главное меню.
+        а также кнопку возврата в главное меню.
         """
         keyboard = [
             [InlineKeyboardButton(text=texts.BTN_NEW_PREDICTION, callback_data="new_prediction")],
             [InlineKeyboardButton(text=texts.BTN_SHOW_HISTORY, callback_data="show_history")],
-            [InlineKeyboardButton(text=texts.BTN_SHARE, callback_data="share_prediction")],
             [InlineKeyboardButton(text=texts.BTN_BACK_TO_MENU, callback_data="back_to_menu")],
         ]
 
@@ -79,11 +79,7 @@ class KeyboardManager:
 
     @staticmethod
     def get_about_keyboard() -> InlineKeyboardMarkup:
-        """Клавиатура «Об Оракуле» со ссылками на правовые документы.
-
-        Содержит ссылки на условия использования и политику
-        конфиденциальности, а также кнопку возврата в главное меню.
-        """
+        """Клавиатура «Об Оракуле» со ссылками на правовые документы."""
         domain = config.domain
         keyboard = [
             [InlineKeyboardButton(
@@ -119,14 +115,7 @@ class KeyboardManager:
 
     @staticmethod
     def get_back_to_menu_keyboard() -> InlineKeyboardMarkup:
-        """Одиночная inline-кнопка возврата в главное меню.
-
-        Используется в текстовых ответах (FAQ, поддержка, инструкция),
-        где нет другой inline-клавиатуры, но нужен явный выход.
-
-        Returns:
-            InlineKeyboardMarkup с одной кнопкой «◀️ В меню».
-        """
+        """Одиночная inline-кнопка возврата в главное меню."""
         keyboard = [
             [InlineKeyboardButton(text=texts.BTN_BACK_TO_MENU, callback_data="back_to_menu")],
         ]

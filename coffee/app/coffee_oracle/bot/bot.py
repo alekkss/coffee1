@@ -38,11 +38,9 @@ class CoffeeOracleBot:
             BotCommand(command="start", description="🔮 Начать работу с ботом"),
             BotCommand(command="help", description="❓ Частые вопросы"),
             BotCommand(command="predict", description="🔮 Получить предсказание"),
-            BotCommand(command="history", description="📜 Моя история"),
             BotCommand(command="random", description="🎯 Случайное предсказание"),
             BotCommand(command="subscribe", description="💎 Подписка"),
             BotCommand(command="about", description="ℹ️ О боте"),
-            BotCommand(command="clear", description="🗑️ Очистить историю"),
             BotCommand(command="support", description="📞 Поддержка"),
         ]
 
