@@ -17,7 +17,7 @@ logger = logging.getLogger(__name__)
 MAX_IMAGE_DIMENSION = 800  # Max width or height in pixels for API
 MAX_IMAGE_SIZE_BYTES = 4 * 1024 * 1024  # 4MB for API
 JPEG_QUALITY = 85
-MEDIA_DIR = "/opt/oracle-bot/media"
+MEDIA_DIR = "/opt/oracle-bot/app/media"
 
 
 class PhotoProcessor:

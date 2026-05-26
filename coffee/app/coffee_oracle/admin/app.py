@@ -39,7 +39,7 @@ app = FastAPI(title="Coffee Oracle Admin v2.0", version="2.0.0")
 logger = logging.getLogger(__name__)
 
 # Раздача медиафайлов
-app.mount("/media", StaticFiles(directory="/opt/oracle-bot/media"), name="media")
+app.mount("/media", StaticFiles(directory="/opt/oracle-bot/app/media"), name="media")
 
 # Настройка шаблонов
 templates = Jinja2Templates(directory="coffee_oracle/admin/templates")
