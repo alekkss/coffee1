@@ -66,11 +66,6 @@ class MaxKeyboardManager:
                     "text": texts.BTN_HISTORY,
                     "payload": "action_history",
                 },
-                {
-                    "type": "callback",
-                    "text": texts.BTN_RANDOM_SHORT,
-                    "payload": "action_random",
-                },
             ],
             [
                 {
@@ -109,11 +104,6 @@ class MaxKeyboardManager:
                     "type": "callback",
                     "text": texts.BTN_HISTORY,
                     "payload": "action_history",
-                },
-                {
-                    "type": "callback",
-                    "text": texts.BTN_RANDOM_SHORT,
-                    "payload": "action_random",
                 },
             ],
             [

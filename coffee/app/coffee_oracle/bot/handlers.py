@@ -1414,8 +1414,7 @@ async def check_payment_callback(callback: CallbackQuery) -> Any:
 
 @router.message(F.text & ~F.text.in_([
     texts.BTN_PREDICT, texts.BTN_VIDEO_INSTRUCTION, texts.BTN_HISTORY,
-    texts.BTN_RANDOM, texts.BTN_HELP, texts.BTN_CLEAR,
-    texts.BTN_SUBSCRIPTION,
+    texts.BTN_HELP, texts.BTN_CLEAR, texts.BTN_SUBSCRIPTION,
 ]))
 async def text_handler(message: Message) -> Any:
     """Обработка прочих текстовых сообщений."""

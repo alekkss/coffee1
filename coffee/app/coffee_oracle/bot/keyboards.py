@@ -28,7 +28,7 @@ class KeyboardManager:
         keyboard = [
             [KeyboardButton(text=texts.BTN_PREDICT)],
             [KeyboardButton(text=texts.BTN_VIDEO_INSTRUCTION)],
-            [KeyboardButton(text=texts.BTN_HISTORY), KeyboardButton(text=texts.BTN_RANDOM)],
+            [KeyboardButton(text=texts.BTN_HISTORY)],
             [KeyboardButton(text=texts.BTN_HELP)],
         ]
 
@@ -45,7 +45,7 @@ class KeyboardManager:
         keyboard = [
             [KeyboardButton(text=texts.BTN_PREDICT)],
             [KeyboardButton(text=texts.BTN_VIDEO_INSTRUCTION)],
-            [KeyboardButton(text=texts.BTN_HISTORY), KeyboardButton(text=texts.BTN_RANDOM)],
+            [KeyboardButton(text=texts.BTN_HISTORY)],
             [KeyboardButton(text=texts.BTN_SUBSCRIPTION), KeyboardButton(text=texts.BTN_HELP)],
         ]
 
