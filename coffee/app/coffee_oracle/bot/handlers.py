@@ -184,11 +184,10 @@ async def start_handler(message: Message) -> Any:
 
 @router.message(Command("help"))
 async def help_handler(message: Message) -> Any:
-    """Обработка команды /help — показ FAQ."""
-    faq_text = texts.HELP_SECTIONS.get("faq", "Информация не найдена")
+    """Обработка команды /help — показ подменю помощи."""
     await message.answer(
-        faq_text,
-        reply_markup=KeyboardManager.get_back_to_menu_keyboard(),
+        texts.HELP_MENU_TEXT,
+        reply_markup=KeyboardManager.get_help_menu_keyboard(),
     )
 
 
@@ -200,13 +199,13 @@ async def prediction_request_handler(message: Message) -> Any:
     )
     await message.answer(
         instruction_text,
-        reply_markup=KeyboardManager.get_back_to_menu_keyboard(),
+        reply_markup=KeyboardManager.get_predict_instruction_keyboard(),
     )
 
 
 @router.message(F.text == texts.BTN_VIDEO_INSTRUCTION)
 async def video_instruction_handler(message: Message) -> Any:
-    """Обработка кнопки «Видеоинструкция» — отправка видео из локального файла.
+    """Обработка кнопки «Как сделать фото чашки» — отправка видео из локального файла.
 
     Если WELCOME_VIDEO_PATH задан в .env и файл существует — отправляет видео
     с подписью. Если видео не настроено или файл не найден — отправляет
@@ -237,20 +236,19 @@ async def video_instruction_handler(message: Message) -> Any:
 
 @router.message(F.text == texts.BTN_HISTORY)
 async def frequent_queries_handler(message: Message) -> Any:
-    """Обработка кнопки «Частые запросы» — показ примеров вопросов."""
+    """Обработка кнопки «Что спросить у Оракула?» — показ примеров вопросов."""
     await message.answer(
         texts.FREQUENT_QUERIES_TEXT,
         reply_markup=KeyboardManager.get_back_to_menu_keyboard(),
     )
 
 
-@router.message(F.text == texts.BTN_ABOUT)
-async def about_handler(message: Message) -> Any:
-    """Обработка запроса информации о боте."""
-    about_text = await get_bot_text("about_text", texts.ABOUT_TEXT_FALLBACK)
+@router.message(F.text == texts.BTN_HELP)
+async def help_menu_handler(message: Message) -> Any:
+    """Обработка кнопки «Помощь» — показ подменю с разделами."""
     await message.answer(
-        about_text,
-        reply_markup=KeyboardManager.get_about_keyboard(),
+        texts.HELP_MENU_TEXT,
+        reply_markup=KeyboardManager.get_help_menu_keyboard(),
     )
 
 
@@ -519,31 +517,12 @@ async def random_prediction_handler(message: Message) -> Any:
     )
 
 
-@router.message(F.text == texts.BTN_FAQ)
-async def faq_handler(message: Message) -> Any:
-    """Обработка кнопки «FAQ» — показ FAQ напрямую."""
-    faq_text = texts.HELP_SECTIONS.get("faq", "Информация не найдена")
-    await message.answer(
-        faq_text,
-        reply_markup=KeyboardManager.get_back_to_menu_keyboard(),
-    )
-
-
 @router.message(F.text == texts.BTN_CLEAR)
 async def clear_history_handler(message: Message) -> Any:
     """Обработка запроса очистки истории."""
     await message.answer(
         texts.CLEAR_HISTORY_CONFIRM,
         reply_markup=KeyboardManager.get_confirmation_keyboard("clear_history")
-    )
-
-
-@router.message(F.text == texts.BTN_SUPPORT)
-async def support_handler(message: Message) -> Any:
-    """Обработка запроса поддержки."""
-    await message.answer(
-        texts.SUPPORT_TEXT,
-        reply_markup=KeyboardManager.get_back_to_menu_keyboard(),
     )
 
 
@@ -629,13 +608,21 @@ async def history_command_handler(message: Message) -> Any:
 @router.message(Command("about"))
 async def about_command_handler(message: Message) -> Any:
     """Обработка команды /about."""
-    await about_handler(message)
+    about_text = await get_bot_text("about_text", texts.ABOUT_TEXT_FALLBACK)
+    await message.bot.send_message(
+        message.chat.id,
+        about_text,
+        reply_markup=KeyboardManager.get_about_keyboard(),
+    )
 
 
 @router.message(Command("support"))
 async def support_command_handler(message: Message) -> Any:
     """Обработка команды /support."""
-    await support_handler(message)
+    await message.answer(
+        texts.SUPPORT_TEXT,
+        reply_markup=KeyboardManager.get_back_to_menu_keyboard(),
+    )
 
 
 @router.message(Command("subscribe"))
@@ -650,12 +637,10 @@ async def update_menu_command_handler(message: Message, bot: Bot) -> Any:
     try:
         commands = [
             BotCommand(command="start", description="🔮 Начать работу с ботом"),
-            BotCommand(command="help", description="❓ Частые вопросы"),
+            BotCommand(command="help", description="❓ Помощь"),
             BotCommand(command="predict", description="🔮 Получить предсказание"),
             BotCommand(command="random", description="🎯 Случайное предсказание"),
             BotCommand(command="subscribe", description="💎 Подписка"),
-            BotCommand(command="about", description="ℹ️ О боте"),
-            BotCommand(command="support", description="📞 Поддержка"),
         ]
 
         await bot.set_my_commands(commands)
@@ -666,7 +651,8 @@ async def update_menu_command_handler(message: Message, bot: Bot) -> Any:
         await message.answer(texts.BOT_COMMANDS_UPDATE_ERROR)
 
 
-# Callback handlers
+# ===== Callback handlers =====
+
 @router.callback_query(F.data == "back_to_menu")
 async def back_to_menu_callback(callback: CallbackQuery, state: FSMContext) -> Any:
     """Обработка callback возврата в меню.
@@ -709,23 +695,130 @@ async def new_prediction_callback(callback: CallbackQuery) -> Any:
 
 @router.callback_query(F.data == "show_history")
 async def show_frequent_queries_callback(callback: CallbackQuery) -> Any:
-    """Обработка callback «Частые запросы» — показ примеров вопросов."""
+    """Обработка callback «Что спросить у Оракула?» — показ примеров вопросов."""
     await callback.message.answer(texts.FREQUENT_QUERIES_TEXT)
     await callback.answer()
 
 
+# ===== Подменю «Помощь» — callback'и =====
 
-@router.callback_query(F.data.startswith("help_"))
-async def help_callback(callback: CallbackQuery) -> Any:
-    """Обработка callback разделов помощи (обратная совместимость).
-
-    Если пользователь нажмёт старую кнопку из кэша — покажем текст раздела.
-    """
-    help_type = callback.data.split("_")[1]
-    text = texts.HELP_SECTIONS.get(help_type, "Информация не найдена")
-    await callback.message.edit_text(text)
+@router.callback_query(F.data == "help_faq")
+async def help_faq_callback(callback: CallbackQuery) -> Any:
+    """Раздел помощи: FAQ."""
+    faq_text = texts.HELP_SECTIONS.get("faq", "Информация не найдена")
+    await callback.message.edit_text(
+        faq_text,
+        reply_markup=KeyboardManager.get_back_to_help_keyboard(),
+    )
     await callback.answer()
 
+
+@router.callback_query(F.data == "help_about")
+async def help_about_callback(callback: CallbackQuery) -> Any:
+    """Раздел помощи: Об Оракуле."""
+    about_text = await get_bot_text("about_text", texts.ABOUT_TEXT_FALLBACK)
+    await callback.message.edit_text(
+        about_text,
+        reply_markup=KeyboardManager.get_about_keyboard(),
+    )
+    await callback.answer()
+
+
+@router.callback_query(F.data == "help_support")
+async def help_support_callback(callback: CallbackQuery) -> Any:
+    """Раздел помощи: Поддержка."""
+    await callback.message.edit_text(
+        texts.SUPPORT_TEXT,
+        reply_markup=KeyboardManager.get_back_to_help_keyboard(),
+    )
+    await callback.answer()
+
+
+@router.callback_query(F.data == "help_subscription_info")
+async def help_subscription_info_callback(callback: CallbackQuery) -> Any:
+    """Раздел помощи: Как работает подписка."""
+    await callback.message.edit_text(
+        texts.HELP_SUBSCRIPTION_INFO,
+        reply_markup=KeyboardManager.get_back_to_help_keyboard(),
+    )
+    await callback.answer()
+
+
+@router.callback_query(F.data == "help_disable_reminders")
+async def help_disable_reminders_callback(callback: CallbackQuery) -> Any:
+    """Раздел помощи: Как отключить напоминания."""
+    await callback.message.edit_text(
+        texts.HELP_DISABLE_REMINDERS,
+        reply_markup=KeyboardManager.get_back_to_help_keyboard(),
+    )
+    await callback.answer()
+
+
+@router.callback_query(F.data == "help_bot_not_responding")
+async def help_bot_not_responding_callback(callback: CallbackQuery) -> Any:
+    """Раздел помощи: Бот не отвечает."""
+    await callback.message.edit_text(
+        texts.HELP_BOT_NOT_RESPONDING,
+        reply_markup=KeyboardManager.get_back_to_help_keyboard(),
+    )
+    await callback.answer()
+
+
+@router.callback_query(F.data == "help_photo_not_recognized")
+async def help_photo_not_recognized_callback(callback: CallbackQuery) -> Any:
+    """Раздел помощи: Фото не распознано."""
+    await callback.message.edit_text(
+        texts.HELP_PHOTO_NOT_RECOGNIZED,
+        reply_markup=KeyboardManager.get_back_to_help_keyboard(),
+    )
+    await callback.answer()
+
+
+@router.callback_query(F.data == "help_contact")
+async def help_contact_callback(callback: CallbackQuery) -> Any:
+    """Раздел помощи: Связаться с поддержкой."""
+    await callback.message.edit_text(
+        texts.HELP_CONTACT,
+        reply_markup=KeyboardManager.get_back_to_help_keyboard(),
+    )
+    await callback.answer()
+
+
+@router.callback_query(F.data == "back_to_help")
+async def back_to_help_callback(callback: CallbackQuery) -> Any:
+    """Возврат в подменю помощи."""
+    await callback.message.edit_text(
+        texts.HELP_MENU_TEXT,
+        reply_markup=KeyboardManager.get_help_menu_keyboard(),
+    )
+    await callback.answer()
+
+@router.callback_query(F.data == "action_video_instruction")
+async def video_instruction_callback(callback: CallbackQuery) -> Any:
+    """Обработка inline-кнопки видеоинструкции."""
+    video_path = config.welcome_video_path
+
+    if video_path and os.path.isfile(video_path):
+        try:
+            video_file = FSInputFile(video_path)
+            await callback.message.answer_video(
+                video=video_file,
+                caption=texts.VIDEO_INSTRUCTION_CAPTION,
+                reply_markup=KeyboardManager.get_back_to_menu_keyboard(),
+            )
+            await callback.answer()
+            return
+        except Exception as e:
+            logger.error("Ошибка отправки видеоинструкции: %s", e)
+
+    await callback.message.answer(
+        texts.VIDEO_NOT_CONFIGURED,
+        reply_markup=KeyboardManager.get_back_to_menu_keyboard(),
+    )
+    await callback.answer()
+
+
+# ===== Подтверждения и отмена =====
 
 @router.callback_query(F.data == "cancel_subscription")
 async def cancel_subscription_callback(callback: CallbackQuery) -> Any:
@@ -793,7 +886,7 @@ async def confirm_callback(callback: CallbackQuery) -> Any:
     """Обработка callback подтверждения действий."""
     action = callback.data.split("_")[1]
 
-    if action == "clear_history":
+    if action == "clear":
         user = callback.from_user
         if user:
             try:
@@ -1321,8 +1414,8 @@ async def check_payment_callback(callback: CallbackQuery) -> Any:
 
 @router.message(F.text & ~F.text.in_([
     texts.BTN_PREDICT, texts.BTN_VIDEO_INSTRUCTION, texts.BTN_HISTORY,
-    texts.BTN_ABOUT, texts.BTN_RANDOM, texts.BTN_FAQ,
-    texts.BTN_CLEAR, texts.BTN_SUPPORT, texts.BTN_SUBSCRIPTION,
+    texts.BTN_RANDOM, texts.BTN_HELP, texts.BTN_CLEAR,
+    texts.BTN_SUBSCRIPTION,
 ]))
 async def text_handler(message: Message) -> Any:
     """Обработка прочих текстовых сообщений."""

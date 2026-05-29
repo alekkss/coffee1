@@ -42,9 +42,6 @@ class MaxKeyboardManager:
     def get_main_menu(cls) -> Dict[str, Any]:
         """Главное меню бота (без кнопки подписки).
 
-        Содержит основные действия: предсказание, видеоинструкция,
-        история, случайное предсказание, FAQ, о боте, очистка, поддержка.
-
         Returns:
             Вложение inline_keyboard с кнопками главного меню.
         """
@@ -78,25 +75,8 @@ class MaxKeyboardManager:
             [
                 {
                     "type": "callback",
-                    "text": texts.BTN_FAQ,
-                    "payload": "action_faq",
-                },
-                {
-                    "type": "callback",
-                    "text": texts.BTN_ABOUT,
-                    "payload": "action_about",
-                },
-            ],
-            [
-                {
-                    "type": "callback",
-                    "text": texts.BTN_CLEAR,
-                    "payload": "action_clear",
-                },
-                {
-                    "type": "callback",
-                    "text": texts.BTN_SUPPORT,
-                    "payload": "action_support",
+                    "text": texts.BTN_HELP,
+                    "payload": "action_help_menu",
                 },
             ],
         ]
@@ -105,9 +85,6 @@ class MaxKeyboardManager:
     @classmethod
     def get_main_menu_with_subscription(cls) -> Dict[str, Any]:
         """Главное меню бота с кнопкой подписки.
-
-        Аналог get_main_menu(), но с добавленной кнопкой
-        «💎 Подписка» для управления подпиской и оплатой.
 
         Returns:
             Вложение inline_keyboard с кнопками главного меню и подпиской.
@@ -130,8 +107,8 @@ class MaxKeyboardManager:
             [
                 {
                     "type": "callback",
-                    "text": texts.BTN_SUBSCRIPTION,
-                    "payload": "action_subscription",
+                    "text": texts.BTN_HISTORY,
+                    "payload": "action_history",
                 },
                 {
                     "type": "callback",
@@ -142,32 +119,143 @@ class MaxKeyboardManager:
             [
                 {
                     "type": "callback",
+                    "text": texts.BTN_SUBSCRIPTION,
+                    "payload": "action_subscription",
+                },
+                {
+                    "type": "callback",
+                    "text": texts.BTN_HELP,
+                    "payload": "action_help_menu",
+                },
+            ],
+        ]
+        return cls._build_attachment(buttons)
+
+    @classmethod
+    def get_help_menu_keyboard(cls) -> Dict[str, Any]:
+        """Inline-клавиатура подменю «Помощь».
+
+        Returns:
+            Вложение inline_keyboard с кнопками разделов помощи.
+        """
+        buttons = [
+            [
+                {
+                    "type": "callback",
+                    "text": texts.BTN_HELP_FAQ,
+                    "payload": "action_help_faq",
+                },
+            ],
+            [
+                {
+                    "type": "callback",
+                    "text": texts.BTN_HELP_ABOUT,
+                    "payload": "action_help_about",
+                },
+            ],
+            [
+                {
+                    "type": "callback",
+                    "text": texts.BTN_HELP_SUPPORT,
+                    "payload": "action_help_support",
+                },
+            ],
+            [
+                {
+                    "type": "callback",
+                    "text": texts.BTN_HELP_SUBSCRIPTION_INFO,
+                    "payload": "action_help_subscription_info",
+                },
+            ],
+            [
+                {
+                    "type": "callback",
+                    "text": texts.BTN_HELP_DISABLE_REMINDERS,
+                    "payload": "action_help_disable_reminders",
+                },
+            ],
+            [
+                {
+                    "type": "callback",
+                    "text": texts.BTN_HELP_BOT_NOT_RESPONDING,
+                    "payload": "action_help_bot_not_responding",
+                },
+            ],
+            [
+                {
+                    "type": "callback",
+                    "text": texts.BTN_HELP_PHOTO_NOT_RECOGNIZED,
+                    "payload": "action_help_photo_not_recognized",
+                },
+            ],
+            [
+                {
+                    "type": "callback",
+                    "text": texts.BTN_HELP_CONTACT,
+                    "payload": "action_help_contact",
+                },
+            ],
+            [
+                {
+                    "type": "callback",
+                    "text": texts.BTN_BACK_TO_MENU,
+                    "payload": "action_back_to_menu",
+                },
+            ],
+        ]
+        return cls._build_attachment(buttons)
+
+    @classmethod
+    def get_back_to_help_keyboard(cls) -> Dict[str, Any]:
+        """Кнопки возврата: в подменю помощи и в главное меню.
+
+        Returns:
+            Вложение inline_keyboard с двумя кнопками навигации.
+        """
+        buttons = [
+            [
+                {
+                    "type": "callback",
+                    "text": texts.BTN_BACK_TO_MENU,
+                    "payload": "action_back_to_help",
+                },
+            ],
+            [
+                {
+                    "type": "callback",
+                    "text": texts.BTN_BACK_SHORT,
+                    "payload": "action_back_to_menu",
+                },
+            ],
+        ]
+        return cls._build_attachment(buttons)
+    @classmethod
+    def get_predict_instruction_keyboard(cls) -> Dict[str, Any]:
+        """Клавиатура экрана инструкции перед отправкой фото.
+
+        Returns:
+            Вложение inline_keyboard с подсказками и кнопкой «Назад».
+        """
+        buttons = [
+            [
+                {
+                    "type": "callback",
+                    "text": texts.BTN_VIDEO_INSTRUCTION,
+                    "payload": "action_video_instruction",
+                },
+            ],
+            [
+                {
+                    "type": "callback",
                     "text": texts.BTN_HISTORY,
                     "payload": "action_history",
                 },
-                {
-                    "type": "callback",
-                    "text": texts.BTN_FAQ,
-                    "payload": "action_faq",
-                },
             ],
             [
                 {
                     "type": "callback",
-                    "text": texts.BTN_ABOUT,
-                    "payload": "action_about",
-                },
-                {
-                    "type": "callback",
-                    "text": texts.BTN_SUPPORT,
-                    "payload": "action_support",
-                },
-            ],
-            [
-                {
-                    "type": "callback",
-                    "text": texts.BTN_CLEAR,
-                    "payload": "action_clear",
+                    "text": texts.BTN_BACK_TO_MENU,
+                    "payload": "action_back_to_menu",
                 },
             ],
         ]
@@ -176,10 +264,6 @@ class MaxKeyboardManager:
     @classmethod
     def get_about_keyboard(cls) -> Dict[str, Any]:
         """Клавиатура «Об Оракуле» со ссылками на правовые документы.
-
-        Содержит URL-кнопки для открытия страниц
-        «Условия использования» и «Политика конфиденциальности»,
-        а также кнопку возврата в главное меню.
 
         Returns:
             Вложение inline_keyboard с кнопками-ссылками и кнопкой «Назад».
@@ -204,6 +288,13 @@ class MaxKeyboardManager:
                 {
                     "type": "callback",
                     "text": texts.BTN_BACK_TO_MENU,
+                    "payload": "action_back_to_help",
+                },
+            ],
+            [
+                {
+                    "type": "callback",
+                    "text": texts.BTN_BACK_SHORT,
                     "payload": "action_back_to_menu",
                 },
             ],
@@ -219,8 +310,6 @@ class MaxKeyboardManager:
     ) -> Dict[str, Any]:
         """Клавиатура статуса подписки.
 
-        Набор кнопок зависит от текущего состояния подписки пользователя.
-
         Args:
             has_active_subscription: Есть ли активная подписка (premium или vip).
             is_vip: Является ли пользователь VIP.
@@ -232,7 +321,6 @@ class MaxKeyboardManager:
         buttons: List[List[Dict[str, Any]]] = []
 
         if is_vip:
-            # VIP — только возврат в меню
             buttons.append([
                 {
                     "type": "callback",
@@ -241,7 +329,6 @@ class MaxKeyboardManager:
                 },
             ])
         elif has_active_subscription:
-            # Premium — управление подпиской
             if recurring_enabled:
                 buttons.append([
                     {
@@ -265,7 +352,6 @@ class MaxKeyboardManager:
                 },
             ])
         else:
-            # Free — предложение оформить подписку
             buttons.append([
                 {
                     "type": "callback",
@@ -289,9 +375,6 @@ class MaxKeyboardManager:
         payment_url: Optional[str] = None,
     ) -> Dict[str, Any]:
         """Клавиатура оплаты подписки.
-
-        Содержит ссылку на страницу оплаты YooKassa (если передана)
-        и кнопку ручной проверки статуса платежа.
 
         Args:
             payment_url: URL для перехода на страницу оплаты YooKassa.
@@ -347,10 +430,7 @@ class MaxKeyboardManager:
 
     @classmethod
     def get_paywall_keyboard(cls) -> Dict[str, Any]:
-        """Клавиатура пэйволла (лимит бесплатных предсказаний исчерпан).
-
-        Показывается вместо предсказания, когда у пользователя
-        закончились бесплатные гадания.
+        """Клавиатура пэйволла.
 
         Returns:
             Вложение inline_keyboard с кнопками оформления подписки.

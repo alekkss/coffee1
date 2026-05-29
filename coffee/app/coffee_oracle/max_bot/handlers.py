@@ -572,7 +572,7 @@ class MaxBotHandlers:
         if text_lower == "/start":
             await self._handle_start_command(message, chat_id)
         elif text_lower == "/help":
-            await self._handle_faq_command(chat_id)
+            await self._handle_help_menu(chat_id)
         elif text_lower == "/predict":
             await self._handle_predict_command(chat_id)
         elif text_lower == "/history":
@@ -793,13 +793,12 @@ class MaxBotHandlers:
             format_type="html",
         )
 
-    async def _handle_faq_command(self, chat_id: int) -> None:
-        """Обработка команды /help и кнопки «FAQ» — показ FAQ напрямую."""
-        faq_text = texts.HELP_SECTIONS.get("faq", "Информация не найдена")
+    async def _handle_help_menu(self, chat_id: int) -> None:
+        """Обработка команды /help — показ подменю помощи."""
         await self._api.send_message(
             chat_id=chat_id,
-            text=faq_text,
-            attachments=[MaxKeyboardManager.get_back_to_menu_button()],
+            text=texts.HELP_MENU_TEXT,
+            attachments=[MaxKeyboardManager.get_help_menu_keyboard()],
         )
 
     async def _handle_predict_command(self, chat_id: int) -> None:
@@ -812,11 +811,11 @@ class MaxBotHandlers:
         await self._api.send_message(
             chat_id=chat_id,
             text=instruction,
-            attachments=[MaxKeyboardManager.get_back_to_menu_button()],
+            attachments=[MaxKeyboardManager.get_predict_instruction_keyboard()],
         )
-    
+
     async def _handle_video_instruction(self, chat_id: int) -> None:
-        """Обработка кнопки «Видеоинструкция» — отправка видео из локального файла.
+        """Обработка кнопки «Как сделать фото чашки» — отправка видео из локального файла.
 
         Если WELCOME_VIDEO_PATH задан в .env и файл существует — загружает видео
         через MAX API (трёхшаговый upload) и отправляет с подписью.
@@ -1262,18 +1261,50 @@ class MaxBotHandlers:
             elif payload == "action_random":
                 await self._handle_random_command(chat_id)
 
-            elif payload in ("action_faq", "action_help"):
-                # action_faq — новая кнопка, action_help — обратная совместимость
-                await self._handle_faq_command(chat_id)
+            # ── Подменю «Помощь» ──
+            elif payload == "action_help_menu":
+                await self._handle_help_menu(chat_id)
 
-            elif payload == "action_about":
+            elif payload == "action_help_faq":
+                await self._callback_help_faq(chat_id)
+
+            elif payload == "action_help_about":
                 await self._handle_about_command(chat_id)
 
+            elif payload == "action_help_support":
+                await self._handle_support_command(chat_id)
+
+            elif payload == "action_help_subscription_info":
+                await self._callback_help_section_text(
+                    chat_id, texts.HELP_SUBSCRIPTION_INFO,
+                )
+
+            elif payload == "action_help_disable_reminders":
+                await self._callback_help_section_text(
+                    chat_id, texts.HELP_DISABLE_REMINDERS,
+                )
+
+            elif payload == "action_help_bot_not_responding":
+                await self._callback_help_section_text(
+                    chat_id, texts.HELP_BOT_NOT_RESPONDING,
+                )
+
+            elif payload == "action_help_photo_not_recognized":
+                await self._callback_help_section_text(
+                    chat_id, texts.HELP_PHOTO_NOT_RECOGNIZED,
+                )
+
+            elif payload == "action_help_contact":
+                await self._callback_help_section_text(
+                    chat_id, texts.HELP_CONTACT,
+                )
+
+            elif payload == "action_back_to_help":
+                await self._handle_help_menu(chat_id)
+
+            # ── Навигация ──
             elif payload == "action_clear":
                 await self._handle_clear_command(chat_id)
-
-            elif payload == "action_support":
-                await self._handle_support_command(chat_id)
 
             elif payload == "action_new_prediction":
                 await self._handle_predict_command(chat_id)
@@ -1309,9 +1340,18 @@ class MaxBotHandlers:
             elif payload.startswith("confirm_"):
                 await self._callback_confirm(callback, payload, chat_id)
 
+            # ── Обратная совместимость: старые payload'ы ──
+            elif payload in ("action_faq", "action_help"):
+                await self._callback_help_faq(chat_id)
+
+            elif payload == "action_about":
+                await self._handle_about_command(chat_id)
+
+            elif payload == "action_support":
+                await self._handle_support_command(chat_id)
+
             elif payload.startswith("help_"):
-                # Обратная совместимость: старые кнопки help_photo и т.д.
-                await self._callback_help_section(callback, payload, chat_id)
+                await self._callback_help_section_legacy(payload, chat_id)
 
             else:
                 logger.warning("MAX: неизвестный callback payload: %s", payload)
@@ -1322,6 +1362,51 @@ class MaxBotHandlers:
                 payload, e,
                 exc_info=True,
             )
+
+    # ────────────────────────────────────────────
+    #  Callback: подменю «Помощь»
+    # ────────────────────────────────────────────
+
+    async def _callback_help_faq(self, chat_id: int) -> None:
+        """Callback: раздел помощи — FAQ."""
+        faq_text = texts.HELP_SECTIONS.get("faq", "Информация не найдена")
+        await self._api.send_message(
+            chat_id=chat_id,
+            text=faq_text,
+            attachments=[MaxKeyboardManager.get_back_to_help_keyboard()],
+        )
+
+    async def _callback_help_section_text(self, chat_id: int, section_text: str) -> None:
+        """Callback: отображение текста подраздела помощи.
+
+        Args:
+            chat_id: ID чата для ответа.
+            section_text: Текст подраздела из texts.py.
+        """
+        await self._api.send_message(
+            chat_id=chat_id,
+            text=section_text,
+            attachments=[MaxKeyboardManager.get_back_to_help_keyboard()],
+        )
+
+    async def _callback_help_section_legacy(
+        self,
+        payload: str,
+        chat_id: int,
+    ) -> None:
+        """Callback: обратная совместимость для старых help_* payload'ов.
+
+        Args:
+            payload: Payload вида 'help_photo', 'help_coffee' и т.д.
+            chat_id: ID чата для ответа.
+        """
+        help_type = payload.replace("help_", "", 1)
+        text = texts.HELP_SECTIONS.get(help_type, "Информация не найдена")
+        await self._api.send_message(
+            chat_id=chat_id,
+            text=text,
+            attachments=[MaxKeyboardManager.get_back_to_help_keyboard()],
+        )
 
     # ────────────────────────────────────────────
     #  Callback: подписка и платежи
@@ -1645,28 +1730,6 @@ class MaxBotHandlers:
                     chat_id=chat_id,
                     text=texts.CLEAR_HISTORY_ERROR,
                 )
-
-    async def _callback_help_section(
-        self,
-        callback: MaxCallback,
-        payload: str,
-        chat_id: int,
-    ) -> None:
-        """Callback: отображение раздела помощи (обратная совместимость).
-
-        Если пользователь нажмёт старую кнопку из кэша — покажем текст раздела.
-
-        Args:
-            callback: Объект callback.
-            payload: Payload вида 'help_photo', 'help_coffee' и т.д.
-            chat_id: ID чата для ответа.
-        """
-        help_type = payload.replace("help_", "", 1)
-        text = texts.HELP_SECTIONS.get(help_type, "Информация не найдена")
-        await self._api.send_message(
-            chat_id=chat_id,
-            text=text,
-        )
 
     # ────────────────────────────────────────────
     #  Вспомогательные методы

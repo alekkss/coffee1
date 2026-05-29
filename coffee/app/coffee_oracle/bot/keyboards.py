@@ -2,13 +2,18 @@
 
 Содержит Reply- и Inline-клавиатуры для всех экранов:
 главное меню, действия после предсказания, подписка,
-подтверждение действий, оплата.
+подтверждение действий, оплата, подменю помощи.
 
 Названия кнопок импортируются из bot/texts.py —
 единого источника для TG и MAX ботов.
 """
 
-from aiogram.types import KeyboardButton, ReplyKeyboardMarkup, InlineKeyboardButton, InlineKeyboardMarkup
+from aiogram.types import (
+    KeyboardButton,
+    ReplyKeyboardMarkup,
+    InlineKeyboardButton,
+    InlineKeyboardMarkup,
+)
 
 from coffee_oracle.bot import texts
 from coffee_oracle.config import config
@@ -23,8 +28,8 @@ class KeyboardManager:
         keyboard = [
             [KeyboardButton(text=texts.BTN_PREDICT)],
             [KeyboardButton(text=texts.BTN_VIDEO_INSTRUCTION)],
-            [KeyboardButton(text=texts.BTN_RANDOM), KeyboardButton(text=texts.BTN_FAQ)],
-            [KeyboardButton(text=texts.BTN_ABOUT), KeyboardButton(text=texts.BTN_SUPPORT)],
+            [KeyboardButton(text=texts.BTN_HISTORY), KeyboardButton(text=texts.BTN_RANDOM)],
+            [KeyboardButton(text=texts.BTN_HELP)],
         ]
 
         return ReplyKeyboardMarkup(
@@ -40,9 +45,8 @@ class KeyboardManager:
         keyboard = [
             [KeyboardButton(text=texts.BTN_PREDICT)],
             [KeyboardButton(text=texts.BTN_VIDEO_INSTRUCTION)],
-            [KeyboardButton(text=texts.BTN_SUBSCRIPTION), KeyboardButton(text=texts.BTN_RANDOM)],
-            [KeyboardButton(text=texts.BTN_FAQ), KeyboardButton(text=texts.BTN_ABOUT)],
-            [KeyboardButton(text=texts.BTN_SUPPORT)],
+            [KeyboardButton(text=texts.BTN_HISTORY), KeyboardButton(text=texts.BTN_RANDOM)],
+            [KeyboardButton(text=texts.BTN_SUBSCRIPTION), KeyboardButton(text=texts.BTN_HELP)],
         ]
 
         return ReplyKeyboardMarkup(
@@ -51,6 +55,41 @@ class KeyboardManager:
             one_time_keyboard=False,
             is_persistent=True,
         )
+
+    @staticmethod
+    def get_help_menu_keyboard() -> InlineKeyboardMarkup:
+        """Inline-клавиатура подменю «Помощь»."""
+        keyboard = [
+            [InlineKeyboardButton(text=texts.BTN_HELP_FAQ, callback_data="help_faq")],
+            [InlineKeyboardButton(text=texts.BTN_HELP_ABOUT, callback_data="help_about")],
+            [InlineKeyboardButton(text=texts.BTN_HELP_SUPPORT, callback_data="help_support")],
+            [InlineKeyboardButton(text=texts.BTN_HELP_SUBSCRIPTION_INFO, callback_data="help_subscription_info")],
+            [InlineKeyboardButton(text=texts.BTN_HELP_DISABLE_REMINDERS, callback_data="help_disable_reminders")],
+            [InlineKeyboardButton(text=texts.BTN_HELP_BOT_NOT_RESPONDING, callback_data="help_bot_not_responding")],
+            [InlineKeyboardButton(text=texts.BTN_HELP_PHOTO_NOT_RECOGNIZED, callback_data="help_photo_not_recognized")],
+            [InlineKeyboardButton(text=texts.BTN_HELP_CONTACT, callback_data="help_contact")],
+            [InlineKeyboardButton(text=texts.BTN_BACK_TO_MENU, callback_data="back_to_menu")],
+        ]
+        return InlineKeyboardMarkup(inline_keyboard=keyboard)
+    
+    @staticmethod
+    def get_back_to_help_keyboard() -> InlineKeyboardMarkup:
+        """Кнопка возврата в подменю помощи."""
+        keyboard = [
+            [InlineKeyboardButton(text=texts.BTN_BACK_TO_MENU, callback_data="back_to_help")],
+            [InlineKeyboardButton(text=texts.BTN_BACK_SHORT, callback_data="back_to_menu")],
+        ]
+        return InlineKeyboardMarkup(inline_keyboard=keyboard)
+    
+    @staticmethod
+    def get_predict_instruction_keyboard() -> InlineKeyboardMarkup:
+        """Клавиатура экрана инструкции перед отправкой фото."""
+        keyboard = [
+            [InlineKeyboardButton(text=texts.BTN_VIDEO_INSTRUCTION, callback_data="action_video_instruction")],
+            [InlineKeyboardButton(text=texts.BTN_HISTORY, callback_data="show_history")],
+            [InlineKeyboardButton(text=texts.BTN_BACK_TO_MENU, callback_data="back_to_menu")],
+        ]
+        return InlineKeyboardMarkup(inline_keyboard=keyboard)
 
     @staticmethod
     def get_confirmation_keyboard(action: str) -> InlineKeyboardMarkup:
@@ -64,11 +103,7 @@ class KeyboardManager:
 
     @staticmethod
     def get_prediction_actions() -> InlineKeyboardMarkup:
-        """Кнопки действий после предсказания.
-
-        Содержит быстрые действия: новое предсказание, частые запросы,
-        а также кнопку возврата в главное меню.
-        """
+        """Кнопки действий после предсказания."""
         keyboard = [
             [InlineKeyboardButton(text=texts.BTN_NEW_PREDICTION, callback_data="new_prediction")],
             [InlineKeyboardButton(text=texts.BTN_SHOW_HISTORY, callback_data="show_history")],
