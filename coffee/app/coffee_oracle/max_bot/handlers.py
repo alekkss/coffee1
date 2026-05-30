@@ -160,6 +160,49 @@ async def _get_menu_keyboard(max_user_id: int) -> Dict[str, Any]:
         logger.warning("Ошибка получения меню для MAX-пользователя %d: %s", max_user_id, e)
         return MaxKeyboardManager.get_main_menu()
 
+async def _should_show_unlock_max(max_user_id: int) -> bool:
+    """Определяет, нужно ли показывать кнопку «Открыть безлимит» после предсказания.
+
+    Кнопка показывается если пользователь не VIP, не Premium,
+    и использовал >= 9 предсказаний или исчерпал лимит.
+
+    Args:
+        max_user_id: ID пользователя на платформе MAX.
+
+    Returns:
+        True если кнопку нужно показать.
+    """
+    try:
+        async for session in db_manager.get_session():
+            user_repo = UserRepository(session)
+            prediction_repo = PredictionRepository(session)
+            subscription_repo = SubscriptionRepository(session)
+
+            db_user = await user_repo.get_user_by_telegram_id(max_user_id, source=_SOURCE)
+            if not db_user:
+                return False
+
+            is_vip = db_user.subscription_type == "vip"
+            is_premium = (
+                db_user.subscription_type == "premium"
+                and db_user.subscription_until is not None
+            )
+            predictions_count = await prediction_repo.get_user_predictions_count(db_user.id)
+
+            can_predict, _ = await subscription_repo.can_make_prediction(db_user.id)
+            limit_exhausted = not can_predict
+
+            return MaxKeyboardManager.should_show_unlock(
+                is_vip=is_vip,
+                is_premium=is_premium,
+                predictions_count=predictions_count,
+                limit_exhausted=limit_exhausted,
+            )
+    except Exception as e:
+        logger.warning("MAX: ошибка определения show_unlock для %d: %s", max_user_id, e)
+        return False
+
+
 
 async def _get_or_create_user(
     max_user: MaxUser,
@@ -611,7 +654,7 @@ class MaxBotHandlers:
         elif text_lower == "/history":
             await self._handle_history_command(message, chat_id)
         elif text_lower == "/random":
-            await self._handle_random_command(chat_id)
+            await self._handle_random_command(chat_id, user_id=user.user_id)
         elif text_lower == "/about":
             await self._handle_about_command(chat_id)
         elif text_lower == "/clear":
@@ -906,13 +949,19 @@ class MaxBotHandlers:
             attachments=[MaxKeyboardManager.get_back_to_menu_button()],
         )
 
-    async def _handle_random_command(self, chat_id: int) -> None:
-        """Обработка команды /random."""
+    async def _handle_random_command(self, chat_id: int, user_id: Optional[int] = None) -> None:
+        """Обработка команды /random.
+
+        Args:
+            chat_id: ID чата для ответа.
+            user_id: ID пользователя MAX (для определения show_unlock).
+        """
         prediction = random.choice(texts.RANDOM_PREDICTIONS)
+        show_unlock = await _should_show_unlock_max(user_id) if user_id else False
         await self._api.send_message(
             chat_id=chat_id,
             text=f"{texts.RANDOM_PREDICTION_HEADER}{prediction}",
-            attachments=[MaxKeyboardManager.get_prediction_actions()],
+            attachments=[MaxKeyboardManager.get_prediction_actions(show_unlock=show_unlock)],
         )
 
     async def _handle_about_command(self, chat_id: int) -> None:
@@ -1157,10 +1206,12 @@ class MaxBotHandlers:
             # Всё равно отправляем предсказание пользователю
 
         # Отправка предсказания
+        show_unlock = await _should_show_unlock_max(user.user_id)
         await self._send_prediction_to_user(
             chat_id=chat_id,
             processing_msg_id=processing_msg_id,
             prediction_text=prediction_text,
+            show_unlock=show_unlock,
         )
 
     async def _send_prediction_to_user(
@@ -1168,6 +1219,7 @@ class MaxBotHandlers:
         chat_id: int,
         processing_msg_id: Optional[str],
         prediction_text: str,
+        show_unlock: bool = False,
     ) -> None:
         """Отправка предсказания пользователю с Markdown-форматированием.
 
@@ -1178,6 +1230,7 @@ class MaxBotHandlers:
             chat_id: ID чата для ответа.
             processing_msg_id: ID сообщения обработки для редактирования.
             prediction_text: Текст предсказания (содержит Markdown-разметку).
+            show_unlock: Показывать кнопку «Открыть безлимит».
         """
         max_length = 3900  # С запасом от лимита 4000
 
@@ -1188,7 +1241,7 @@ class MaxBotHandlers:
                     await self._api.edit_message(
                         message_id=processing_msg_id,
                         text=prediction_text,
-                        attachments=[MaxKeyboardManager.get_prediction_actions()],
+                        attachments=[MaxKeyboardManager.get_prediction_actions(show_unlock=show_unlock)],
                         format_type="markdown",
                     )
                     return
@@ -1199,7 +1252,7 @@ class MaxBotHandlers:
             await self._api.send_message(
                 chat_id=chat_id,
                 text=prediction_text,
-                attachments=[MaxKeyboardManager.get_prediction_actions()],
+                attachments=[MaxKeyboardManager.get_prediction_actions(show_unlock=show_unlock)],
                 format_type="markdown",
             )
         else:
@@ -1233,7 +1286,7 @@ class MaxBotHandlers:
                 await self._api.send_message(
                     chat_id=chat_id,
                     text=chunks[-1],
-                    attachments=[MaxKeyboardManager.get_prediction_actions()],
+                    attachments=[MaxKeyboardManager.get_prediction_actions(show_unlock=show_unlock)],
                     format_type="markdown",
                 )
 
@@ -1294,7 +1347,7 @@ class MaxBotHandlers:
                 await self._callback_show_history(callback, chat_id)
 
             elif payload == "action_random":
-                await self._handle_random_command(chat_id)
+                await self._handle_random_command(chat_id, user_id=user.user_id)
 
             # ── Подменю «Помощь» ──
             elif payload == "action_help_menu":

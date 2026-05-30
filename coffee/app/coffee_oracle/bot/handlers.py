@@ -105,6 +105,49 @@ async def _get_menu_keyboard(telegram_id: int):
         logger.warning("Ошибка получения меню для пользователя %d: %s", telegram_id, e)
         return KeyboardManager.get_main_menu()
 
+async def _should_show_unlock(telegram_id: int) -> bool:
+    """Определяет, нужно ли показывать кнопку «Открыть безлимит» после предсказания.
+
+    Кнопка показывается если пользователь не VIP, не Premium,
+    и использовал >= 9 предсказаний или исчерпал лимит.
+
+    Args:
+        telegram_id: Telegram ID пользователя.
+
+    Returns:
+        True если кнопку нужно показать.
+    """
+    try:
+        async for session in db_manager.get_session():
+            user_repo = UserRepository(session)
+            prediction_repo = PredictionRepository(session)
+            subscription_repo = SubscriptionRepository(session)
+
+            db_user = await user_repo.get_user_by_telegram_id(telegram_id, source=_SOURCE)
+            if not db_user:
+                return False
+
+            is_vip = db_user.subscription_type == "vip"
+            is_premium = (
+                db_user.subscription_type == "premium"
+                and db_user.subscription_until is not None
+            )
+            predictions_count = await prediction_repo.get_user_predictions_count(db_user.id)
+
+            can_predict, _ = await subscription_repo.can_make_prediction(db_user.id)
+            limit_exhausted = not can_predict
+
+            return KeyboardManager.should_show_unlock(
+                is_vip=is_vip,
+                is_premium=is_premium,
+                predictions_count=predictions_count,
+                limit_exhausted=limit_exhausted,
+            )
+    except Exception as e:
+        logger.warning("Ошибка определения show_unlock для %d: %s", telegram_id, e)
+        return False
+
+
 
 @router.message(CommandStart(deep_link=True))
 async def start_with_referral_handler(message: Message) -> Any:
@@ -465,6 +508,8 @@ async def photo_handler(
             return
 
         # Send prediction to user with action buttons
+        # Определяем, показывать ли кнопку «Открыть безлимит»
+        show_unlock = await _should_show_unlock(user.id)
         # Convert markdown to Telegram HTML format
         formatted_prediction = markdown_to_telegram_html(prediction_text)
 
@@ -489,7 +534,7 @@ async def photo_handler(
                 await send_with_fallback(
                     processing_msg.edit_text,
                     formatted_prediction,
-                    reply_markup=KeyboardManager.get_prediction_actions(),
+                    reply_markup=KeyboardManager.get_prediction_actions(show_unlock=show_unlock),
                     parse_mode="HTML"
                 )
             else:
@@ -500,7 +545,7 @@ async def photo_handler(
                 await send_with_fallback(
                     message.answer,
                     chunks[-1],
-                    reply_markup=KeyboardManager.get_prediction_actions(),
+                    reply_markup=KeyboardManager.get_prediction_actions(show_unlock=show_unlock),
                     parse_mode="HTML"
                 )
         except Exception as e:
@@ -513,7 +558,7 @@ async def photo_handler(
                 await message.answer(chunk)
             await message.answer(
                 texts.PREDICTION_ABOVE,
-                reply_markup=KeyboardManager.get_prediction_actions()
+                reply_markup=KeyboardManager.get_prediction_actions(show_unlock=show_unlock)
             )
 
     except Exception as e:
@@ -544,9 +589,10 @@ async def non_photo_handler(message: Message) -> Any:
 async def random_prediction_handler(message: Message) -> Any:
     """Обработка запроса случайного предсказания."""
     prediction = random.choice(texts.RANDOM_PREDICTIONS)
+    show_unlock = await _should_show_unlock(message.from_user.id) if message.from_user else False
     await message.answer(
         f"{texts.RANDOM_PREDICTION_HEADER}{prediction}",
-        reply_markup=KeyboardManager.get_prediction_actions()
+        reply_markup=KeyboardManager.get_prediction_actions(show_unlock=show_unlock)
     )
 
 

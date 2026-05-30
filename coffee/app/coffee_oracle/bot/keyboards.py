@@ -21,6 +21,9 @@ from coffee_oracle.config import config
 # Порог предсказаний, после которого показывается кнопка подписки
 _SUBSCRIPTION_BUTTON_THRESHOLD = 5
 
+# Порог предсказаний, после которого показывается кнопка «Открыть безлимит»
+_UNLOCK_BUTTON_THRESHOLD = 9
+
 
 class KeyboardManager:
     """Менеджер клавиатур Telegram-бота."""
@@ -124,14 +127,52 @@ class KeyboardManager:
         return InlineKeyboardMarkup(inline_keyboard=keyboard)
 
     @staticmethod
-    def get_prediction_actions() -> InlineKeyboardMarkup:
-        """Кнопки действий после предсказания."""
+    def get_prediction_actions(show_unlock: bool = False) -> InlineKeyboardMarkup:
+        """Кнопки действий после предсказания.
+
+        Args:
+            show_unlock: Показывать кнопку «Открыть безлимит».
+                         True если пользователь использовал >= 9 предсказаний
+                         или исчерпал лимит.
+
+        Returns:
+            InlineKeyboardMarkup с кнопками действий.
+        """
         keyboard = [
             [InlineKeyboardButton(text=texts.BTN_NEW_PREDICTION, callback_data="new_prediction")],
-            [InlineKeyboardButton(text=texts.BTN_BACK_TO_MENU, callback_data="back_to_menu")],
         ]
 
+        if show_unlock:
+            keyboard.append([
+                InlineKeyboardButton(text=texts.BTN_UNLOCK_UNLIMITED, callback_data="start_payment"),
+            ])
+
+        keyboard.append([
+            InlineKeyboardButton(text=texts.BTN_BACK_TO_MENU, callback_data="back_to_menu"),
+        ])
+
         return InlineKeyboardMarkup(inline_keyboard=keyboard)
+
+    @staticmethod
+    def should_show_unlock(is_vip: bool, is_premium: bool, predictions_count: int, limit_exhausted: bool) -> bool:
+        """Определяет, нужно ли показывать кнопку «Открыть безлимит».
+
+        Кнопка показывается если пользователь:
+        - НЕ VIP и НЕ Premium
+        - Использовал >= 9 предсказаний ИЛИ исчерпал лимит
+
+        Args:
+            is_vip: Является ли пользователь VIP.
+            is_premium: Является ли пользователь Premium.
+            predictions_count: Количество сделанных предсказаний.
+            limit_exhausted: Исчерпан ли лимит бесплатных предсказаний.
+
+        Returns:
+            True если кнопку нужно показать.
+        """
+        if is_vip or is_premium:
+            return False
+        return predictions_count >= _UNLOCK_BUTTON_THRESHOLD or limit_exhausted
 
     @staticmethod
     def get_about_keyboard() -> InlineKeyboardMarkup:

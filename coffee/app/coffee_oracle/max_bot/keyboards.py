@@ -16,6 +16,9 @@ from coffee_oracle.config import config
 # Порог предсказаний, после которого показывается кнопка подписки
 _SUBSCRIPTION_BUTTON_THRESHOLD = 5
 
+# Порог предсказаний, после которого показывается кнопка «Открыть безлимит»
+_UNLOCK_BUTTON_THRESHOLD = 9
+
 
 class MaxKeyboardManager:
     """Менеджер клавиатур для MAX-бота.
@@ -492,8 +495,13 @@ class MaxKeyboardManager:
         return cls._build_attachment(buttons)
 
     @classmethod
-    def get_prediction_actions(cls) -> Dict[str, Any]:
+    def get_prediction_actions(cls, show_unlock: bool = False) -> Dict[str, Any]:
         """Кнопки после получения предсказания.
+
+        Args:
+            show_unlock: Показывать кнопку «Открыть безлимит».
+                         True если пользователь использовал >= 9 предсказаний
+                         или исчерпал лимит.
 
         Returns:
             Вложение inline_keyboard с действиями после предсказания.
@@ -506,15 +514,47 @@ class MaxKeyboardManager:
                     "payload": "action_new_prediction",
                 },
             ],
-            [
+        ]
+
+        if show_unlock:
+            buttons.append([
                 {
                     "type": "callback",
-                    "text": texts.BTN_BACK_TO_MENU,
-                    "payload": "action_back_to_menu",
+                    "text": texts.BTN_UNLOCK_UNLIMITED,
+                    "payload": "action_start_payment",
                 },
-            ],
-        ]
+            ])
+
+        buttons.append([
+            {
+                "type": "callback",
+                "text": texts.BTN_BACK_TO_MENU,
+                "payload": "action_back_to_menu",
+            },
+        ])
+
         return cls._build_attachment(buttons)
+
+    @staticmethod
+    def should_show_unlock(is_vip: bool, is_premium: bool, predictions_count: int, limit_exhausted: bool) -> bool:
+        """Определяет, нужно ли показывать кнопку «Открыть безлимит».
+
+        Кнопка показывается если пользователь:
+        - НЕ VIP и НЕ Premium
+        - Использовал >= 9 предсказаний ИЛИ исчерпал лимит
+
+        Args:
+            is_vip: Является ли пользователь VIP.
+            is_premium: Является ли пользователь Premium.
+            predictions_count: Количество сделанных предсказаний.
+            limit_exhausted: Исчерпан ли лимит бесплатных предсказаний.
+
+        Returns:
+            True если кнопку нужно показать.
+        """
+        if is_vip or is_premium:
+            return False
+        return predictions_count >= _UNLOCK_BUTTON_THRESHOLD or limit_exhausted
 
     @classmethod
     def get_confirmation_keyboard(cls, action: str) -> Dict[str, Any]:
