@@ -13,6 +13,9 @@ from typing import Any, Dict, List, Optional
 from coffee_oracle.bot import texts
 from coffee_oracle.config import config
 
+# Порог предсказаний, после которого показывается кнопка подписки
+_SUBSCRIPTION_BUTTON_THRESHOLD = 5
+
 
 class MaxKeyboardManager:
     """Менеджер клавиатур для MAX-бота.
@@ -122,6 +125,25 @@ class MaxKeyboardManager:
         return cls._build_attachment(buttons)
 
     @classmethod
+    def get_menu_for_user(cls, is_vip: bool, predictions_count: int) -> Dict[str, Any]:
+        """Выбор клавиатуры главного меню в зависимости от статуса пользователя.
+
+        Кнопка «Подписка» показывается только если:
+        - пользователь НЕ VIP
+        - количество предсказаний строго больше порога (5)
+
+        Args:
+            is_vip: Является ли пользователь VIP.
+            predictions_count: Количество сделанных предсказаний.
+
+        Returns:
+            Вложение inline_keyboard с подпиской или без.
+        """
+        if not is_vip and predictions_count > _SUBSCRIPTION_BUTTON_THRESHOLD:
+            return cls.get_main_menu_with_subscription()
+        return cls.get_main_menu()
+
+    @classmethod
     def get_help_menu_keyboard(cls) -> Dict[str, Any]:
         """Inline-клавиатура подменю «Помощь».
 
@@ -219,6 +241,7 @@ class MaxKeyboardManager:
             ],
         ]
         return cls._build_attachment(buttons)
+
     @classmethod
     def get_predict_instruction_keyboard(cls) -> Dict[str, Any]:
         """Клавиатура экрана инструкции перед отправкой фото.
@@ -481,13 +504,6 @@ class MaxKeyboardManager:
                     "type": "callback",
                     "text": texts.BTN_NEW_PREDICTION,
                     "payload": "action_new_prediction",
-                },
-            ],
-            [
-                {
-                    "type": "callback",
-                    "text": texts.BTN_SHOW_HISTORY,
-                    "payload": "action_show_history",
                 },
             ],
             [

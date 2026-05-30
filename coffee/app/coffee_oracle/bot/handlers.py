@@ -75,6 +75,37 @@ async def get_bot_text(key: str, default: str) -> str:
         return default
 
 
+async def _get_menu_keyboard(telegram_id: int):
+    """Получение клавиатуры главного меню с учётом статуса пользователя.
+
+    Определяет, показывать ли кнопку «Подписка» на основе:
+    - пользователь не VIP
+    - сделал больше 5 предсказаний
+
+    Args:
+        telegram_id: Telegram ID пользователя.
+
+    Returns:
+        ReplyKeyboardMarkup — подходящая клавиатура главного меню.
+    """
+    try:
+        async for session in db_manager.get_session():
+            user_repo = UserRepository(session)
+            prediction_repo = PredictionRepository(session)
+
+            db_user = await user_repo.get_user_by_telegram_id(telegram_id, source=_SOURCE)
+            if not db_user:
+                return KeyboardManager.get_main_menu()
+
+            is_vip = db_user.subscription_type == "vip"
+            predictions_count = await prediction_repo.get_user_predictions_count(db_user.id)
+
+            return KeyboardManager.get_menu_for_user(is_vip, predictions_count)
+    except Exception as e:
+        logger.warning("Ошибка получения меню для пользователя %d: %s", telegram_id, e)
+        return KeyboardManager.get_main_menu()
+
+
 @router.message(CommandStart(deep_link=True))
 async def start_with_referral_handler(message: Message) -> Any:
     """Обработка /start с deep link параметром (реферальный код).
@@ -144,9 +175,10 @@ async def start_with_referral_handler(message: Message) -> Any:
 
         welcome_text = welcome_template.replace("{name}", db_user.full_name)
 
+        menu_keyboard = await _get_menu_keyboard(user.id)
         await message.answer(
             welcome_text,
-            reply_markup=KeyboardManager.get_main_menu_with_subscription()
+            reply_markup=menu_keyboard,
         )
 
 
@@ -176,9 +208,10 @@ async def start_handler(message: Message) -> Any:
 
         welcome_text = welcome_template.replace("{name}", db_user.full_name)
 
+        menu_keyboard = await _get_menu_keyboard(user.id)
         await message.answer(
             welcome_text,
-            reply_markup=KeyboardManager.get_main_menu_with_subscription()
+            reply_markup=menu_keyboard,
         )
 
 
@@ -529,9 +562,13 @@ async def clear_history_handler(message: Message) -> Any:
 @router.message(Command("menu"))
 async def menu_handler(message: Message) -> Any:
     """Обработка команды /menu."""
+    user = message.from_user
+    if not user:
+        return
+    menu_keyboard = await _get_menu_keyboard(user.id)
     await message.answer(
         texts.MAIN_MENU_TEXT,
-        reply_markup=KeyboardManager.get_main_menu()
+        reply_markup=menu_keyboard,
     )
 
 
@@ -1418,7 +1455,11 @@ async def check_payment_callback(callback: CallbackQuery) -> Any:
 ]))
 async def text_handler(message: Message) -> Any:
     """Обработка прочих текстовых сообщений."""
+    user = message.from_user
+    if not user:
+        return
+    menu_keyboard = await _get_menu_keyboard(user.id)
     await message.answer(
         texts.UNKNOWN_TEXT_MESSAGE,
-        reply_markup=KeyboardManager.get_main_menu_with_subscription()
+        reply_markup=menu_keyboard,
     )

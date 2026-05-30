@@ -18,6 +18,9 @@ from aiogram.types import (
 from coffee_oracle.bot import texts
 from coffee_oracle.config import config
 
+# Порог предсказаний, после которого показывается кнопка подписки
+_SUBSCRIPTION_BUTTON_THRESHOLD = 5
+
 
 class KeyboardManager:
     """Менеджер клавиатур Telegram-бота."""
@@ -57,6 +60,25 @@ class KeyboardManager:
         )
 
     @staticmethod
+    def get_menu_for_user(is_vip: bool, predictions_count: int) -> ReplyKeyboardMarkup:
+        """Выбор клавиатуры главного меню в зависимости от статуса пользователя.
+
+        Кнопка «Подписка» показывается только если:
+        - пользователь НЕ VIP
+        - количество предсказаний строго больше порога (5)
+
+        Args:
+            is_vip: Является ли пользователь VIP.
+            predictions_count: Количество сделанных предсказаний.
+
+        Returns:
+            ReplyKeyboardMarkup с подпиской или без.
+        """
+        if not is_vip and predictions_count > _SUBSCRIPTION_BUTTON_THRESHOLD:
+            return KeyboardManager.get_main_menu_with_subscription()
+        return KeyboardManager.get_main_menu()
+
+    @staticmethod
     def get_help_menu_keyboard() -> InlineKeyboardMarkup:
         """Inline-клавиатура подменю «Помощь»."""
         keyboard = [
@@ -71,7 +93,7 @@ class KeyboardManager:
             [InlineKeyboardButton(text=texts.BTN_BACK_TO_MENU, callback_data="back_to_menu")],
         ]
         return InlineKeyboardMarkup(inline_keyboard=keyboard)
-    
+
     @staticmethod
     def get_back_to_help_keyboard() -> InlineKeyboardMarkup:
         """Кнопка возврата в подменю помощи."""
@@ -80,7 +102,7 @@ class KeyboardManager:
             [InlineKeyboardButton(text=texts.BTN_BACK_SHORT, callback_data="back_to_menu")],
         ]
         return InlineKeyboardMarkup(inline_keyboard=keyboard)
-    
+
     @staticmethod
     def get_predict_instruction_keyboard() -> InlineKeyboardMarkup:
         """Клавиатура экрана инструкции перед отправкой фото."""
@@ -106,7 +128,6 @@ class KeyboardManager:
         """Кнопки действий после предсказания."""
         keyboard = [
             [InlineKeyboardButton(text=texts.BTN_NEW_PREDICTION, callback_data="new_prediction")],
-            [InlineKeyboardButton(text=texts.BTN_SHOW_HISTORY, callback_data="show_history")],
             [InlineKeyboardButton(text=texts.BTN_BACK_TO_MENU, callback_data="back_to_menu")],
         ]
 

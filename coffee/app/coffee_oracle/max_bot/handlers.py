@@ -130,6 +130,37 @@ async def _get_bot_text(key: str, default: str) -> str:
         return default
 
 
+async def _get_menu_keyboard(max_user_id: int) -> Dict[str, Any]:
+    """Получение клавиатуры главного меню с учётом статуса пользователя.
+
+    Определяет, показывать ли кнопку «Подписка» на основе:
+    - пользователь не VIP
+    - сделал больше 5 предсказаний
+
+    Args:
+        max_user_id: ID пользователя на платформе MAX.
+
+    Returns:
+        Вложение inline_keyboard — подходящая клавиатура главного меню.
+    """
+    try:
+        async for session in db_manager.get_session():
+            user_repo = UserRepository(session)
+            prediction_repo = PredictionRepository(session)
+
+            db_user = await user_repo.get_user_by_telegram_id(max_user_id, source=_SOURCE)
+            if not db_user:
+                return MaxKeyboardManager.get_main_menu()
+
+            is_vip = db_user.subscription_type == "vip"
+            predictions_count = await prediction_repo.get_user_predictions_count(db_user.id)
+
+            return MaxKeyboardManager.get_menu_for_user(is_vip, predictions_count)
+    except Exception as e:
+        logger.warning("Ошибка получения меню для MAX-пользователя %d: %s", max_user_id, e)
+        return MaxKeyboardManager.get_main_menu()
+
+
 async def _get_or_create_user(
     max_user: MaxUser,
     referred_by_partner_id: Optional[int] = None,
@@ -484,10 +515,11 @@ class MaxBotHandlers:
 
         welcome_text = welcome_template.replace("{name}", db_user.full_name)
 
+        menu_keyboard = await _get_menu_keyboard(user.user_id)
         await self._api.send_message(
             user_id=user.user_id,
             text=welcome_text,
-            attachments=[MaxKeyboardManager.get_main_menu_with_subscription()],
+            attachments=[menu_keyboard],
             format_type="html",
         )
 
@@ -529,10 +561,11 @@ class MaxBotHandlers:
             return
 
         # Неизвестный тип контента
+        menu_keyboard = await _get_menu_keyboard(message.sender.user_id)
         await self._api.send_message(
             chat_id=chat_id,
             text=texts.UNKNOWN_CONTENT_TYPE,
-            attachments=[MaxKeyboardManager.get_main_menu_with_subscription()],
+            attachments=[menu_keyboard],
             format_type="html",
         )
 
@@ -589,10 +622,11 @@ class MaxBotHandlers:
             await self._handle_subscription_command(user, chat_id)
         else:
             # Произвольный текст — предложить меню
+            menu_keyboard = await _get_menu_keyboard(user.user_id)
             await self._api.send_message(
                 chat_id=chat_id,
                 text=texts.UNKNOWN_TEXT_MESSAGE,
-                attachments=[MaxKeyboardManager.get_main_menu_with_subscription()],
+                attachments=[menu_keyboard],
             )
 
     # ────────────────────────────────────────────
@@ -786,10 +820,11 @@ class MaxBotHandlers:
 
         welcome_text = welcome_template.replace("{name}", db_user.full_name)
 
+        menu_keyboard = await _get_menu_keyboard(user.user_id)
         await self._api.send_message(
             chat_id=chat_id,
             text=welcome_text,
-            attachments=[MaxKeyboardManager.get_main_menu_with_subscription()],
+            attachments=[menu_keyboard],
             format_type="html",
         )
 
@@ -1312,11 +1347,11 @@ class MaxBotHandlers:
             elif payload == "action_back_to_menu":
                 # Сбрасываем FSM-состояние при возврате в меню
                 _state_manager.clear_state(user.user_id)
-                await self._callback_back_to_menu(callback, chat_id)
+                await self._callback_back_to_menu(user, chat_id)
 
             elif payload == "action_cancel":
                 _state_manager.clear_state(user.user_id)
-                await self._callback_cancel(callback, chat_id)
+                await self._callback_cancel(user, chat_id)
 
             # ── Подписка и платежи ──
             elif payload == "action_subscription":
@@ -1666,20 +1701,22 @@ class MaxBotHandlers:
             attachments=[MaxKeyboardManager.get_back_to_menu_button()],
         )
 
-    async def _callback_back_to_menu(self, callback: MaxCallback, chat_id: int) -> None:
+    async def _callback_back_to_menu(self, user: MaxUser, chat_id: int) -> None:
         """Callback: возврат в главное меню."""
+        menu_keyboard = await _get_menu_keyboard(user.user_id)
         await self._api.send_message(
             chat_id=chat_id,
             text=texts.MAIN_MENU_TEXT,
-            attachments=[MaxKeyboardManager.get_main_menu_with_subscription()],
+            attachments=[menu_keyboard],
         )
 
-    async def _callback_cancel(self, callback: MaxCallback, chat_id: int) -> None:
+    async def _callback_cancel(self, user: MaxUser, chat_id: int) -> None:
         """Callback: отмена действия."""
+        menu_keyboard = await _get_menu_keyboard(user.user_id)
         await self._api.send_message(
             chat_id=chat_id,
             text=texts.ACTION_CANCELLED_MAX,
-            attachments=[MaxKeyboardManager.get_main_menu_with_subscription()],
+            attachments=[menu_keyboard],
         )
 
     async def _callback_confirm(
@@ -1718,10 +1755,11 @@ class MaxBotHandlers:
                         )
                         await session.commit()
 
+                menu_keyboard = await _get_menu_keyboard(user.user_id)
                 await self._api.send_message(
                     chat_id=chat_id,
                     text=texts.CLEAR_HISTORY_SUCCESS,
-                    attachments=[MaxKeyboardManager.get_main_menu_with_subscription()],
+                    attachments=[menu_keyboard],
                 )
 
             except Exception as e:
