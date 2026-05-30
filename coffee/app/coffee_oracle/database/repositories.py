@@ -1089,8 +1089,9 @@ class ReminderRepository:
     """Репозиторий для управления ремайндерами неактивных пользователей.
 
     Отвечает за поиск пользователей, которым нужно отправить
-    напоминание через 1, 3 или 7 дней после последнего предсказания,
-    фиксацию факта отправки и сброс цепочки при новой активности.
+    напоминание через 1, 3, 7 или 30 дней после последнего предсказания,
+    а также подписчиков, неактивных 7 дней. Фиксирует факт отправки
+    и сбрасывает цепочку при новой активности.
     """
 
     def __init__(self, session: AsyncSession):
@@ -1105,7 +1106,7 @@ class ReminderRepository:
         ещё нет записи об отправке ремайндера этого дня.
 
         Args:
-            day: День неактивности (1, 3 или 7).
+            day: День неактивности (1, 3, 7 или 30).
 
         Returns:
             Список объектов User, которым нужно отправить ремайндер.
@@ -1156,6 +1157,67 @@ class ReminderRepository:
         result = await self.session.execute(stmt)
         return list(result.scalars().all())
 
+    async def get_subscribers_for_reminder(self) -> List[User]:
+        """Получение подписчиков, неактивных 7 дней.
+
+        Находит пользователей с активной подпиской (premium с
+        непросроченной датой или vip), у которых последнее
+        предсказание было 7–8 дней назад, и которым ещё не
+        отправлялся ремайндер типа DAY_SUBSCRIBER_7 (107).
+
+        Returns:
+            Список объектов User-подписчиков для отправки ремайндера.
+        """
+        now = datetime.utcnow()
+        lower_bound = now - timedelta(days=8)
+        upper_bound = now - timedelta(days=7)
+
+        reminder_day_value = UserReminder.DAY_SUBSCRIBER_7
+
+        # Подзапрос: дата последнего предсказания пользователя
+        last_pred_subq = (
+            select(
+                Prediction.user_id,
+                func.max(Prediction.created_at).label("last_pred_at"),
+            )
+            .group_by(Prediction.user_id)
+            .subquery()
+        )
+
+        # Подзапрос: проверка, что ремайндер sub_7 уже отправлялся
+        reminder_exists = exists().where(
+            UserReminder.user_id == User.id,
+            UserReminder.reminder_day == reminder_day_value,
+        )
+
+        # Условие активной подписки: VIP или premium с непросроченной датой
+        active_subscription = or_(
+            User.subscription_type == "vip",
+            and_(
+                User.subscription_type == "premium",
+                User.subscription_until.isnot(None),
+                User.subscription_until > now,
+            ),
+        )
+
+        stmt = (
+            select(User)
+            .outerjoin(last_pred_subq, User.id == last_pred_subq.c.user_id)
+            .where(
+                User.deleted_at.is_(None),
+                active_subscription,
+                ~reminder_exists,
+                # Подписчик должен иметь хотя бы одно предсказание,
+                # и последнее было 7–8 дней назад
+                last_pred_subq.c.last_pred_at.isnot(None),
+                last_pred_subq.c.last_pred_at >= lower_bound,
+                last_pred_subq.c.last_pred_at < upper_bound,
+            )
+        )
+
+        result = await self.session.execute(stmt)
+        return list(result.scalars().all())
+
     async def mark_reminder_sent(self, user_id: int, day: int) -> None:
         """Фиксация отправки ремайндера.
 
@@ -1164,7 +1226,7 @@ class ReminderRepository:
 
         Args:
             user_id: Внутренний ID пользователя.
-            day: День неактивности (1, 3 или 7).
+            day: День неактивности (1, 3, 7, 30 или 107).
         """
         reminder = UserReminder(user_id=user_id, reminder_day=day)
         self.session.add(reminder)
@@ -1177,7 +1239,7 @@ class ReminderRepository:
         """Сброс цепочки ремайндеров пользователя.
 
         Вызывается при новом предсказании — удаляет все записи
-        ремайндеров, чтобы цепочка 1→3→7 началась заново.
+        ремайндеров, чтобы цепочка 1→3→7→30 и sub_7 началась заново.
 
         Args:
             user_id: Внутренний ID пользователя.

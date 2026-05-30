@@ -601,3 +601,65 @@ class MaxKeyboardManager:
             ],
         ]
         return cls._build_attachment(buttons)
+
+    @classmethod
+    def get_reminder_keyboard_free(cls) -> Dict[str, Any]:
+        """Inline-клавиатура ремайндера для free-пользователей.
+
+        Содержит 3 кнопки: получить предсказание, видеоинструкция,
+        что спросить у Оракула.
+
+        Returns:
+            Вложение inline_keyboard с кнопками для free-пользователей.
+        """
+        buttons = [
+            [
+                {
+                    "type": "callback",
+                    "text": texts.BTN_PREDICT,
+                    "payload": "action_predict",
+                },
+            ],
+            [
+                {
+                    "type": "callback",
+                    "text": texts.BTN_VIDEO_INSTRUCTION,
+                    "payload": "action_video_instruction",
+                },
+            ],
+            [
+                {
+                    "type": "callback",
+                    "text": texts.BTN_HISTORY,
+                    "payload": "action_history",
+                },
+            ],
+        ]
+        return cls._build_attachment(buttons)
+
+    @classmethod
+    def get_reminder_keyboard_subscriber(cls) -> Dict[str, Any]:
+        """Inline-клавиатура ремайндера для подписчиков (premium/vip).
+
+        Содержит 2 кнопки: получить предсказание, видеоинструкция.
+
+        Returns:
+            Вложение inline_keyboard с кнопками для подписчиков.
+        """
+        buttons = [
+            [
+                {
+                    "type": "callback",
+                    "text": texts.BTN_PREDICT,
+                    "payload": "action_predict",
+                },
+            ],
+            [
+                {
+                    "type": "callback",
+                    "text": texts.BTN_VIDEO_INSTRUCTION,
+                    "payload": "action_video_instruction",
+                },
+            ],
+        ]
+        return cls._build_attachment(buttons)

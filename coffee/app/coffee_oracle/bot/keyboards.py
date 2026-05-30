@@ -2,7 +2,7 @@
 
 Содержит Reply- и Inline-клавиатуры для всех экранов:
 главное меню, действия после предсказания, подписка,
-подтверждение действий, оплата, подменю помощи.
+подтверждение действий, оплата, подменю помощи, ремайндеры.
 
 Названия кнопок импортируются из bot/texts.py —
 единого источника для TG и MAX ботов.
@@ -237,4 +237,51 @@ class KeyboardManager:
 
         keyboard.append([InlineKeyboardButton(text=texts.BTN_BACK_TO_MENU, callback_data="back_to_menu")])
 
+        return InlineKeyboardMarkup(inline_keyboard=keyboard)
+
+    @staticmethod
+    def get_reminder_keyboard_free() -> InlineKeyboardMarkup:
+        """Inline-клавиатура ремайндера для free-пользователей.
+
+        Содержит 3 кнопки: получить предсказание, видеоинструкция,
+        что спросить у Оракула.
+
+        Returns:
+            InlineKeyboardMarkup с кнопками для free-пользователей.
+        """
+        keyboard = [
+            [InlineKeyboardButton(
+                text=texts.BTN_PREDICT,
+                callback_data="new_prediction",
+            )],
+            [InlineKeyboardButton(
+                text=texts.BTN_VIDEO_INSTRUCTION,
+                callback_data="action_video_instruction",
+            )],
+            [InlineKeyboardButton(
+                text=texts.BTN_HISTORY,
+                callback_data="show_history",
+            )],
+        ]
+        return InlineKeyboardMarkup(inline_keyboard=keyboard)
+
+    @staticmethod
+    def get_reminder_keyboard_subscriber() -> InlineKeyboardMarkup:
+        """Inline-клавиатура ремайндера для подписчиков (premium/vip).
+
+        Содержит 2 кнопки: получить предсказание, видеоинструкция.
+
+        Returns:
+            InlineKeyboardMarkup с кнопками для подписчиков.
+        """
+        keyboard = [
+            [InlineKeyboardButton(
+                text=texts.BTN_PREDICT,
+                callback_data="new_prediction",
+            )],
+            [InlineKeyboardButton(
+                text=texts.BTN_VIDEO_INSTRUCTION,
+                callback_data="action_video_instruction",
+            )],
+        ]
         return InlineKeyboardMarkup(inline_keyboard=keyboard)

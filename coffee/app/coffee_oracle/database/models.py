@@ -382,11 +382,17 @@ class ReferralClick(Base):
 class UserReminder(Base):
     """Модель отправленных ремайндеров пользователям.
 
-    Хранит записи о том, какие ремайндеры (1, 3, 7 дней)
-    уже были отправлены пользователю, чтобы избежать
-    дублирования сообщений. При новом предсказании
-    все записи пользователя удаляются — цепочка начинается
-    заново.
+    Хранит записи о том, какие ремайндеры уже были отправлены
+    пользователю, чтобы избежать дублирования сообщений.
+    При новом предсказании все записи пользователя удаляются —
+    цепочка начинается заново.
+
+    Допустимые значения reminder_day:
+        1   — 1 день неактивности
+        3   — 3 дня неактивности
+        7   — 7 дней неактивности
+        30  — 30 дней неактивности
+        107 — подписчик (premium/vip), 7 дней без предсказаний
     """
 
     __tablename__ = "user_reminders"
@@ -394,6 +400,13 @@ class UserReminder(Base):
     __table_args__ = (
         UniqueConstraint("user_id", "reminder_day", name="uq_user_reminder_day"),
     )
+
+    # Константы дней для использования в планировщике и репозитории
+    DAY_1: int = 1
+    DAY_3: int = 3
+    DAY_7: int = 7
+    DAY_30: int = 30
+    DAY_SUBSCRIBER_7: int = 107  # Подписчик, неактивный 7 дней
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     user_id: Mapped[int] = mapped_column(
@@ -404,7 +417,7 @@ class UserReminder(Base):
     reminder_day: Mapped[int] = mapped_column(
         Integer,
         nullable=False,
-    )  # 1, 3 или 7 дней неактивности
+    )  # 1, 3, 7, 30 — дни неактивности; 107 — подписчик 7 дней
     sent_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         server_default=func.now(),
